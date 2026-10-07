@@ -98,7 +98,7 @@ select option:checked, select option:hover { background-color: var(--purple); co
 .profile-copy strong { color: var(--text); font-size: 12px; }
 .profile-copy small { color: var(--muted); font-size: 12px; }
 .profile-more { margin-left: auto; color: var(--muted); }
-.help-link { display: flex; align-items: center; gap: 7px; padding: 9px 8px; color: var(--muted); text-decoration: none; }
+.help-link { display: flex; align-items: center; gap: 7px; padding: 9px 8px; color: var(--muted); }
 .main-shell { min-height: 100vh; margin-left: var(--sidebar-width); transition: margin-left .18s ease; }
 .main-shell.main-collapsed { margin-left: 76px; }
 .topbar { min-height: 86px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 34px; border-bottom: 1px solid var(--line); background: var(--card); }
@@ -644,7 +644,7 @@ label, .label, .hint, .subtitle { font-size: var(--fs-sm); color: var(--text-2, 
 }
 select, input, textarea { color: var(--text); background-color: var(--card); }
 html, body, .app-shell { background: var(--bg); }
-.hero { min-height: 100vh; background: linear-gradient(90deg, #0e1016 8%, rgba(14,16,22,.94) 43%, rgba(14,16,22,.05) 100%), url("/hero-bear.jpg") right center / auto 100% no-repeat; }
+.hero { min-height: 100vh; background: linear-gradient(90deg, #0e1016 8%, rgba(14,16,22,.94) 43%, rgba(14,16,22,.05) 100%), url("/bear-landing.jpg") right center / auto 100% no-repeat; }
 .landing-page { min-height: 100vh; display: flex; flex-direction: column; overflow: hidden; color: #f3f4f6; background-color: #0e1016; }
 .landing-header { display: flex; align-items: center; justify-content: space-between; width: min(1180px, calc(100% - 64px)); margin: 0 auto; padding: 26px 0; }
 .landing-brand { display: inline-flex; align-items: center; gap: 12px; color: #f3f4f6; font-size: 18px; text-decoration: none; }
@@ -671,7 +671,7 @@ html, body, .app-shell { background: var(--bg); }
 .landing-highlights svg { color: #a89cff; }
 .landing-footer { width: min(1180px, calc(100% - 64px)); margin: 0 auto; padding: 16px 0 22px; color: #8d93a3; font-size: 12px; }
 .auth-page { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(430px, .78fr); color: #f3f4f6; background: #0e1016; }
-.auth-art-panel { position: relative; display: flex; flex-direction: column; justify-content: space-between; min-height: 100vh; padding: clamp(28px, 5vw, 70px); background: linear-gradient(90deg, rgba(14,16,22,.35), rgba(14,16,22,.18)), linear-gradient(0deg, rgba(14,16,22,.82), transparent 55%), url("/hero-bear.jpg") center / cover no-repeat; animation: auth-bear-float 9s ease-in-out infinite alternate; }
+.auth-art-panel { position: relative; display: flex; flex-direction: column; justify-content: space-between; min-height: 100vh; padding: clamp(28px, 5vw, 70px); background: linear-gradient(90deg, rgba(14,16,22,.35), rgba(14,16,22,.18)), linear-gradient(0deg, rgba(14,16,22,.82), transparent 55%), url("/bear-landing.jpg") center / cover no-repeat; animation: auth-bear-float 9s ease-in-out infinite alternate; }
 .auth-brand { display: inline-flex; align-items: center; gap: 12px; width: fit-content; color: #e8e5ff; font-size: 18px; text-decoration: none; }
 .auth-brand img { width: 42px; height: 42px; border-radius: 12px; object-fit: cover; }
 .auth-brand strong { color: #fff; font-weight: 700; }
@@ -945,7 +945,7 @@ html, body, .app-shell { background: var(--bg); }
   .landing-header { padding: 18px 0; }
   .landing-brand { font-size: 16px; }
   .landing-brand img { width: 36px; height: 36px; }
-  .landing-content { align-items: flex-end; min-height: calc(100vh - 78px); padding: 300px 0 40px; background-image: linear-gradient(180deg, rgba(14,16,22,.05) 0%, rgba(14,16,22,.82) 35%, #0e1016 100%), url("/hero-bear.jpg"); background-position: center top, 66% top; background-size: auto, auto 58%; background-repeat: no-repeat; }
+  .landing-content { align-items: flex-end; min-height: calc(100vh - 78px); padding: 300px 0 40px; background-image: linear-gradient(180deg, rgba(14,16,22,.05) 0%, rgba(14,16,22,.82) 35%, #0e1016 100%), url("/bear-landing.jpg"); background-position: center top, 66% top; background-size: auto, auto 58%; background-repeat: no-repeat; }
   .landing-copy { width: 100%; }
   .landing-copy h1 { margin-top: 18px; font-size: clamp(42px, 12vw, 58px); letter-spacing: -2px; }
   .landing-copy > p { font-size: 16px; }
@@ -971,7 +971,7 @@ html, body, .app-shell { background: var(--bg); }
 
 @media (max-width: 899px) {
   .auth-page { grid-template-columns: minmax(0, 1fr); overflow-x: hidden; }
-  .auth-art-panel { height: 180px; min-height: 180px; justify-content: flex-start; padding: 16px 22px; background-image: linear-gradient(180deg, rgba(14,16,22,.08) 0%, rgba(17,19,26,.18) 46%, #11131a 100%), linear-gradient(90deg, rgba(14,16,22,.15), rgba(14,16,22,.08)), url("/hero-bear.jpg"); background-position: 0 0, 0 0, center 48%; background-size: auto, auto, cover; }
+  .auth-art-panel { height: 180px; min-height: 180px; justify-content: flex-start; padding: 16px 22px; background-image: linear-gradient(180deg, rgba(14,16,22,.08) 0%, rgba(17,19,26,.18) 46%, #11131a 100%), linear-gradient(90deg, rgba(14,16,22,.15), rgba(14,16,22,.08)), url("/bear-landing.jpg"); background-position: 0 0, 0 0, center 48%; background-size: auto, auto, cover; }
   .auth-art-copy, .auth-art-caption { display: none; }
   .auth-form-panel { min-height: calc(100vh - 180px); justify-content: center; padding: 54px 24px 30px; border-top: 1px solid #262a36; border-left: 0; }
   .auth-back-link { top: 9px; left: 18px; min-height: 44px; padding: 4px 0; font-size: 13px; }
@@ -1052,7 +1052,7 @@ html, body, .app-shell { background: var(--bg); }
   .auth-form-panel .auth-back-link { margin-bottom: 16px; }
 }
 @media (max-width: 899px) {
-  .auth-art-panel { background-image: linear-gradient(180deg, rgba(14,16,22,.08) 0%, rgba(14,16,22,.18) 46%, #f4f8ff 100%), linear-gradient(90deg, rgba(14,16,22,.15), rgba(14,16,22,.08)), url("/hero-bear.jpg"); }
+  .auth-art-panel { background-image: linear-gradient(180deg, rgba(14,16,22,.08) 0%, rgba(14,16,22,.18) 46%, #f4f8ff 100%), linear-gradient(90deg, rgba(14,16,22,.15), rgba(14,16,22,.08)), url("/bear-landing.jpg"); }
   .auth-form-panel { min-height: calc(100vh - 180px); padding: 64px 24px 30px; border-top: 1px solid #e2e8f0; border-left: 0; }
 }
 
@@ -1235,7 +1235,7 @@ html, body, .app-shell { background: var(--bg); }
   background:
     radial-gradient(ellipse at 8% 45%, rgba(115,39,150,.34), transparent 48%),
     linear-gradient(105deg, rgba(10,10,16,.99) 0%, rgba(10,10,16,.98) 46%, rgba(10,10,16,.76) 100%),
-    url("/hero-bear.jpg") right 42% / auto 135% no-repeat,
+    url("/bear-landing.jpg") right 42% / auto 135% no-repeat,
     #0a0a10;
   box-shadow: 0 28px 80px rgba(21,17,36,.15);
 }
@@ -1282,7 +1282,7 @@ html, body, .app-shell { background: var(--bg); }
   .lp-coach-panel { gap: 27px; padding: 29px 21px; border-radius: 20px; background:
     radial-gradient(ellipse at 100% 0%, rgba(115,39,150,.25), transparent 47%),
     linear-gradient(180deg, rgba(10,10,16,.94), #0a0a10 58%),
-    url("/hero-bear.jpg") 70% top / auto 57% no-repeat,
+    url("/bear-landing.jpg") 70% top / auto 57% no-repeat,
     #0a0a10; }
   .lp-coach-copy h2 { font-size: 36px; }
   .lp-coach-copy > p { font-size: 14px; }
@@ -1323,7 +1323,7 @@ html, body, .app-shell { background: var(--bg); }
   bottom: 0;
   z-index: 0;
   width: 55%;
-  background: url("/hero-bear.jpg") center right / cover no-repeat;
+  background: url("/bear-landing.jpg") center right / cover no-repeat;
   content: "";
   filter: saturate(1.25) contrast(1.08) brightness(1.05);
   -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 18%), linear-gradient(to bottom, transparent 0%, #000 6%, #000 94%, transparent 100%);
@@ -2260,7 +2260,7 @@ html:has(.lp) { scroll-behavior: smooth; scroll-padding-top: 64px; }
   background:
     linear-gradient(to bottom, rgba(255,255,255,.92) 0%, rgba(255,255,255,0) 10%, rgba(255,255,255,0) 90%, rgba(255,255,255,.92) 100%),
     linear-gradient(to right, #fff 0%, rgba(255,255,255,.94) 20%, rgba(255,255,255,.55) 46%, rgba(255,255,255,0) 72%),
-    url("/hero-bear.jpg") center right / cover no-repeat;
+    url("/bear-landing.jpg") center right / cover no-repeat;
   -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 30%), linear-gradient(to bottom, transparent 0%, #000 6%, #000 94%, transparent 100%);
   -webkit-mask-composite: source-in;
   mask-image: linear-gradient(to right, transparent 0%, #000 30%), linear-gradient(to bottom, transparent 0%, #000 6%, #000 94%, transparent 100%);
@@ -2283,7 +2283,7 @@ html:has(.lp) { scroll-behavior: smooth; scroll-padding-top: 64px; }
 .lp .lp-feature-bars { display: flex; width: 64%; height: 82px; min-height: 0; align-items: end; gap: 9px; margin: 0; padding: 0 0 3px; border-bottom: 1px solid rgba(255,255,255,.25); }
 .lp .lp-feature-bars i { width: 10%; transform: scaleY(0); }
 .lp .lp-feature-card.in .lp-feature-bars i { animation: lp-mini-grow .65s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--lp-index, 0) * 60ms); }
-.lp .lp-feature-win-ring { display: grid; width: 76px; height: 76px; place-items: center; border: 9px solid #bbf7d0; border-radius: 50%; background: rgba(255,255,255,.2); }
+.lp .lp-feature-win-ring { display: grid; width: 76px; height: 76px; place-items: center; border-radius: 50%; background: conic-gradient(#bbf7d0 0 62%, rgba(255,255,255,.2) 62% 100%); }
 .lp .lp-feature-win-ring { transform: scale(.72); opacity: .65; }
 .lp .lp-feature-card.in .lp-feature-win-ring { animation: lp-feature-ring-pop .7s .42s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes lp-feature-ring-pop { to { transform: scale(1); opacity: 1; } }
@@ -2428,16 +2428,6 @@ html:has(.lp) { scroll-behavior: smooth; scroll-padding-top: 64px; }
 .sidebar-bottom .sidebar-divider { margin: 8px 8px; }
 .sidebar-bottom .upgrade-card { margin-bottom: 16px; }
 .sidebar-bottom .help-link { margin-bottom: 6px; }
-.legal-disclaimer-line { margin: 8px 0 0; color: var(--text-3); font-size: 12px; }
-.help-card { max-width: 720px; padding: 30px; margin: 24px auto; }
-.help-card h1 { margin: 6px 0; color: var(--text-strong); font-size: 30px; }
-.help-card > p { color: var(--text-2); }
-.help-card dl { display: grid; gap: 12px; margin: 24px 0; }
-.help-card dl > div { display: grid; grid-template-columns: 110px 1fr; gap: 12px; }
-.help-card dt { color: var(--text-2); font-weight: 600; }
-.help-card dd { margin: 0; color: var(--text); }
-.help-card nav { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 24px; }
-.help-card a { color: var(--purple); font-weight: 600; }
 .sidebar-profile-wrap { margin-top: 0; }
 .sidebar .nav-link { min-height: 44px; }
 @media (max-height: 800px) {
@@ -2546,7 +2536,7 @@ button:focus-visible, a:focus-visible, [tabindex="0"]:focus-visible { outline: 3
 @media (max-width: 900px) {
   .lp .lp-nav-in { height: 56px; gap: 12px; }
   .lp .lp-hero::after {
-    background: url("/hero-bear.jpg") center right / cover no-repeat;
+    background: url("/bear-landing.jpg") center right / cover no-repeat;
     -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%);
     -webkit-mask-composite: source-over;
     mask-image: linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%);
