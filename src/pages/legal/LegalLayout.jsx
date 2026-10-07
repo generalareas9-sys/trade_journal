@@ -23,7 +23,7 @@ export default function LegalLayout({ title, sections, children }) {
     <main className="legal-page">
       <header className="legal-topbar">
         <Link to="/welcome" className="legal-brand">
-          <img src="/logo.svg" alt="" />
+          <img src="/bear-logo.png" alt="" />
           <span>Trade<b>Journal</b></span>
         </Link>
         <button className="legal-back" type="button" onClick={() => navigate(window.history.state?.idx > 0 ? -1 : '/signup')}>
