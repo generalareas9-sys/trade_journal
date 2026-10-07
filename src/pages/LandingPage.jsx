@@ -24,6 +24,7 @@ import {
   X,
   CircleHelp,
   FileText,
+  Mail,
 } from 'lucide-react'
 
 const FEATURES = [
@@ -55,7 +56,7 @@ const MORE_TOOLS = [
 const FAQ = [
   ['Is TradeJournal free?', 'TradeJournal is currently in preview. Sign up to explore the journal and its current features.'],
   ['Which brokers can I use?', 'You can import trade history from CSV or TXT files. The importer lets you map your file columns to trade fields.'],
-  ['Where is my data stored?', 'Account-based journal data is stored in the configured Supabase project. This browser may also store local preferences or legacy data.'],
+  ['Where is my data stored?', 'Your account and journal data is stored in the cloud. Your browser also keeps your login session and theme preference.'],
   ['Does it give financial advice?', 'No. TradeJournal is a journaling and analytics tool only. Trading involves risk of loss.'],
   ['Can I use it on my phone?', 'The app is responsive and works in modern mobile browsers.'],
 ]
@@ -91,7 +92,7 @@ function Reveal({ children, className = '', style }) {
 
 function FeatureVisual({ type }) {
   if (type === 'bars') {
-    return <div className="lp-feature-visual lp-feature-bars-wrap" aria-hidden="true"><div className="lp-feature-bars">{[35, 54, 44, 75, 61, 92, 72].map((height, index) => <i key={index} style={{ '--lp-bar-height': `${height}%`, '--lp-index': index }} />)}</div><div className="lp-feature-win-ring"><span>—<small>win rate</small></span></div></div>
+    return <div className="lp-feature-visual lp-feature-bars-wrap" aria-hidden="true"><div className="lp-feature-bars">{[35, 54, 44, 75, 61, 92, 72].map((height, index) => <i key={index} style={{ '--lp-bar-height': `${height}%`, '--lp-index': index }} />)}</div><div className="lp-feature-win-ring"><span>62%<small>win rate</small></span></div></div>
   }
   if (type === 'calendar') {
     return <div className="lp-feature-visual lp-feature-calendar" aria-hidden="true">{Array.from({ length: 21 }, (_, index) => <i key={index} className={[2, 5, 9, 14, 19].includes(index) ? 'loss' : [0, 1, 4, 6, 8, 11, 13, 16, 18, 20].includes(index) ? 'win' : ''} />)}</div>
@@ -105,7 +106,7 @@ function FeatureVisual({ type }) {
   if (type === 'notebook') {
     return <div className="lp-feature-visual lp-feature-notebook" aria-hidden="true"><div><span /><span /><span /><span /></div><ul><li><Check size={12} /> Entry plan</li><li><Check size={12} /> Review notes</li></ul></div>
   }
-  return <div className="lp-feature-visual lp-feature-dashboard" aria-hidden="true"><div className="lp-feature-mini-kpis"><i><b>—</b><small>Win rate</small></i><i><b>—</b><small>Profit factor</small></i><i><b>—</b><small>Trades</small></i></div><svg viewBox="0 0 180 34"><polyline points="0,29 24,22 48,25 72,14 96,19 120,8 144,12 180,3" /></svg></div>
+  return <div className="lp-feature-visual lp-feature-dashboard" aria-hidden="true"><div className="lp-feature-mini-kpis"><i><b>62%</b><small>Win rate</small></i><i><b>1.8</b><small>Profit factor</small></i><i><b>32</b><small>Trades</small></i></div><svg viewBox="0 0 180 34"><polyline points="0,29 24,22 48,25 72,14 96,19 120,8 144,12 180,3" /></svg></div>
 }
 
 function CountUp({ value, decimals = 0, suffix = '', prefix = '', grouped = false }) {
@@ -172,7 +173,7 @@ function BacktestVisual() {
           <div className="lp-equity-labels"><span>Trade 1</span><span>Trade 16</span><span>Trade 32</span></div>
         </div>
         <div className="lp-winloss">
-          <div className="lp-winloss-donut"><span>—<small>win rate</small></span></div>
+          <div className="lp-winloss-donut"><span>62%<small>sample wins</small></span></div>
           <div><strong>Win / loss record</strong><span>Illustrative sample</span></div>
         </div>
       </div>
@@ -214,7 +215,7 @@ function DashboardPreview() {
           ))}
         </div>
         <div className="lp-pv-chart">
-          <div className="lp-pv-chart-title"><b>Daily net cumulative P&amp;L</b><span>Illustrative sample <ChevronDown size={14} /></span></div>
+          <div className="lp-pv-chart-title"><b>Daily net cumulative P&amp;L</b><span>Last 30 days <ChevronDown size={14} /></span></div>
           <div className="lp-pv-plot">
             <div className="lp-pv-axis" aria-hidden="true"><span>$3k</span><span>$2k</span><span>$1k</span><span>$0</span></div>
             <svg viewBox="0 0 700 180" role="img" aria-label="Illustrative cumulative profit and loss chart">
@@ -244,7 +245,7 @@ function DashboardPreview() {
           <div className="lp-pv-summary">
             <div className="lp-pv-summary-head"><b>At a glance</b><small>Illustrative sample</small></div>
             <div className="lp-pv-summary-main">
-              <div className="lp-pv-donut"><span>—<small>win rate</small></span></div>
+              <div className="lp-pv-donut"><span>62%<small>win rate</small></span></div>
               <div className="lp-pv-summary-stats">
                 <div><span>Average win</span><strong className="lp-pv-positive">+$284</strong></div>
                 <div><span>Average loss</span><strong className="lp-pv-negative">-$156</strong></div>
@@ -296,7 +297,7 @@ export default function LandingPage() {
       <header className={`lp-nav ${scrolled ? 'scrolled' : ''}`}>
         <div className="lp-wrap lp-nav-in">
           <Link to="/welcome" className="lp-brand" aria-label="TradeJournal home">
-            <img src="/logo.svg" alt="" /><span>Trade<b>Journal</b></span>
+            <img src="/bear-logo.png" alt="" /><span>Trade<b>Journal</b></span>
           </Link>
           <nav className={menuOpen ? 'open' : ''} aria-label="Main navigation">
             {navLink('#features', 'features', 'Why TradeJournal')}
@@ -307,9 +308,9 @@ export default function LandingPage() {
             <div className={`lp-resources ${resourcesOpen ? 'open' : ''}`}>
               <button type="button" aria-expanded={resourcesOpen} onClick={() => setResourcesOpen((open) => !open)}>Resources <ChevronDown size={14} /></button>
               <div className="lp-resources-menu">
-                <Link to="/help" onClick={closeMenu}><CircleHelp size={15} />Help center</Link>
-                <Link to="/help" onClick={closeMenu}><FileText size={15} />About TradeJournal</Link>
-                <Link to="/help" onClick={closeMenu}><Mail size={15} />Contact</Link>
+                <a href="mailto:help@tradejournal.app?subject=Help%20center" onClick={closeMenu}><CircleHelp size={15} />Help center</a>
+                <a href="mailto:help@tradejournal.app?subject=Changelog" onClick={closeMenu}><FileText size={15} />Changelog</a>
+                <a href="mailto:hello@tradejournal.app" onClick={closeMenu}><Mail size={15} />Contact</a>
               </div>
             </div>
             <Link to="/login" className="lp-link-mobile" onClick={closeMenu}>Sign in</Link>
@@ -504,7 +505,7 @@ export default function LandingPage() {
         <section className="lp-final">
           <div className="lp-wrap">
             <Reveal>
-              <img className="lp-final-bear" src="/logo.svg" alt="" />
+              <img className="lp-final-bear" src="/bear-logo.png" alt="" />
               <span className="lp-final-eyebrow">YOUR NEXT REVIEW STARTS HERE</span>
               <h2>Ready to trade with a clearer head?</h2>
               <p>Bring your trades, notes, and review routine into one focused workspace.</p>
@@ -517,7 +518,7 @@ export default function LandingPage() {
       <footer className="lp-footer">
         <Reveal className="lp-wrap lp-foot-in">
           <div>
-            <Link to="/welcome" className="lp-brand"><img src="/logo.svg" alt="" /><span>Trade<b>Journal</b></span></Link>
+            <Link to="/welcome" className="lp-brand"><img src="/bear-logo.png" alt="" /><span>Trade<b>Journal</b></span></Link>
             <p>A journal and analytics workspace for traders.</p>
           </div>
           <div><h4>Product</h4><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></div>
