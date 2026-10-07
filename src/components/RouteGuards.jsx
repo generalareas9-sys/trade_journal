@@ -14,16 +14,17 @@ export function ProtectedRoute() {
   const location = useLocation()
 
   if (loading) return <FullScreenLoader />
-  if (!user) return <Navigate to="/welcome" replace state={{ from: location }} />
+  if (!user) return <Navigate to="/login" replace state={{ from: location }} />
 
   return <Outlet />
 }
 
 export function PublicOnlyRoute() {
   const { user, loading } = useAuth()
+  const location = useLocation()
 
   if (loading) return <FullScreenLoader />
-  if (user) return <Navigate to="/" replace />
+  if (user) return <Navigate to={location.state?.from || '/'} replace />
 
   return <Outlet />
 }
