@@ -22,13 +22,6 @@
 ## Before production
 
 - Replace `https://your-domain.com` in `index.html`, `public/robots.txt`, and `public/sitemap.xml` with the chosen production domain.
-- Add the licensed hero artwork you own as `public/hero-bear.jpg`; the old bear images have been removed. The old `public/bear-landing.jpg` was referenced by `.hero`, responsive `.landing-content`, `.auth-art-panel` (including mobile/light variants), `.lp-coach-panel` (desktop and mobile), and `.lp-hero::after` (desktop, final override, and mobile). Those backgrounds now point to `/hero-bear.jpg` and preserve their existing blend/layout styles.
-- The removed `public/bear-logo.png` was used by the sidebar brand, landing header, final call-to-action and footer, login, forgot-password, reset-password (including hidden form marks), and legal-page header. They now share `/logo.svg`; raster favicon/app-icon files and `/og-image.png` are rendered from that single source.
-- Review every remaining legal/contact placeholder below, fill it with verified details, and have the legal text reviewed before launch:
-  - [ ] Terms of Service: `[COUNTRY]` (governing law) and `[CONTACT EMAIL]` (contact section).
-  - [ ] Privacy Policy: `[CONTACT EMAIL]` (contact section).
-  - [ ] Disclaimer: `[CONTACT EMAIL]` (contact section).
-  - [ ] Help/About page: `[CONTACT EMAIL]` (contact detail); configure the feedback mail link recipient.
 - Verify Vercel's Content-Security-Policy Supabase host matches the project configured by `VITE_SUPABASE_URL`.
 - Verify Supabase Site URL and Redirect URLs use the exact production domain and `/reset-password`.
 - Confirm email confirmation is enabled and account deletion works against the deployed Edge Function.
