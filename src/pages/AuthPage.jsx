@@ -157,9 +157,13 @@ export default function AuthPage({ mode }) {
     setGoogleLoading(true)
     let redirecting = false
     try {
+      const returnLocation = location.state?.from
+      const returnPath = returnLocation?.pathname?.startsWith('/') && !returnLocation.pathname.startsWith('//')
+        ? `${returnLocation.pathname}${returnLocation.search || ''}${returnLocation.hash || ''}`
+        : '/'
       const { data, error: googleError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: `${window.location.origin}/`, skipBrowserRedirect: true },
+        options: { redirectTo: `${window.location.origin}${returnPath}`, skipBrowserRedirect: true },
       })
       if (googleError) {
         console.error('Google sign-in failed:', googleError)
@@ -204,7 +208,7 @@ export default function AuthPage({ mode }) {
     <main className="auth-page">
       <section className="auth-art-panel" aria-label="TradeJournal">
         <Link className="auth-brand" to="/welcome">
-          <img src="/logo.svg" alt="" />
+          <img src="/bear-logo.png" alt="" />
           <span>Trade<strong>Journal</strong></span>
         </Link>
         <div className="auth-art-copy">
@@ -219,7 +223,7 @@ export default function AuthPage({ mode }) {
       <section className="auth-form-panel">
         <div className="auth-form-wrap">
           <Link className="auth-back-link" to="/welcome"><ArrowLeft size={16} /> Back to home</Link>
-          <div className="auth-form-logo"><img src="/logo.svg" alt="" /></div>
+          <div className="auth-form-logo"><img src="/bear-logo.png" alt="" /></div>
           <p className="auth-kicker">{isSignUp ? 'START YOUR JOURNEY' : 'WELCOME BACK'}</p>
           <h2>{isSignUp ? 'Create your account' : 'Sign in to TradeJournal'}</h2>
           <p className="auth-intro">{isSignUp ? 'A more intentional trading routine starts here.' : 'Pick up where you left off and review your trading.'}</p>
@@ -365,7 +369,7 @@ export default function AuthPage({ mode }) {
 
           <p className="auth-switch">
             {isSignUp ? 'Already have an account?' : 'New to TradeJournal?'}
-            {' '}<Link to={isSignUp ? '/login' : '/signup'}>{isSignUp ? 'Sign in' : 'Create an account'}</Link>
+            {' '}<Link to={isSignUp ? '/login' : '/signup'} state={location.state}>{isSignUp ? 'Sign in' : 'Create an account'}</Link>
           </p>
           <p className="auth-privacy"><LockKeyhole size={13} /> Your credentials are securely handled by Supabase.</p>
           <nav className="auth-legal-footer" aria-label="Legal pages">
