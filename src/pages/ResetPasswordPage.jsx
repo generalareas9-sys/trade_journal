@@ -115,7 +115,7 @@ export default function ResetPasswordPage() {
     <main className="auth-page">
       <section className="auth-art-panel" aria-label="TradeJournal">
         <Link className="auth-brand" to="/welcome">
-          <img src="/logo.svg" alt="" />
+          <img src="/bear-logo.png" alt="" />
           <span>Trade<strong>Journal</strong></span>
         </Link>
         <div className="auth-art-copy">
@@ -130,7 +130,7 @@ export default function ResetPasswordPage() {
       <section className="auth-form-panel">
         <div className="auth-form-wrap">
           <Link className="auth-back-link" to="/login"><ArrowLeft size={16} /> Back to sign in</Link>
-          <div className="auth-form-logo"><img src="/logo.svg" alt="" /></div>
+          <div className="auth-form-logo"><img src="/bear-logo.png" alt="" /></div>
           <p className="auth-kicker">ACCOUNT RECOVERY</p>
           <h2>Set a new password</h2>
           <p className="auth-intro">Choose a new password for your TradeJournal account.</p>
