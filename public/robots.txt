@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /welcome
+Allow: /login
+Allow: /signup
+Allow: /terms
+Allow: /privacy
+Allow: /disclaimer
+Disallow: /
+
+Sitemap: https://your-domain.com/sitemap.xml
