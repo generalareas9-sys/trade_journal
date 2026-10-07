@@ -16,7 +16,6 @@ const TermsPage = lazy(() => import('./pages/legal/TermsPage'))
 const PrivacyPage = lazy(() => import('./pages/legal/PrivacyPage'))
 const DisclaimerPage = lazy(() => import('./pages/legal/DisclaimerPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
-const HelpPage = lazy(() => import('./pages/HelpPage'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const DailyJournal = lazy(() => import('./pages/DailyJournal'))
 const TradeLog = lazy(() => import('./pages/TradeLog'))
@@ -170,7 +169,6 @@ export default function App() {
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/disclaimer" element={<DisclaimerPage />} />
-      <Route path="/help" element={<HelpPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       <Route element={<PublicOnlyRoute />}>
