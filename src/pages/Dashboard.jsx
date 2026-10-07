@@ -36,8 +36,6 @@ export default function Dashboard() {
   })
 
   return <div className="page-content">
-    <OnboardingChecklist onAddTrade={() => { setEditingTrade(null); setAddTradeOpen(true) }} />
-    {trades.length === 0 && <section className="panel dashboard-first-empty"><EmptyState icon={TrendingUp} title="Your trading story starts here" description="Add a trade or import your history to see your performance take shape." action={<div className="first-run-empty-actions"><button type="button" className="button-primary" onClick={() => { setEditingTrade(null); setAddTradeOpen(true) }}>Add a trade</button><Link className="button-secondary" to="/import">Import CSV</Link><button type="button" className="button-secondary" disabled={loadingDemo} onClick={async () => { setLoadingDemo(true); try { await loadDemoData() } finally { setLoadingDemo(false) } }}>{loadingDemo ? 'Loading…' : 'Load demo data'}</button></div>} /></section>}
     {hasTradeToday && !hasTodayJournal && <div className="dashboard-journal-reminder" role="status"><span>You logged a trade today. Take a moment to record how the session went.</span><Link to="/journal">Write today’s journal entry <ChevronRight size={15} /></Link></div>}
     <div className="welcome-strip"><div className="welcome-avatar"><Flame size={18} /></div><div><strong>Keep building your edge.</strong><span>You’ve logged <b>{stats.trades} trades</b> in this view. Every session is a chance to get a little better.</span></div><button onClick={() => navigate('/journal')}>Open journal <ChevronRight size={15} /></button></div>
     <section className="kpi-grid">
@@ -70,7 +68,6 @@ export default function Dashboard() {
       })}
     </section>
     <div className="dashboard-footnote"><span><i className="legend-dot green-dot" />Profitable</span><span><i className="legend-dot red-dot" />Loss day</span><span>Metrics calculated from {filteredTrades.length} trades in selected range</span><span>Last updated {format(subDays(new Date(), 0), 'MMM d, h:mm a')}</span></div>
-    <p className="legal-disclaimer-line">For informational purposes only. TradeJournal does not provide financial advice.</p>
     <TradeDrawer trade={selectedTrade} onClose={() => setSelectedTrade(null)} onUpdate={updateTrade} onEdit={() => { setEditingTrade(selectedTrade); setSelectedTrade(null); navigate('/'); setAddTradeOpen(true) }} onDelete={() => {
       if (window.confirm(`Delete the ${selectedTrade.symbol} trade from ${selectedTrade.date}? This cannot be undone.`)) {
         window.dispatchEvent(new CustomEvent('tradejournal:trade-deleted', { detail: { trade: selectedTrade } }))
@@ -79,6 +76,8 @@ export default function Dashboard() {
       }
     }} />
     <WelcomeGuide />
+    <OnboardingChecklist showShortcuts={trades.length > 0} onAddTrade={() => { setEditingTrade(null); setAddTradeOpen(true) }} />
+    {trades.length === 0 && <section className="panel dashboard-first-empty"><EmptyState icon={TrendingUp} title="Your trading story starts here" description="Add a trade or import your history to see your performance take shape." action={<div className="first-run-empty-actions"><button type="button" className="button-primary" onClick={() => { setEditingTrade(null); setAddTradeOpen(true) }}>Add a trade</button><Link className="button-secondary" to="/import">Import CSV</Link><button type="button" className="button-secondary" disabled={loadingDemo} onClick={async () => { setLoadingDemo(true); try { await loadDemoData() } finally { setLoadingDemo(false) } }}>{loadingDemo ? 'Loading…' : 'Load demo data'}</button></div>} /></section>}
   </div>
 }
 
