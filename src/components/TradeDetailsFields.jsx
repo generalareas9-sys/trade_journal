@@ -16,8 +16,7 @@ function YesNo({ label, value, onChange }) {
   return <Segmented label={label} options={['Yes', 'No']} value={value} onChange={onChange} />
 }
 
-function ResultField({ form, set }) {
-  const manual = form.resultOverride !== null
+function ResultField({ form }) {
   const amount = currency(form.pnlPreview)
   const resultClass = form.result === 'Win' ? 'result-win' : form.result === 'Loss' ? 'result-loss' : 'result-neutral'
   const mismatch = form.hasPnlPreview
@@ -31,28 +30,29 @@ function ResultField({ form, set }) {
       </span>
       {form.hasPnlPreview && <span className="result-pnl">Net P&amp;L: {amount}</span>}
     </div>
-    {!manual
-      ? <button className="link-btn result-override-link" type="button" onClick={() => set('resultOverride', form.result)}>Override</button>
-      : <>
-        <div className="result-manual-row">
-          <span>Manual result</span>
-          <button className="link-btn" type="button" onClick={() => set('resultOverride', null)}>Reset to auto</button>
-        </div>
-        <div className="segmented result-manual-options" role="group" aria-label="Manual result">
-          {['Win', 'Loss', 'Breakeven'].map((result) => (
-            <button
-              type="button"
-              key={result}
-              aria-pressed={form.resultOverride === result}
-              className={`seg ${form.resultOverride === result ? `active ${result === 'Win' ? 'result-manual-win' : result === 'Loss' ? 'result-manual-loss' : ''}` : ''}`}
-              onClick={() => set('resultOverride', result)}
-            >
-              {result}
-            </button>
-          ))}
-        </div>
-      </>}
     {mismatch && <small className="result-warning" role="status">Exit condition and result do not match</small>}
+  </div>
+}
+
+function ManualResultField({ form, set }) {
+  return <div className="field manual-result-field">
+    <div className="result-manual-row">
+      <label>Set result</label>
+      {form.resultOverride !== null && <button className="link-btn" type="button" onClick={() => set('resultOverride', null)}>Reset to auto</button>}
+    </div>
+    <div className="segmented result-manual-options" role="group" aria-label="Manual result">
+      {['Win', 'Loss', 'Breakeven'].map((result) => (
+        <button
+          type="button"
+          key={result}
+          aria-pressed={form.resultOverride === result}
+          className={`seg ${form.resultOverride === result ? `active ${result === 'Win' ? 'result-manual-win' : result === 'Loss' ? 'result-manual-loss' : ''}` : ''}`}
+          onClick={() => set('resultOverride', result)}
+        >
+          {result}
+        </button>
+      ))}
+    </div>
   </div>
 }
 
@@ -155,11 +155,12 @@ export default function TradeDetailsFields({ form, set, onError, uploadingScreen
     <YesNo label="Entry condition fulfilled?" value={form.entryConditionMet} onChange={(value) => set('entryConditionMet', value)} />
     <SectionTitle id="trade-outcome">Outcome</SectionTitle>
     <Segmented label="Exit condition" options={['TP hit', 'SL hit', 'Closed early']} value={form.exitCondition} onChange={(value) => set('exitCondition', value)} />
-    <ResultField form={form} set={set} />
+    <ResultField form={form} />
     <div className="field">
       <label>RRR (reward per 1 risk)</label>
       <div className="rrr-input"><span>1 :</span><input type="number" step="0.01" min="0" placeholder="2.5" value={form.rrr} onChange={(event) => set('rrr', event.target.value)} /></div>
     </div>
+    <ManualResultField form={form} set={set} />
     <SectionTitle id="trade-screenshots">Screenshots</SectionTitle>
     <Shot label="Screenshot before trade" value={form.screenshotBefore} onChange={(value) => set('screenshotBefore', value)} onFile={(file) => onScreenshotFile('before', file)} uploading={uploadingScreenshots.before} uploadError={screenshotErrors.before} onRetry={() => onRetryScreenshot('before')} onError={onError} />
     <Shot label="Screenshot after trade" value={form.screenshotAfter} onChange={(value) => set('screenshotAfter', value)} onFile={(file) => onScreenshotFile('after', file)} uploading={uploadingScreenshots.after} uploadError={screenshotErrors.after} onRetry={() => onRetryScreenshot('after')} onError={onError} />
