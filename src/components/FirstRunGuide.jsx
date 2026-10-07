@@ -49,7 +49,7 @@ export function WelcomeGuide() {
   </div>
 }
 
-export function OnboardingChecklist({ onAddTrade }) {
+export function OnboardingChecklist({ onAddTrade, showShortcuts = true }) {
   const { accounts = [], trades = [], journal = {}, playbooks = [], settings = {}, setSettings, addAccount } = useJournal()
   const [accountDialog, setAccountDialog] = useState(false)
   const [accountName, setAccountName] = useState('')
@@ -107,7 +107,7 @@ export function OnboardingChecklist({ onAddTrade }) {
           : <button type="button" onClick={item.action} aria-label={`${item.title} — ${item.label}`}>{content}</button>}
         </li>
       })}</ol>
-      {!hasRealTrades && <div className="onboarding-shortcuts"><button type="button" className="button-secondary" onClick={onAddTrade}>Add a trade</button><Link className="button-secondary" to="/import">Import CSV</Link></div>}
+      {!hasRealTrades && showShortcuts && <div className="onboarding-shortcuts"><button type="button" className="button-secondary" onClick={onAddTrade}>Add a trade</button><Link className="button-secondary" to="/import">Import CSV</Link></div>}
     </section>
     {accountDialog && <div className="first-run-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAccountDialog(false) }}>
       <form className="first-run-dialog account-quick-dialog" role="dialog" aria-modal="true" aria-labelledby="first-account-title" onSubmit={addFirstAccount}>
