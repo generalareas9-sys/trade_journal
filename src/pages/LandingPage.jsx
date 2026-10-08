@@ -283,7 +283,7 @@ export default function LandingPage() {
     const observer = new IntersectionObserver((entries) => {
       const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
       if (visible) setActiveSection(visible.target.id)
-    }, { rootMargin: '-72px 0px -58% 0px', threshold: [0.1, 0.25, 0.5] })
+    }, { rootMargin: '-56px 0px -58% 0px', threshold: [0.1, 0.25, 0.5] })
     sections.forEach((section) => observer.observe(section))
     return () => observer.disconnect()
   }, [])
