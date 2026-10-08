@@ -1,0 +1,24 @@
+.set-profile-email {
+  margin: 0;
+  color: var(--muted, #7b8495);
+  font-size: 13px;
+}
+
+.set-profile-email strong {
+  margin-left: 4px;
+  color: var(--text, #283046);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.set-import-confirm {
+  margin: 12px 0;
+}
+
+.set-danger-count {
+  color: var(--text, #283046) !important;
+}
+
+.set-danger-count strong {
+  font-variant-numeric: tabular-nums;
+}
