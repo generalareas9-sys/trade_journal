@@ -71,6 +71,15 @@ export default function TradeDrawer({ trade, onClose, onEdit, onDelete, onUpdate
       <p className="drawer-date">{format(new Date(`${trade.date}T12:00:00`), 'EEEE, MMMM d, yyyy')} · {format(new Date(trade.openedAt), 'h:mm a')}</p>
       <div className={`drawer-pnl ${trade.pnl > 0 ? 'profit' : trade.pnl < 0 ? 'loss' : ''}`}>{currency(trade.pnl)}<small>Net P&L</small></div>
       <div className="drawer-stats"><div><span>Entry price</span><strong>{trade.entry}</strong></div><div><span>Exit price</span><strong>{trade.exit}</strong></div><div><span>Size</span><strong>{trade.quantity} {trade.quantity === 1 ? 'unit' : 'units'}</strong></div><div><span>Fees</span><strong>{currency(trade.fees)}</strong></div><div><span>R-multiple</span><strong>{trade.rMultiple}R</strong></div><div><span>Duration</span><strong><Clock3 size={13} />{Math.round((new Date(trade.closedAt) - new Date(trade.openedAt)) / 60000)} min</strong></div></div>
+      {(trade.contractExpiry || trade.contractMultiplier || trade.tickSize || trade.tickValue) && <div className="drawer-section">
+        <h3>Futures contract details</h3>
+        <div className="trade-detail-grid">
+          {trade.contractExpiry && <div><span>Contract expiry</span><strong>{trade.contractExpiry}</strong></div>}
+          {trade.contractMultiplier && <div><span>Contract multiplier</span><strong>{trade.contractMultiplier} per point</strong></div>}
+          {trade.tickSize && <div><span>Tick size</span><strong>{trade.tickSize}</strong></div>}
+          {trade.tickValue && <div><span>Tick value</span><strong>{currency(trade.tickValue)}</strong></div>}
+        </div>
+      </div>}
       <div className="drawer-section"><h3><FileText size={15} /> Trade notes</h3><p>{trade.notes}</p></div>
       <div className="drawer-section"><h3>Strategy & tags</h3><span className="tag-chip">{trade.strategy}</span><span className="tag-chip">{trade.tag}</span></div>
       {trade.mistakes?.length > 0 && <div className="drawer-section"><h3>Recorded mistakes</h3><div className="mistake-chips">{trade.mistakes.map((mistake) => <span className="tag-chip" key={mistake}>{mistake}</span>)}</div></div>}
