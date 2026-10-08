@@ -19,6 +19,10 @@ const createInitialForm = () => ({
   entry: '',
   exit: '',
   quantity: '1',
+  contractExpiry: '',
+  contractMultiplier: '',
+  tickSize: '',
+  tickValue: '',
   fees: '4.5',
   risk: '100',
   strategy: 'Opening Range',
@@ -68,6 +72,10 @@ export default function AddTradeModal() {
           time: localTime(editingTrade.openedAt),
           exitTime: localTime(editingTrade.closedAt),
           quantity: String(editingTrade.size ?? editingTrade.quantity ?? ''),
+          contractExpiry: editingTrade.contractExpiry || '',
+          contractMultiplier: editingTrade.contractMultiplier ?? editingTrade.pointValue ?? '',
+          tickSize: editingTrade.tickSize ?? '',
+          tickValue: editingTrade.tickValue ?? '',
           risk: String(editingTrade.riskAmount ?? 0),
           fees: String(editingTrade.fees ?? 0),
           resultOverride: editingTrade.resultOverride ?? null,
@@ -104,8 +112,9 @@ export default function AddTradeModal() {
   const exit = Number(form.exit)
   const quantity = Number(form.quantity)
   const fees = Number(form.fees || 0)
+  const contractMultiplier = form.contractMultiplier === '' ? undefined : Number(form.contractMultiplier)
   const hasPnlPreview = form.entry !== '' && form.exit !== '' && Number.isFinite(entry) && Number.isFinite(exit) && Number.isFinite(quantity) && quantity > 0 && Number.isFinite(fees) && fees >= 0
-  const pnlPreview = hasPnlPreview ? calculateTradePnl({ symbol: form.symbol, side: form.side, entry, exit, size: quantity, fees }) : 0
+  const pnlPreview = hasPnlPreview ? calculateTradePnl({ symbol: form.symbol, side: form.side, entry, exit, size: quantity, fees, pointValue: contractMultiplier }) : 0
   const automaticResult = hasPnlPreview ? (pnlPreview > 0 ? 'Win' : pnlPreview < 0 ? 'Loss' : 'Breakeven') : ''
   const finalResult = form.resultOverride !== null ? form.resultOverride : automaticResult
 
@@ -151,6 +160,9 @@ export default function AddTradeModal() {
     const parsedEntry = Number(form.entry)
     const parsedExit = Number(form.exit)
     const parsedQuantity = Number(form.quantity)
+    const parsedMultiplier = form.contractMultiplier === '' ? null : Number(form.contractMultiplier)
+    const parsedTickSize = form.tickSize === '' ? null : Number(form.tickSize)
+    const parsedTickValue = form.tickValue === '' ? null : Number(form.tickValue)
     const parsedFees = Number(form.fees || 0)
     const risk = Number(form.risk || 0)
     const rrr = form.rrr === '' ? null : Number(form.rrr)
@@ -161,6 +173,9 @@ export default function AddTradeModal() {
       entry: Number.isFinite(parsedEntry) && parsedEntry > 0 ? '' : 'Enter an entry price greater than zero.',
       exit: Number.isFinite(parsedExit) && parsedExit > 0 ? '' : 'Enter an exit price greater than zero.',
       quantity: Number.isFinite(parsedQuantity) && parsedQuantity > 0 ? '' : 'Enter a position size greater than zero.',
+      contractMultiplier: parsedMultiplier === null || (Number.isFinite(parsedMultiplier) && parsedMultiplier > 0) ? '' : 'Enter a contract multiplier greater than zero.',
+      tickSize: parsedTickSize === null || (Number.isFinite(parsedTickSize) && parsedTickSize > 0) ? '' : 'Enter a tick size greater than zero.',
+      tickValue: parsedTickValue === null || (Number.isFinite(parsedTickValue) && parsedTickValue > 0) ? '' : 'Enter a tick value greater than zero.',
     }
     setValidation(requiredErrors)
     if (Object.values(requiredErrors).some(Boolean)) {
@@ -203,6 +218,7 @@ export default function AddTradeModal() {
       exit: parsedExit,
       size: parsedQuantity,
       fees: parsedFees,
+      pointValue: parsedMultiplier === null ? undefined : parsedMultiplier,
     })
     const outcome = form.resultOverride !== null ? form.resultOverride : normalizedPnl > 0 ? 'Win' : normalizedPnl < 0 ? 'Loss' : 'Breakeven'
     const rMultiple = risk > 0 ? Number((normalizedPnl / risk).toFixed(2)) : 0
@@ -216,6 +232,11 @@ export default function AddTradeModal() {
       entry: parsedEntry,
       exit: parsedExit,
       quantity: parsedQuantity,
+      contractExpiry: form.contractExpiry,
+      contractMultiplier: parsedMultiplier === null ? undefined : parsedMultiplier,
+      pointValue: parsedMultiplier === null ? undefined : parsedMultiplier,
+      tickSize: parsedTickSize === null ? undefined : parsedTickSize,
+      tickValue: parsedTickValue === null ? undefined : parsedTickValue,
       pnl: normalizedPnl,
       fees: parsedFees,
       riskAmount: risk,
@@ -316,6 +337,10 @@ export default function AddTradeModal() {
             <label>Exit price<input name="exit" type="number" step="any" placeholder="0.00" value={form.exit} aria-invalid={Boolean(validation.exit)} onChange={(event) => changePriceInput('exit', event.target.value)} />{validation.exit && <small className="field-error">{validation.exit}</small>}</label>
             <label>Position size<input name="quantity" type="number" min="0.01" step="any" value={form.quantity} aria-invalid={Boolean(validation.quantity)} onChange={(event) => changePriceInput('quantity', event.target.value)} />{validation.quantity && <small className="field-error">{validation.quantity}</small>}</label>
             <label>Exit time<input name="exitTime" type="time" value={form.exitTime} onChange={(event) => setField('exitTime', event.target.value)} /></label>
+            <label>Contract expiry<input name="contractExpiry" type="date" value={form.contractExpiry} onChange={(event) => setField('contractExpiry', event.target.value)} /></label>
+            <label>Contract multiplier ($ per point)<input name="contractMultiplier" type="number" min="0" step="any" value={form.contractMultiplier} aria-invalid={Boolean(validation.contractMultiplier)} onChange={(event) => changePriceInput('contractMultiplier', event.target.value)} />{validation.contractMultiplier && <small className="field-error">{validation.contractMultiplier}</small>}</label>
+            <label>Tick size<input name="tickSize" type="number" min="0" step="any" value={form.tickSize} aria-invalid={Boolean(validation.tickSize)} onChange={(event) => changePriceInput('tickSize', event.target.value)} />{validation.tickSize && <small className="field-error">{validation.tickSize}</small>}</label>
+            <label>Tick value ($)<input name="tickValue" type="number" min="0" step="any" value={form.tickValue} aria-invalid={Boolean(validation.tickValue)} onChange={(event) => changePriceInput('tickValue', event.target.value)} />{validation.tickValue && <small className="field-error">{validation.tickValue}</small>}</label>
             <label>Fees ($)<input name="fees" type="number" min="0" step="0.01" value={form.fees} onChange={(event) => changePriceInput('fees', event.target.value)} /></label>
             <label>Risk amount ($)<input name="risk" type="number" min="0" step="0.01" value={form.risk} onChange={(event) => setField('risk', event.target.value)} /></label>
             <h3 id="trade-execution" className="section-title form-span"><TrendingUp size={15} />Execution</h3>
