@@ -3,6 +3,7 @@ import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 
 import { ProtectedRoute, PublicOnlyRoute } from './components/RouteGuards'
 import Sidebar from './components/Sidebar'
 import Topbar from './components/Topbar'
+import MarqueeBar from './components/MarqueeBar'
 import AddTradeModal from './components/AddTradeModal'
 import LegacyMigrationDialog from './components/LegacyMigrationDialog'
 import { SkeletonCard, SkeletonRows } from './components/UiElements'
@@ -126,6 +127,7 @@ function ProtectedLayout() {
       <a className="skip-to-content" href="#main-content">Skip to content</a>
       <main id="main-content" tabIndex="-1" className={`main-shell ${collapsed ? 'main-collapsed' : ''}`}>
         <Topbar />
+        <MarqueeBar />
         {demoTradeCount > 0 && (
           <div className="demo-data-banner" role="status">
             <span><strong>You are viewing demo data.</strong> Import your trades to replace the sample history.</span>
