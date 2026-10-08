@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import MarqueeBar from '../components/MarqueeBar'
 import {
   ArrowRight,
   ArrowUpRight,
@@ -330,6 +331,8 @@ export default function LandingPage() {
           </button>
         </div>
       </header>
+
+      <MarqueeBar />
 
       <main id="landing-main">
         <section className="lp-hero">
