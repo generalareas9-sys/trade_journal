@@ -98,8 +98,12 @@ const tradeExtraFields = [
   'rMultiple',
   'tag',
   'quantity',
+  'contractExpiry',
+  'contractMultiplier',
+  'tickSize',
+  'tickValue',
 ]
-const tradeExtraNumericFields = new Set(['pointValue', 'pnlOverride', 'rMultiple', 'quantity'])
+const tradeExtraNumericFields = new Set(['pointValue', 'pnlOverride', 'rMultiple', 'quantity', 'contractMultiplier', 'tickSize', 'tickValue'])
 const legacyTradeTagPrefixes = {
   'mistake:': ['mistakes', 'array'],
   'outcome:': ['outcome'],
