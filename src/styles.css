@@ -1051,6 +1051,17 @@ html, body, .app-shell { background: var(--bg); }
 .auth-form-panel .auth-error { color: #dc2626; border-color: #fecaca; }
 .auth-form-panel .auth-success { color: #16a34a; border-color: #bbf7d0; }
 .auth-form-panel .auth-privacy { color: #475569; }
+.auth-verification-form { gap: 16px; }
+.auth-otp-fieldset { min-width: 0; padding: 0; margin: 0; border: 0; }
+.auth-otp-fieldset legend { margin-bottom: 9px; color: #1e293b; font-size: 13.5px; font-weight: 600; }
+.auth-otp-inputs { display: flex; width: 352px; max-width: 100%; justify-content: space-between; gap: 0; margin: 0 auto; }
+.auth-otp-inputs input { flex: 0 0 44px; width: 44px; height: 44px; padding: 0; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #0f172a; font-size: 20px; font-variant-numeric: tabular-nums; text-align: center; }
+.auth-otp-inputs input:focus { border-color: #6c5ce7; outline: 0; box-shadow: 0 0 0 3px rgba(108,92,231,.2); }
+.auth-verification-actions { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 12px; }
+.auth-verification-actions button { min-height: 44px; padding: 0; border: 0; background: transparent; color: #6c5ce7; font-size: 13px; font-weight: 600; text-align: left; }
+.auth-verification-actions button:hover:not(:disabled) { color: #5142c7; text-decoration: underline; }
+.auth-verification-actions button:disabled { color: #64748b; cursor: not-allowed; }
+.auth-otp-status { min-height: 18px; margin: -8px 0 0; color: #475569; font-size: 12px; }
 .auth-legal-footer { display: flex; justify-content: center; gap: 16px; margin-top: 10px; }
 .auth-legal-footer a { min-height: 32px; display: inline-flex; align-items: center; color: #6c5ce7; font-size: 12px; font-weight: 600; text-decoration: none; }
 .auth-legal-footer a:hover { text-decoration: underline; }
@@ -1068,6 +1079,11 @@ html, body, .app-shell { background: var(--bg); }
 @media (max-width: 899px) {
   .auth-art-panel { background-image: linear-gradient(180deg, rgba(14,16,22,.08) 0%, rgba(14,16,22,.18) 46%, #f4f8ff 100%), linear-gradient(90deg, rgba(14,16,22,.15), rgba(14,16,22,.08)), url("/bear-landing.jpg"); }
   .auth-form-panel { min-height: calc(100vh - 180px); padding: 64px 24px 30px; border-top: 1px solid #e2e8f0; border-left: 0; }
+}
+@media (max-width: 400px) {
+  .auth-form-panel { padding-right: 10px; padding-left: 10px; }
+  .auth-verification-actions { gap: 8px; }
+  .auth-verification-actions button { font-size: 12px; }
 }
 
 .lp {
