@@ -4,7 +4,7 @@ import { format } from 'date-fns'
 import { currency } from '../utils/trading'
 import { Badge } from './UiElements'
 import { useAuth } from '../context/AuthContext'
-import { getSignedUrl, uploadScreenshot } from '../data/storage'
+import { deleteScreenshot, getSignedUrl, uploadScreenshot } from '../data/storage'
 
 export default function TradeDrawer({ trade, onClose, onEdit, onDelete, onUpdate }) {
   const { user } = useAuth()
@@ -12,27 +12,37 @@ export default function TradeDrawer({ trade, onClose, onEdit, onDelete, onUpdate
   const [uploading, setUploading] = useState('')
   const [imageError, setImageError] = useState('')
   const [retryFile, setRetryFile] = useState(null)
+  const [imageLoading, setImageLoading] = useState({})
+  const [imageLoadErrors, setImageLoadErrors] = useState({})
+  const [retryImageLoad, setRetryImageLoad] = useState(0)
 
   useEffect(() => {
     let active = true
     setImageUrls({})
-    setImageError('')
-    const load = async () => {
-      const entries = await Promise.all(['before', 'after'].map(async (kind) => {
-        const value = trade?.[kind === 'before' ? 'screenshotBefore' : 'screenshotAfter']
-        if (!value) return [kind, '']
-        if (value.startsWith('data:')) return [kind, value]
-        const result = await getSignedUrl(value)
-        if (result.error) throw result.error
-        return [kind, result.url || '']
-      }))
-      if (active) setImageUrls(Object.fromEntries(entries))
+    setImageLoadErrors({})
+    const values = {
+      before: trade?.screenshotBefore || '',
+      after: trade?.screenshotAfter || '',
     }
-    void load().catch((error) => {
-      if (active) setImageError(error.message || 'Could not load trade screenshots.')
-    })
+    setImageLoading(Object.fromEntries(Object.entries(values).map(([kind, value]) => [kind, Boolean(value && !value.startsWith('data:'))])))
+    for (const [kind, value] of Object.entries(values)) {
+      if (!value) continue
+      if (value.startsWith('data:')) {
+        setImageUrls((current) => ({ ...current, [kind]: value }))
+        continue
+      }
+      void getSignedUrl(value).then(({ url, error }) => {
+        if (!active) return
+        if (error || !url) setImageLoadErrors((current) => ({ ...current, [kind]: error?.message || 'Could not load trade screenshot.' }))
+        else setImageUrls((current) => ({ ...current, [kind]: url }))
+      }).catch((error) => {
+        if (active) setImageLoadErrors((current) => ({ ...current, [kind]: error.message || 'Could not load trade screenshot.' }))
+      }).finally(() => {
+        if (active) setImageLoading((current) => ({ ...current, [kind]: false }))
+      })
+    }
     return () => { active = false }
-  }, [trade?.id, trade?.screenshotBefore, trade?.screenshotAfter])
+  }, [trade?.id, trade?.screenshotBefore, trade?.screenshotAfter, retryImageLoad])
 
   if (!trade) return null
 
@@ -61,7 +71,12 @@ export default function TradeDrawer({ trade, onClose, onEdit, onDelete, onUpdate
       setImageError(result.error.message || 'Could not remove screenshot.')
       return
     }
-    if (path?.startsWith('data:')) return
+    setImageUrls((current) => ({ ...current, [kind]: '' }))
+    setImageLoadErrors((current) => ({ ...current, [kind]: '' }))
+    if (path && !path.startsWith('data:')) {
+      const removed = await deleteScreenshot(path)
+      if (removed.error) console.warn('Could not delete removed trade screenshot from storage.', removed.error)
+    }
   }
 
   return <>
@@ -107,8 +122,9 @@ export default function TradeDrawer({ trade, onClose, onEdit, onDelete, onUpdate
           const field = kind === 'before' ? 'screenshotBefore' : 'screenshotAfter'
           const path = trade[field]
           return <figure key={kind}>
-            {imageUrls[kind] ? <img src={imageUrls[kind]} alt={`${kind} trade`} /> : <div className="screenshot-placeholder">{path ? <LoaderCircle size={20} className="spin" /> : <ImagePlus size={21} />}<span>{uploading === kind ? 'Uploading…' : path ? 'Loading screenshot…' : `No ${kind} screenshot`}</span></div>}
+            {imageUrls[kind] ? <img src={imageUrls[kind]} alt={`${kind} trade`} /> : <div className="screenshot-placeholder">{uploading === kind || imageLoading[kind] ? <LoaderCircle size={20} className="spin" /> : <ImagePlus size={21} />}<span>{uploading === kind ? 'Uploading…' : imageLoading[kind] ? 'Loading screenshot…' : path ? 'Screenshot unavailable' : `No ${kind} screenshot`}</span></div>}
             <figcaption>{kind === 'before' ? 'Before trade' : 'After trade'}</figcaption>
+            {imageLoadErrors[kind] && <p className="field-error" role="alert">{imageLoadErrors[kind]} <button type="button" className="link-btn" onClick={() => setRetryImageLoad((count) => count + 1)}>Retry</button></p>}
             <label className="link-btn shot-remove">{path ? 'Replace screenshot' : 'Add screenshot'}<input type="file" accept="image/png,image/jpeg,image/webp" hidden disabled={!!uploading} onChange={(event) => { void upload(kind, event.target.files[0]); event.target.value = '' }} /></label>
             {path && <button type="button" className="link-btn shot-remove" onClick={() => void remove(kind)}>Remove screenshot</button>}
           </figure>
