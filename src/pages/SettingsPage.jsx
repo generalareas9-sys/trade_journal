@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase'
 import { deleteAllUserRows } from '../data/repo'
 import { deleteUserScreenshots } from '../data/storage'
 import './SettingsPage.css'
+import '../settings-extra.css'
 
 const TABS = [
   ['Profile', UserRound],
@@ -56,6 +57,7 @@ export function SettingsPage() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [backup, setBackup] = useState(null)
+  const [backupConfirmationText, setBackupConfirmationText] = useState('')
   const [deleteTradesText, setDeleteTradesText] = useState('')
   const [deleteAccountText, setDeleteAccountText] = useState('')
   const [draftName, setDraftName] = useState('')
@@ -70,6 +72,12 @@ export function SettingsPage() {
 
   const notifyError = (value) => { setMessage(''); setError(value) }
   const notifySuccess = (value) => { setError(''); setMessage(value) }
+  const authErrorMessage = (authError, action) => {
+    const rawMessage = authError?.message || ''
+    if (/fetch|network|failed to reach/i.test(rawMessage)) return 'A network error occurred. Check your connection and try again.'
+    if (action === 'password' && /password|weak|length|characters/i.test(rawMessage)) return 'Choose a password that meets the account security requirements.'
+    return rawMessage || `Could not ${action === 'email' ? 'update your email' : 'update your password'}. Please try again.`
+  }
 
   const saveProfile = async () => {
     setBusy(true)
@@ -91,7 +99,7 @@ export function SettingsPage() {
     setBusy(true)
     const { error: updateError } = await supabase.auth.updateUser({ email: newEmail.trim() })
     setBusy(false)
-    if (updateError) notifyError(/password/i.test(updateError.message) ? 'Choose a password that meets the account security requirements.' : updateError.message)
+    if (updateError) notifyError(authErrorMessage(updateError, 'email'))
     else {
       setNewEmail('')
       notifySuccess('Check your new email address for a confirmation link.')
@@ -105,7 +113,7 @@ export function SettingsPage() {
     setBusy(true)
     const { error: updateError } = await supabase.auth.updateUser({ password: newPassword })
     setBusy(false)
-    if (updateError) notifyError(updateError.message)
+    if (updateError) notifyError(authErrorMessage(updateError, 'password'))
     else {
       setNewPassword('')
       setConfirmPassword('')
@@ -157,13 +165,17 @@ export function SettingsPage() {
 
   const importBackup = () => {
     if (!backup) return
+    if (backupConfirmationText !== 'DELETE') return
+    if (!window.confirm('Importing this backup replaces your current cloud data. Continue?')) return
     replaceData(backup.data)
     setBackup(null)
+    setBackupConfirmationText('')
     notifySuccess('Backup import started. Any cloud save errors will be reported.')
   }
 
   const removeTrades = async () => {
     if (deleteTradesText !== 'DELETE') return
+    if (!window.confirm(`Permanently delete all ${trades.length} trades and their screenshot files?`)) return
     setBusy(true)
     const result = await clearAllTrades()
     if (result.error) {
@@ -177,28 +189,36 @@ export function SettingsPage() {
 
   const removeAccount = async () => {
     if (deleteAccountText !== 'DELETE') return
+    if (!window.confirm('Permanently delete all account data and remove your authentication account? This cannot be undone.')) return
     setBusy(true)
     setError('')
-    const { error: functionError } = await supabase.functions.invoke('delete-account')
-    let fallbackMessage = ''
-    if (functionError) {
-      const rows = await deleteAllUserRows(user.id)
-      const files = await deleteUserScreenshots(user.id)
-      if (rows.error || files.error) {
-        setBusy(false)
-        return notifyError(`Account cleanup was incomplete. ${rows.error ? `Database: ${rows.error.message}` : ''} ${files.error ? `Files: ${files.error.message}` : ''}`.trim())
-      }
-      fallbackMessage = 'Your data and files were removed, but account sign-in could not be deleted because the account-deletion function is unavailable or returned an error. Deploy or repair it using the README instructions.'
+    const rows = await deleteAllUserRows(user.id)
+    if (rows.error) {
+      setBusy(false)
+      return notifyError(`Account cleanup was incomplete. Database: ${rows.error.message || 'Unknown error'}`)
     }
+    const files = await deleteUserScreenshots(user.id)
+    if (files.error) {
+      setBusy(false)
+      return notifyError(`Account cleanup was incomplete. Files: ${files.error.message || 'Unknown error'}`)
+    }
+    let functionUnavailable = false
+    try {
+      const { error: functionError } = await supabase.functions.invoke('delete-account')
+      functionUnavailable = Boolean(functionError)
+    } catch {
+      functionUnavailable = true
+    }
+    if (functionUnavailable) window.alert('Your data was deleted. Account removal needs the delete-account function to be deployed.')
     await signOut()
     setBusy(false)
-    if (fallbackMessage) window.alert(fallbackMessage)
     navigate('/welcome', { replace: true })
   }
 
   const tabContent = () => {
     if (tab === 'Profile') return <div className="settings-tab-content">
       <div className="settings-avatar-preview" aria-label={`Avatar initials ${initials(displayName, user?.email)}`}>{initials(displayName, user?.email)}</div>
+      <p className="set-profile-email">Current email <strong>{user?.email || '—'}</strong></p>
       <label className="settings-field"><span>Display name</span><input autoComplete="name" value={draftName} onChange={(event) => setDraftName(event.target.value)} /></label>
       <label className="settings-field"><span>Country <small>(optional)</small></span><input autoComplete="country-name" value={draftCountry} onChange={(event) => setDraftCountry(event.target.value)} /></label>
       <button className="button-primary" disabled={busy} onClick={saveProfile}>{busy ? 'Saving...' : 'Save profile'}</button>
@@ -227,10 +247,10 @@ export function SettingsPage() {
       <p>Download a portable copy of your account data, or import a validated TradeJournal backup.</p>
       <div className="settings-data-actions"><button className="button-secondary" onClick={downloadJson}><Download size={15} />Download all my data</button><button className="button-secondary" onClick={downloadCsv}>Export trades as CSV</button><button className="button-secondary" onClick={() => fileRef.current?.click()}>Import backup</button><input ref={fileRef} hidden type="file" accept="application/json,.json" onChange={(event) => inspectBackup(event.target.files?.[0])} /></div>
       <small>JSON export includes a schema version and export date. Backup imports replace the current cloud data.</small>
-      {backup && <div className="settings-backup-preview"><h3>Backup preview</h3><p>This validated backup contains:</p><ul>{Object.entries(backup.counts).map(([label, count]) => <li key={label}>{label}: {count}</li>)}</ul><div className="settings-inline-actions"><button className="button-secondary" onClick={() => setBackup(null)}>Cancel</button><button className="button-primary" onClick={importBackup}>Import backup</button></div></div>}
+      {backup && <div className="settings-backup-preview"><h3>Backup preview</h3><p>This validated backup contains:</p><ul>{Object.entries(backup.counts).map(([label, count]) => <li key={label}>{label}: {count}</li>)}</ul><label className="settings-field set-import-confirm"><span>Type DELETE to confirm replacing your current data</span><input autoComplete="off" value={backupConfirmationText} onChange={(event) => setBackupConfirmationText(event.target.value)} /></label><div className="settings-inline-actions"><button className="button-secondary" onClick={() => { setBackup(null); setBackupConfirmationText('') }}>Cancel</button><button className="button-primary" disabled={backupConfirmationText !== 'DELETE'} onClick={importBackup}>Import backup</button></div></div>}
     </div>
     return <div className="settings-tab-content settings-danger-content">
-      <section><h3>Delete all my trades</h3><p>Deletes every trade from your account and removes trade screenshot files. Your journal, notes, playbooks, and account remain.</p><label className="settings-field"><span>Type DELETE to confirm</span><input autoComplete="off" value={deleteTradesText} onChange={(event) => setDeleteTradesText(event.target.value)} /></label><button className="settings-danger-button" disabled={busy || deleteTradesText !== 'DELETE'} onClick={removeTrades}>{busy ? 'Deleting...' : 'Delete all my trades'}</button></section>
+      <section><h3>Delete all my trades</h3><p>Deletes every trade from your account and removes trade screenshot files. Your journal, notes, playbooks, and account remain.</p><p className="set-danger-count">Trades to be removed: <strong>{trades.length}</strong></p><label className="settings-field"><span>Type DELETE to confirm</span><input autoComplete="off" value={deleteTradesText} onChange={(event) => setDeleteTradesText(event.target.value)} /></label><button className="settings-danger-button" disabled={busy || deleteTradesText !== 'DELETE'} onClick={removeTrades}>{busy ? 'Deleting...' : 'Delete all my trades'}</button></section>
       <section><h3>Delete my account and data</h3><p>Permanently deletes your profile, trades, journal entries, notes, playbooks, accounts, and all files in your screenshots folder, then removes your authentication account.</p><label className="settings-field"><span>Type DELETE to confirm</span><input autoComplete="off" value={deleteAccountText} onChange={(event) => setDeleteAccountText(event.target.value)} /></label><button className="settings-danger-button" disabled={busy || deleteAccountText !== 'DELETE'} onClick={removeAccount}>{busy ? 'Deleting account...' : 'Delete my account and data'}</button></section>
     </div>
   }
