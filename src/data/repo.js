@@ -16,6 +16,16 @@ import { calculateTradePnl } from '../utils/trading'
 
 const PAGE_SIZE = 1000
 const BULK_SIZE = 500
+const SCHEMA_ERROR_MESSAGE = 'Your database is missing a column. Run the latest supabase/schema.sql in the Supabase SQL Editor.'
+
+function normalizeSupabaseError(error) {
+  const message = typeof error?.message === 'string' ? error.message : ''
+  if (/schema cache|column/i.test(message)) {
+    console.warn(error)
+    return new Error(SCHEMA_ERROR_MESSAGE)
+  }
+  return error
+}
 
 const tradeFields = [
   ['id', 'id'],
@@ -331,10 +341,10 @@ export function accountToRow(account) {
 async function runQuery(buildQuery, mapData = (data) => data) {
   try {
     const { data, error } = await buildQuery()
-    if (error) return { data: null, error }
+    if (error) return { data: null, error: normalizeSupabaseError(error) }
     return { data: mapData(data), error: null }
   } catch (error) {
-    return { data: null, error }
+    return { data: null, error: normalizeSupabaseError(error) }
   }
 }
 
@@ -355,13 +365,13 @@ export async function listTrades() {
         .select('*')
         .order('entry_time', { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1)
-      if (error) return { data: null, error }
+      if (error) return { data: null, error: normalizeSupabaseError(error) }
       trades.push(...(data || []).map(tradeFromRow))
       if (!data || data.length < PAGE_SIZE) break
     }
     return { data: trades, error: null }
   } catch (error) {
-    return { data: null, error }
+    return { data: null, error: normalizeSupabaseError(error) }
   }
 }
 
@@ -388,13 +398,13 @@ export async function insertTradesBulk(trades) {
     const chunk = items.slice(offset, offset + BULK_SIZE)
     try {
       const { data, error } = await supabase.from('trades').insert(chunk.map(tradeToRow)).select('*')
-      if (error) failedChunks.push({ chunk: Math.floor(offset / BULK_SIZE), startIndex: offset, count: chunk.length, error })
+      if (error) failedChunks.push({ chunk: Math.floor(offset / BULK_SIZE), startIndex: offset, count: chunk.length, error: normalizeSupabaseError(error) })
       else {
         insertedCount += data?.length ?? chunk.length
         ;(data || []).forEach((row, index) => insertedTrades.push({ index: offset + index, trade: tradeFromRow(row) }))
       }
     } catch (error) {
-      failedChunks.push({ chunk: Math.floor(offset / BULK_SIZE), startIndex: offset, count: chunk.length, error })
+      failedChunks.push({ chunk: Math.floor(offset / BULK_SIZE), startIndex: offset, count: chunk.length, error: normalizeSupabaseError(error) })
     }
   }
   return { data: { insertedCount, failedChunks, insertedTrades }, error: failedChunks.length ? failedChunks[0].error : null }
