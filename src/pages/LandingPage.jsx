@@ -309,9 +309,9 @@ export default function LandingPage() {
             <div className={`lp-resources ${resourcesOpen ? 'open' : ''}`}>
               <button type="button" aria-expanded={resourcesOpen} onClick={() => setResourcesOpen((open) => !open)}>Resources <ChevronDown size={14} /></button>
               <div className="lp-resources-menu">
-                <a href="mailto:help@tradejournal.app?subject=Help%20center" onClick={closeMenu}><CircleHelp size={15} />Help center</a>
-                <a href="mailto:help@tradejournal.app?subject=Changelog" onClick={closeMenu}><FileText size={15} />Changelog</a>
-                <a href="mailto:hello@tradejournal.app" onClick={closeMenu}><Mail size={15} />Contact</a>
+                <Link to="/help" onClick={closeMenu}><CircleHelp size={15} />Help Center</Link>
+                <Link to="/changelog" onClick={closeMenu}><FileText size={15} />Changelog</Link>
+                <Link to="/contact" onClick={closeMenu}><Mail size={15} />Contact</Link>
               </div>
             </div>
             <Link to="/login" className="lp-link-mobile" onClick={closeMenu}>Sign in</Link>
@@ -523,8 +523,12 @@ export default function LandingPage() {
           <div>
             <Link to="/welcome" className="lp-brand"><img src="/bear-logo.png" alt="" /><span>Trade<b>Journal</b></span></Link>
             <p>A journal and analytics workspace for traders.</p>
+            <p>Track every trade, review every decision, and build your edge.</p>
+            <p>Created by Osman Seid Ebrahim<br />Information Science Student &amp; Developer<br />Haramaya University, Ethiopia</p>
+            <a href="mailto:oseidebrahim@gmail.com">oseidebrahim@gmail.com</a>
+            <a href="https://t.me/Vy_kin_g" target="_blank" rel="noreferrer">@Vy_kin_g</a>
           </div>
-          <div><h4>Product</h4><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></div>
+          <div><h4>Product</h4><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><Link to="/help">Help Center</Link><Link to="/changelog">Changelog</Link><Link to="/contact">Contact</Link></div>
           <div><h4>Legal</h4><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link><Link to="/disclaimer">Disclaimer</Link></div>
         </Reveal>
         <div className="lp-wrap lp-legal">
