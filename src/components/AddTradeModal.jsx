@@ -5,7 +5,7 @@ import { STRATEGIES } from '../data/mockData'
 import { calculateTradePnl } from '../utils/trading'
 import { useJournal } from '../hooks/useJournal'
 import { useAuth } from '../context/AuthContext'
-import { uploadScreenshot } from '../data/storage'
+import { deleteScreenshot, uploadScreenshot } from '../data/storage'
 import TradeDetailsFields from './TradeDetailsFields'
 
 const symbolOptions = ['NQ', 'EURUSD', 'XAUUSD', 'AAPL', 'BTCUSD']
@@ -285,6 +285,16 @@ export default function AddTradeModal() {
         if (updated?.error) {
           setError(updated.error.message || 'Could not save the trade.')
           return
+        }
+      }
+      if (editingTrade) {
+        for (const kind of ['before', 'after']) {
+          const field = kind === 'before' ? 'screenshotBefore' : 'screenshotAfter'
+          const previousPath = editingTrade[field]
+          if (previousPath && !previousPath.startsWith('data:') && !savedTrade[field] && !screenshotFiles[kind]) {
+            const removed = await deleteScreenshot(previousPath)
+            if (removed.error) console.warn('Could not delete removed trade screenshot from storage.', removed.error)
+          }
         }
       }
       for (const kind of ['before', 'after']) {
