@@ -83,7 +83,7 @@ export default function Topbar() {
     else if (item.route) navigate(item.route)
   }
   return (
-    <header className="topbar">
+    <header className={`topbar${['/journal', '/notebook'].includes(location.pathname) ? ' page-title-scale' : ''}`}>
       <div className="topbar-heading">
         <button className="icon-button menu-button" aria-label="Open menu" onClick={() => setSidebarOpen(true)}><Menu size={20} /></button>
         <div><h1>{location.pathname === '/' ? `${greeting}, ${displayName}` : title[0]}</h1><p>{title[1]}</p></div>
