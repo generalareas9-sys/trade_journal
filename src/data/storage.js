@@ -34,6 +34,37 @@ async function compressImage(file) {
   }
 }
 
+async function compressAvatar(file) {
+  if (!file || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+    throw new Error('Choose a PNG, JPG, or WebP image.')
+  }
+  if (file.size > 5 * 1024 * 1024) throw new Error('Choose an image that is 5 MB or smaller.')
+
+  const imageUrl = URL.createObjectURL(file)
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const imageElement = new Image()
+      imageElement.onload = () => resolve(imageElement)
+      imageElement.onerror = () => reject(new Error('Unable to load this image. Try another file.'))
+      imageElement.src = imageUrl
+    })
+    const side = Math.min(image.width, image.height)
+    const sourceX = Math.round((image.width - side) / 2)
+    const sourceY = Math.round((image.height - side) / 2)
+    const canvas = document.createElement('canvas')
+    canvas.width = 256
+    canvas.height = 256
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('Image processing is not available in this browser.')
+    context.drawImage(image, sourceX, sourceY, side, side, 0, 0, 256, 256)
+    return await new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Unable to compress this image.')), 'image/jpeg', 0.85)
+    })
+  } finally {
+    URL.revokeObjectURL(imageUrl)
+  }
+}
+
 async function uploadImage(path, file) {
   try {
     const blob = await compressImage(file)
@@ -61,6 +92,23 @@ export async function uploadJournalImage(userId, date, index, file) {
     return { path: null, error: new Error('A user, journal date, and image number are required.') }
   }
   return uploadImage(`${userId}/journal/${date}/${index}.jpg`, file)
+}
+
+export async function uploadAvatar(userId, file) {
+  if (!userId) return { path: null, error: new Error('Sign in before uploading a profile photo.') }
+  const path = `${userId}/avatar/avatar.jpg`
+  try {
+    const blob = await compressAvatar(file)
+    const { error } = await supabase.storage.from(BUCKET).upload(path, blob, {
+      contentType: 'image/jpeg',
+      upsert: true,
+    })
+    if (error) return { path: null, error }
+    signedUrlCache.delete(path)
+    return { path, error: null }
+  } catch (error) {
+    return { path: null, error }
+  }
 }
 
 export async function getSignedUrl(path) {
