@@ -151,7 +151,7 @@
   .dj-streak { grid-column: span 2; }
 }
 @media (max-width: 600px) {
-  .dj { padding: 15px 12px 34px; }
+  .dj { padding: 15px 12px 34px;   }
   .dj-header { align-items: flex-start; flex-direction: column; gap: 12px; }
   .dj-header-actions { width: 100%; }
   .dj-header-actions button { flex: 1; }
@@ -176,6 +176,32 @@
   .dj-day-heading { gap: 7px; }
   .dj-today-button { padding: 0 7px; }
 }
+
+.dj .dj-storage-note, .dj .dj-reminder, .dj .dj-storage-error, .dj .dj-storage-error button,
+.dj .dj-header p, .dj .dj-section-heading p, .dj .dj-streak p, .dj .dj-eyebrow,
+.dj .dj-header-actions button, .dj .dj-text-button, .dj .dj-today-button, .dj .dj-save-status,
+.dj .dj-section-heading h3, .dj .dj-month-label, .dj .dj-weekday, .dj .dj-calendar-day,
+.dj .dj-calendar-legend, .dj .dj-calendar-legend button, .dj .dj-entry-results button,
+.dj .dj-search input, .dj .dj-filter-grid label, .dj .dj-goal-editor label,
+.dj .dj-filter-grid select, .dj .dj-filter-grid input, .dj .dj-field input:not([type="range"]),
+.dj .dj-field select, .dj .dj-field textarea, .dj .dj-goal-editor input, .dj .dj-add-chip input,
+.dj .dj-empty-small, .dj .dj-streak > span, .dj .dj-kpis span, .dj .dj-week-stats span,
+.dj .dj-empty-trades, .dj .dj-table-wrap table, .dj .dj-table-wrap th, .dj .dj-field,
+.dj .dj-rating strong, .dj .dj-rating span, .dj .dj-wellbeing-grid > div > strong,
+.dj .dj-moods button small, .dj .dj-follow, .dj .dj-choice-group > strong,
+.dj .dj-chips button, .dj .dj-add-chip button, .dj .dj-goal-editor > button,
+.dj .dj-upload, .dj .dj-empty-image, .dj .dj-empty-state, .dj .dj-empty-state strong,
+.dj .dj-empty-state span, .dj .dj-image-loading, .dj .dj-image-status,
+.dj .dj-goal-progress > div:first-child, .dj .dj-goal-progress small,
+.dj .dj-report-grid h3, .dj .dj-report-row, .dj .dj-report-row small {
+  font-size: 14px;
+}
+
+.dj .dj-header p, .dj .dj-section-heading p, .dj .dj-streak p { line-height: 1.5; }
+.dj .dj-header-actions button, .dj .dj-text-button, .dj .dj-today-button, .dj .dj-calendar-legend button,
+.dj .dj-entry-results button, .dj .dj-storage-error button, .dj .dj-follow, .dj .dj-chips button,
+.dj .dj-add-chip button, .dj .dj-goal-editor > button, .dj .dj-upload { line-height: 1.35; }
+
 @media print {
   body[data-journal-print="day"] .dj-sidebar,
   body[data-journal-print="day"] .dj-weekly,
