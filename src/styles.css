@@ -101,25 +101,28 @@ select option:checked, select option:hover { background-color: var(--purple); co
 .help-link { display: flex; align-items: center; gap: 7px; padding: 9px 8px; color: var(--muted); }
 .main-shell { min-height: 100vh; margin-left: var(--sidebar-width); transition: margin-left .18s ease; }
 .main-shell.main-collapsed { margin-left: 76px; }
-.topbar { min-height: 86px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 34px; border-bottom: 1px solid var(--line); background: var(--card); }
-.topbar-heading { display: flex; align-items: center; gap: 10px; }
+.topbar { position: sticky; top: 0; z-index: 50; min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 34px; border-bottom: 1px solid var(--line); background: var(--bg); backdrop-filter: blur(12px); }
+.topbar-heading { display: flex; min-width: 0; flex: 1 1 auto; align-items: center; gap: 10px; }
+.topbar-heading > div { min-width: 0; max-width: min(52vw, 580px); }
 .topbar h1 { margin: 0; color: var(--text-strong); font-size: 18px; font-weight: 700; letter-spacing: -.45px; }
+.topbar-heading h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .topbar-heading p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
-.topbar-actions { display: flex; align-items: center; gap: 10px; }
+.topbar-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 10px; }
+.add-trade-button { white-space: nowrap; }
 .save-indicator { display: inline-flex; align-items: center; gap: 4px; color: var(--profit); font-size: 12px; font-weight: 600; white-space: nowrap; }
 .save-indicator.save-error { color: var(--loss); }
 .range-select, .account-select { position: relative; display: flex; align-items: center; height: 35px; padding: 0 10px; border: 1px solid var(--line-strong); background: var(--card); border-radius: 8px; }
 .range-select select { width: 100px; padding: 0 15px 0 0; border: 0; outline: 0; appearance: none; color: var(--text); background: transparent; font-size: 12px; font-weight: 600; cursor: pointer; }
 .range-select svg { position: absolute; right: 8px; pointer-events: none; color: var(--muted); }
 .date-range-wrap { position: relative; }
-.custom-range-popover { position: absolute; z-index: 20; top: 42px; left: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 286px; padding: 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--card); box-shadow: var(--shadow); }
+.custom-range-popover { position: absolute; z-index: 60; top: 42px; left: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 286px; padding: 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--card); box-shadow: var(--shadow); }
 .custom-range-popover label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; font-weight: 600; }
 .custom-range-popover input { width: 100%; min-width: 0; padding: 7px; color: var(--text); border: 1px solid var(--line-strong); border-radius: 6px; background: var(--card); font-size: 12px; }
 .account-wrap { position: relative; }
 .account-select { gap: 8px; min-width: 150px; color: var(--subtle); font-size: 12px; font-weight: 600; }
 .account-select svg { margin-left: auto; }
 .account-dot, .open-indicator { width: 7px; height: 7px; display: inline-block; border-radius: 50%; background: #16a34a; }
-.account-menu { position: absolute; z-index: 12; top: 42px; right: 0; width: 205px; padding: 6px; border: 1px solid var(--line); background: var(--card); border-radius: 10px; box-shadow: var(--shadow); }
+.account-menu { position: absolute; z-index: 60; top: 42px; right: 0; width: 205px; padding: 6px; border: 1px solid var(--line); background: var(--card); border-radius: 10px; box-shadow: var(--shadow); }
 .account-menu button { display: grid; grid-template-columns: 10px 1fr; gap: 5px 8px; width: 100%; padding: 9px; text-align: left; border: 0; background: transparent; border-radius: 7px; font-size: 12px; }
 .account-menu button:hover { background: var(--card-soft); }
 .account-menu small { grid-column: 2; color: var(--muted); font-size: 12px; }
@@ -1066,7 +1069,7 @@ html, body, .app-shell { background: var(--bg); }
   --lp-ac: #6c5ce7;
   --lp-ac2: #5c4bd6;
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow-x: clip;
   color: var(--lp-tx);
   background: var(--lp-bg);
   color-scheme: light;
@@ -1079,7 +1082,7 @@ html, body, .app-shell { background: var(--bg); }
 .lp-wrap { width: min(1180px, calc(100% - 40px)); margin: 0 auto; }
 .lp .pos { color: #22c55e; }
 .lp .neg { color: #ef4444; }
-.lp-nav { position: sticky; top: 0; z-index: 50; border-bottom: 1px solid transparent; transition: .25s; }
+.lp-nav { position: sticky; top: 0; z-index: 100; width: 100%; border-bottom: 1px solid transparent; transition: .25s; }
 .lp-nav.scrolled { border-color: var(--lp-bd); background: rgba(255,255,255,.92); box-shadow: 0 4px 18px rgba(24,29,48,.04); backdrop-filter: blur(14px); }
 .lp-nav-in { display: flex; align-items: center; gap: 32px; height: 72px; }
 .lp-brand { display: flex; align-items: center; gap: 10px; font-size: 21px; font-weight: 500; }
@@ -2309,10 +2312,10 @@ html:has(.lp) { scroll-behavior: smooth; scroll-padding-top: 64px; }
 .lp .lp-feature-calendar i:nth-child(4n) { --lp-index: 2; }
 .lp .lp-nav { box-shadow: inset 0 -1px 0 rgba(167,139,250,.09); }
 .lp .lp-nav.scrolled { box-shadow: 0 4px 22px rgba(34,18,73,.18), 0 1px 16px rgba(132,96,255,.18); }
-.lp .lp-nav nav a { scroll-margin-top: 72px; }
+.lp .lp-nav nav a { scroll-margin-top: 56px; }
 .lp .lp-nav nav a.active { color: #fff; }
 .lp .lp-nav nav a.active::after { transform: scaleX(1); }
-.lp .lp-dashboard-section, .lp .lp-section[id] { scroll-margin-top: 68px; }
+.lp .lp-dashboard-section, .lp .lp-section[id] { scroll-margin-top: 56px; }
 .lp-resources { position: relative; display: flex; align-items: center; }
 .lp-resources > button { display: flex; align-items: center; gap: 5px; padding: 4px 0; border: 0; background: transparent; color: rgba(255,255,255,.82); font: inherit; font-size: 14px; cursor: pointer; }
 .lp-resources > button:hover, .lp-resources.open > button { color: #fff; }
@@ -2321,7 +2324,7 @@ html:has(.lp) { scroll-behavior: smooth; scroll-padding-top: 64px; }
 .lp-resources-menu a { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: 7px; color: #f4f0ff; font-size: 13px; text-decoration: none; }
 .lp-resources-menu a:hover { background: rgba(255,255,255,.08); }
 .lp-resources-menu svg { color: #c4b5fd; }
-.lp .lp-more-tools { scroll-margin-top: 68px; }
+.lp .lp-more-tools { scroll-margin-top: 56px; }
 @media (max-width: 760px) {
   .lp .lp-hero-grid::before { background: linear-gradient(to bottom, #fff 0%, rgba(255,255,255,.96) 50%, rgba(255,255,255,.12) 100%); }
   .lp .lp-nav nav.open { max-height: min(80vh, 620px); overflow-y: auto; }
@@ -2441,7 +2444,7 @@ html:has(.lp) { scroll-behavior: smooth; scroll-padding-top: 64px; }
 .goal-track i { min-width: 0; }
 .goal-set-button { justify-self: start; min-height: 40px; }
 @media (max-width: 850px) {
-  .sidebar { width: 244px; align-items: stretch; padding: 20px 14px 13px; transform: translateX(-105%); box-shadow: none; }
+  .sidebar { z-index: 70; width: 244px; align-items: stretch; padding: 20px 14px 13px; transform: translateX(-105%); box-shadow: none; }
   .sidebar.sidebar-collapsed { width: 244px; align-items: stretch; padding-right: 14px; padding-left: 14px; }
   .sidebar.sidebar-mobile-open { transform: translateX(0); box-shadow: 12px 0 30px #0002; }
   .sidebar .brand-row { justify-content: flex-start; padding: 0 6px; }
@@ -2457,7 +2460,7 @@ html:has(.lp) { scroll-behavior: smooth; scroll-padding-top: 64px; }
   .sidebar .profile-button { justify-content: flex-start; }
   .sidebar .mobile-close { display: inline-grid; margin-left: auto; }
   .sidebar .collapse-button { display: none; }
-  .mobile-scrim { position: fixed; z-index: 29; inset: 0; display: block; width: 100%; height: 100%; border: 0; background: #10121b75; }
+  .mobile-scrim { position: fixed; z-index: 60; inset: 0; display: block; width: 100%; height: 100%; border: 0; background: #10121b75; }
   .main-shell, .main-shell.main-collapsed { margin-left: 0; }
   .menu-button { display: inline-grid; }
   .calendar-day, .trade-form-steps button { min-height: 44px; }
