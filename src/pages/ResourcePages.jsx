@@ -4,7 +4,7 @@ import { ArrowRight, ChevronDown, ChevronRight, CircleHelp, FileText, Mail, Menu
 
 const EMAIL = 'oseidebrahim@gmail.com'
 
-function ResourceLayout({ children }) {
+function ResourceLayout({ children, showBackToApp = false }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [resourcesOpen, setResourcesOpen] = useState(false)
   const closeMenu = () => {
@@ -45,6 +45,7 @@ function ResourceLayout({ children }) {
           </button>
         </div>
       </header>
+      {showBackToApp && <div className="lp-wrap resource-back-app"><Link to="/">Back to app</Link></div>}
       <main id="resource-main" className="resource-main">{children}</main>
       <footer className="lp-footer">
         <div className="lp-wrap lp-foot-in">
@@ -143,7 +144,7 @@ export function HelpCenterPage() {
   })).filter((category) => category.articles.length)
   const faqs = HELP_FAQS.filter(([question, answer]) => !term || `${question} ${answer}`.toLowerCase().includes(term))
 
-  return <ResourceLayout>
+  return <ResourceLayout showBackToApp>
     <ResourceHero eyebrow="Help Center" title="How can we help?" subtitle="Find answers, learn how TradeJournal works, and get the most out of your trading journal." />
     <div className="lp-wrap resource-content">
       <label className="resource-search"><Search size={20} /><span className="visually-hidden">Search help articles</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search help articles..." /></label>
