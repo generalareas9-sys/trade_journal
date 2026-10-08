@@ -76,31 +76,43 @@ function Shot({ label, value, onChange, onFile, uploading, uploadError, onRetry,
   const ref = useRef(null)
   const objectUrl = useRef('')
   const [preview, setPreview] = useState('')
+  const [loadingImage, setLoadingImage] = useState(false)
+  const [loadError, setLoadError] = useState('')
+  const [retryCount, setRetryCount] = useState(0)
 
   useEffect(() => {
     let active = true
     if (objectUrl.current) URL.revokeObjectURL(objectUrl.current)
     objectUrl.current = ''
+    setLoadError('')
+    setLoadingImage(false)
     if (!value) {
       setPreview('')
     } else if (value.startsWith('data:')) {
       setPreview(value)
     } else {
       setPreview('')
+      setLoadingImage(true)
       void getSignedUrl(value).then(({ url, error }) => {
         if (!active) return
-        if (error) onError(error.message || 'Could not load screenshot.')
-        else setPreview(url || '')
+        if (error) setLoadError(error.message || 'Could not load screenshot.')
+        else if (url) setPreview(url)
+        else setLoadError('Could not load screenshot.')
+      }).catch((error) => {
+        if (active) setLoadError(error.message || 'Could not load screenshot.')
+      }).finally(() => {
+        if (active) setLoadingImage(false)
       })
     }
     return () => {
       active = false
       if (objectUrl.current) URL.revokeObjectURL(objectUrl.current)
     }
-  }, [value, onError])
+  }, [value, retryCount])
 
   const handle = (file) => {
     if (!file) return
+    setLoadError('')
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
       onError('Choose a PNG, JPG, or WebP image for trade screenshots.')
       return
@@ -136,11 +148,11 @@ function Shot({ label, value, onChange, onFile, uploading, uploadError, onRetry,
         handle(event.dataTransfer.files[0])
       }}
     >
-      {preview ? <img src={preview} alt={label} /> : <span className="shot-empty">{uploading ? <LoaderCircle size={20} className="spin" /> : <Camera size={20} />}<strong>{uploading ? 'Uploading screenshot…' : 'Click, drag, or paste a screenshot'}</strong><small>PNG, JPG or WebP · up to 10 MB</small></span>}
+      {preview ? <img src={preview} alt={label} /> : <span className="shot-empty">{uploading || loadingImage ? <LoaderCircle size={20} className="spin" /> : <Camera size={20} />}<strong>{uploading ? 'Uploading screenshot…' : loadingImage ? 'Loading screenshot…' : 'Click, drag, or paste a screenshot'}</strong><small>PNG, JPG or WebP · up to 10 MB</small></span>}
       <input ref={ref} type="file" accept="image/*" hidden onChange={(event) => { handle(event.target.files[0]); event.target.value = '' }} />
     </div>
     {uploading && <small role="status">Uploading screenshot…</small>}
-    {uploadError && <p className="field-error" role="alert">{uploadError} <button type="button" className="link-btn" onClick={onRetry}>Retry</button></p>}
+    {(uploadError || loadError) && <p className="field-error" role="alert">{uploadError || loadError} <button type="button" className="link-btn" onClick={uploadError ? onRetry : () => setRetryCount((count) => count + 1)}>Retry</button></p>}
     {(value || preview) && <button type="button" className="link-btn shot-remove" onClick={() => { onChange(''); onFile(null) }}><X size={13} />Remove screenshot</button>}
   </div>
 }
