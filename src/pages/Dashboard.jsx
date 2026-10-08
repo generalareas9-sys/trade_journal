@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom'
 import TradeDrawer from '../components/TradeDrawer'
 import { EmptyState } from '../components/UiElements'
 import { OnboardingChecklist, WelcomeGuide } from '../components/FirstRunGuide'
+import DashboardOnboardingChecklist from '../components/OnboardingChecklist'
 
 export default function Dashboard() {
   const { trades = [], stats, filteredTrades, accountTrades, journal = {}, accounts: userAccounts = [], setAddTradeOpen, settings, setEditingTrade, deleteTrade, updateTrade, loadDemoData } = useJournal()
@@ -37,6 +38,7 @@ export default function Dashboard() {
 
   return <div className="page-content">
     {hasTradeToday && !hasTodayJournal && <div className="dashboard-journal-reminder" role="status"><span>You logged a trade today. Take a moment to record how the session went.</span><Link to="/journal">Write today’s journal entry <ChevronRight size={15} /></Link></div>}
+    <DashboardOnboardingChecklist />
     <div className="welcome-strip"><div className="welcome-avatar"><Flame size={18} /></div><div><strong>Keep building your edge.</strong><span>You’ve logged <b>{stats.trades} trades</b> in this view. Every session is a chance to get a little better.</span></div><button onClick={() => navigate('/journal')}>Open journal <ChevronRight size={15} /></button></div>
     <section className="kpi-grid">
       <StatCard title="Net P&L" value={stats.netPnl} count={stats.trades} subtext={stats.trades ? 'in selected range' : 'No data yet'} icon={<span className="stat-icon purple-stat"><TrendingUp size={18} /></span>} />
@@ -59,7 +61,7 @@ export default function Dashboard() {
     </section>
     {(todayWarnings.length > 0 || riskWarning) && <div className="warning-banner" role="status">{todayWarnings.map((warning) => <p key={warning}>{warning}</p>)}{riskWarning && <p>Risk of ruin warning: at least one trade risks more than {Number(settings.riskWarningThreshold ?? 2)}% of this account balance.</p>}</div>}
     <PnLCalendar trades={filteredTrades} />
-    <section className="goal-grid">
+    <section className="goal-grid onb-goals-anchor" id="dashboard-goals">
       {[['Monthly P&L goal', accountTrades.filter((trade) => trade.date.startsWith(format(new Date(), 'yyyy-MM'))).reduce((sum, trade) => sum + trade.pnl, 0), settings.monthlyPnlGoal, 'money'], ['Monthly win-rate goal', (() => { const monthTrades = accountTrades.filter((trade) => trade.date.startsWith(format(new Date(), 'yyyy-MM'))); return monthTrades.length ? monthTrades.filter((trade) => trade.pnl > 0).length / monthTrades.length * 100 : 0 })(), settings.winRateGoal, 'percent']].map(([label, current, goal, type]) => {
         const monthHasTrades = accountTrades.some((trade) => trade.date.startsWith(format(new Date(), 'yyyy-MM')))
         const numericGoal = Number(goal)
