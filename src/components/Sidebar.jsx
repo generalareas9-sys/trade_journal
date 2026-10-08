@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { Activity, BarChart3, BookOpen, CalendarDays, ChevronLeft, CircleHelp, LayoutDashboard, LogOut, NotebookPen, Settings, SlidersHorizontal, Sparkles, Swords, X } from 'lucide-react'
 import { useJournal } from '../hooks/useJournal'
 import { useAuth } from '../context/AuthContext'
+import ProfileAvatar from './ProfileAvatar'
 
 const links = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -51,10 +52,10 @@ export default function Sidebar({ collapsed, onCollapse }) {
           {!collapsed && <div className="sidebar-divider" />}
           <NavLink to="/settings" title={collapsed ? 'Settings' : undefined} onClick={() => setSidebarOpen(false)} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><Settings size={18} /><span>Settings</span></NavLink>
           {!collapsed && <div className="upgrade-card"><div className="upgrade-icon"><Sparkles size={16} /></div><strong>Journal AI coming soon</strong><p>Personalized insights for your trading journal.</p><button>Coming soon</button></div>}
-          {!collapsed && <button className="help-link"><CircleHelp size={15} /> Help center</button>}
+          {!collapsed && <button className="help-link" type="button" onClick={() => { setSidebarOpen(false); navigate('/help') }}><CircleHelp size={15} /> Help center</button>}
           <div className="sidebar-profile-wrap">
             <button className="profile-button" type="button" aria-haspopup="menu" aria-expanded={profileMenuOpen} onClick={() => setProfileMenuOpen((open) => !open)}>
-              <div className="avatar">{initials || 'TJ'}</div>
+              <ProfileAvatar className="avatar" path={profile?.settings?.avatarPath || profile?.settings?.appSettings?.avatarPath} initials={initials || 'TJ'} refreshKey={profile} />
               {!collapsed && <span className="profile-copy"><strong>{displayName}</strong><small>TradeJournal</small></span>}
               {!collapsed && <SlidersHorizontal className="profile-more" size={16} />}
             </button>
