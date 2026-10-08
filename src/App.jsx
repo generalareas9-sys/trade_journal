@@ -16,6 +16,9 @@ const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
 const TermsPage = lazy(() => import('./pages/legal/TermsPage'))
 const PrivacyPage = lazy(() => import('./pages/legal/PrivacyPage'))
 const DisclaimerPage = lazy(() => import('./pages/legal/DisclaimerPage'))
+const HelpCenterPage = lazy(() => import('./pages/ResourcePages').then((module) => ({ default: module.HelpCenterPage })))
+const ChangelogPage = lazy(() => import('./pages/ResourcePages').then((module) => ({ default: module.ChangelogPage })))
+const ContactPage = lazy(() => import('./pages/ResourcePages').then((module) => ({ default: module.ContactPage })))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const DailyJournal = lazy(() => import('./pages/DailyJournal'))
@@ -172,6 +175,9 @@ export default function App() {
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/disclaimer" element={<DisclaimerPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/help" element={<HelpCenterPage />} />
+      <Route path="/changelog" element={<ChangelogPage />} />
+      <Route path="/contact" element={<ContactPage />} />
 
       <Route element={<PublicOnlyRoute />}>
         <Route path="/login" element={<AuthPage mode="login" />} />
