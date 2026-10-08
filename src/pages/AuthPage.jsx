@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole, ShieldCheck, Sparkles } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+
+const OTP_LENGTH = 8
+const OTP_RESEND_SECONDS = 60
 
 function friendlyAuthError(error, mode) {
   const message = (error?.message || '').toLowerCase()
@@ -35,6 +38,28 @@ function friendlyAuthError(error, mode) {
     : "We couldn't sign you in. Please try again."
 }
 
+function isEmailNotConfirmed(error) {
+  return error?.code === 'email_not_confirmed' || (error?.message || '').toLowerCase().includes('email not confirmed')
+}
+
+function friendlyOtpError(error) {
+  const message = (error?.message || '').toLowerCase()
+  const code = (error?.code || '').toLowerCase()
+  if (code.includes('rate_limit') || code.includes('too_many') || message.includes('too many') || message.includes('rate limit') || error?.status === 429) {
+    return 'Too many attempts. Please wait a minute.'
+  }
+  if (code.includes('expired') || message.includes('expired')) {
+    return 'That code has expired. Request a new one.'
+  }
+  if (message.includes('failed to fetch') || message.includes('network') || message.includes('fetch')) {
+    return "Can't reach the server. Check your internet connection and try again."
+  }
+  if (code.includes('invalid') || code.includes('otp') || message.includes('invalid') || message.includes('token')) {
+    return 'That code is incorrect. Check it and try again.'
+  }
+  return "We couldn't verify your code. Please try again."
+}
+
 function googleAuthErrorMessage(message) {
   const normalized = (message || '').toLowerCase()
   if (normalized.includes('not enabled') || normalized.includes('not configured') || normalized.includes('unsupported provider')) {
@@ -61,6 +86,130 @@ export default function AuthPage({ mode }) {
   const [error, setError] = useState('')
   const [legalError, setLegalError] = useState('')
   const [success, setSuccess] = useState(() => location.state?.passwordUpdated ? 'Password updated. You can now sign in with your new password.' : '')
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [pendingEmail, setPendingEmail] = useState('')
+  const [otpDigits, setOtpDigits] = useState(() => Array(OTP_LENGTH).fill(''))
+  const [resendCountdown, setResendCountdown] = useState(0)
+  const otpInputRefs = useRef([])
+
+  useEffect(() => {
+    if (!isVerifying || resendCountdown <= 0) return undefined
+    const timer = window.setInterval(() => setResendCountdown((remaining) => Math.max(remaining - 1, 0)), 1000)
+    return () => window.clearInterval(timer)
+  }, [isVerifying, resendCountdown > 0])
+
+  function startVerification(targetEmail, shouldResend = false) {
+    setPendingEmail(targetEmail)
+    setIsVerifying(true)
+    setOtpDigits(Array(OTP_LENGTH).fill(''))
+    setResendCountdown(shouldResend ? 0 : OTP_RESEND_SECONDS)
+    setError('')
+    setSuccess('')
+    if (shouldResend) return resendVerificationCode(targetEmail, true)
+    return Promise.resolve()
+  }
+
+  async function resendVerificationCode(targetEmail = pendingEmail, automatic = false) {
+    if (!targetEmail || (!automatic && loading)) return
+    if (!automatic) setLoading(true)
+    setError('')
+    try {
+      const { error: resendError } = await supabase.auth.resend({ type: 'signup', email: targetEmail })
+      if (resendError) {
+        setError(friendlyOtpError(resendError))
+        return
+      }
+      setOtpDigits(Array(OTP_LENGTH).fill(''))
+      setResendCountdown(OTP_RESEND_SECONDS)
+      otpInputRefs.current[0]?.focus()
+    } catch (resendError) {
+      setError(friendlyOtpError(resendError))
+    } finally {
+      if (!automatic) setLoading(false)
+    }
+  }
+
+  async function handleVerify(event) {
+    event.preventDefault()
+    if (loading || otpDigits.some((digit) => !digit)) return
+
+    setError('')
+    setLoading(true)
+    try {
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email: pendingEmail,
+        token: otpDigits.join(''),
+        type: 'signup',
+      })
+      if (verifyError) {
+        const otpError = friendlyOtpError(verifyError)
+        setError(otpError)
+        if (otpError === 'That code is incorrect. Check it and try again.') {
+          setOtpDigits(Array(OTP_LENGTH).fill(''))
+          window.requestAnimationFrame(() => otpInputRefs.current[0]?.focus())
+        }
+        return
+      }
+      navigate('/', { replace: true })
+    } catch (verifyError) {
+      setError(friendlyOtpError(verifyError))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function handleOtpChange(index, value) {
+    const digits = value.replace(/\D/g, '')
+    if (!digits) {
+      setOtpDigits((current) => current.map((digit, digitIndex) => digitIndex === index ? '' : digit))
+      setError('')
+      return
+    }
+
+    const next = [...otpDigits]
+    for (const [offset, digit] of [...digits].entries()) {
+      if (index + offset >= OTP_LENGTH) break
+      next[index + offset] = digit
+    }
+    setOtpDigits(next)
+    setError('')
+    otpInputRefs.current[Math.min(index + digits.length, OTP_LENGTH - 1)]?.focus()
+  }
+
+  function handleOtpKeyDown(index, event) {
+    if (event.key === 'Backspace') {
+      event.preventDefault()
+      const targetIndex = otpDigits[index] ? index : Math.max(index - 1, 0)
+      setOtpDigits((current) => current.map((digit, digitIndex) => digitIndex === targetIndex ? '' : digit))
+      setError('')
+      otpInputRefs.current[targetIndex]?.focus()
+    } else if (event.key === 'ArrowLeft' && index > 0) {
+      event.preventDefault()
+      otpInputRefs.current[index - 1]?.focus()
+    } else if (event.key === 'ArrowRight' && index < OTP_LENGTH - 1) {
+      event.preventDefault()
+      otpInputRefs.current[index + 1]?.focus()
+    }
+  }
+
+  function handleOtpPaste(event) {
+    const digits = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, OTP_LENGTH)
+    if (!digits) return
+    event.preventDefault()
+    setOtpDigits(Array.from({ length: OTP_LENGTH }, (_, index) => digits[index] || ''))
+    setError('')
+    otpInputRefs.current[Math.min(digits.length, OTP_LENGTH) - 1]?.focus()
+  }
+
+  function useDifferentEmail() {
+    setEmail(pendingEmail)
+    setPendingEmail('')
+    setIsVerifying(false)
+    setOtpDigits(Array(OTP_LENGTH).fill(''))
+    setResendCountdown(0)
+    setError('')
+    setSuccess('')
+  }
 
   function validateField(field, value) {
     if (field === 'name' && isSignUp && !value.trim()) return 'Please enter your name.'
@@ -123,7 +272,7 @@ export default function AuthPage({ mode }) {
           setSuccess('Account created! Taking you to your dashboard...')
           navigate(location.state?.from || '/', { replace: true })
         } else {
-          setSuccess('Account created. Please check your email to confirm your account before signing in.')
+          await startVerification(trimmedEmail)
         }
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -132,6 +281,10 @@ export default function AuthPage({ mode }) {
         })
 
         if (signInError) {
+          if (isEmailNotConfirmed(signInError)) {
+            await startVerification(trimmedEmail, true)
+            return
+          }
           setError(friendlyAuthError(signInError, 'login'))
           return
         }
@@ -224,10 +377,47 @@ export default function AuthPage({ mode }) {
         <div className="auth-form-wrap">
           <Link className="auth-back-link" to="/welcome"><ArrowLeft size={16} /> Back to home</Link>
           <div className="auth-form-logo"><img src="/bear-logo.png" alt="" /></div>
-          <p className="auth-kicker">{isSignUp ? 'START YOUR JOURNEY' : 'WELCOME BACK'}</p>
-          <h2>{isSignUp ? 'Create your account' : 'Sign in to TradeJournal'}</h2>
-          <p className="auth-intro">{isSignUp ? 'A more intentional trading routine starts here.' : 'Pick up where you left off and review your trading.'}</p>
+          <p className="auth-kicker">{isVerifying ? 'EMAIL VERIFICATION' : isSignUp ? 'START YOUR JOURNEY' : 'WELCOME BACK'}</p>
+          <h2>{isVerifying ? 'Enter your code' : isSignUp ? 'Create your account' : 'Sign in to TradeJournal'}</h2>
+          <p className="auth-intro">{isVerifying ? `We sent an ${OTP_LENGTH}-digit code to ${pendingEmail}` : isSignUp ? 'A more intentional trading routine starts here.' : 'Pick up where you left off and review your trading.'}</p>
 
+          {isVerifying ? (
+            <form className="auth-form auth-verification-form" onSubmit={handleVerify} noValidate>
+              <fieldset className="auth-otp-fieldset">
+                <legend>Enter your {OTP_LENGTH}-digit code</legend>
+                <div className="auth-otp-inputs" role="group" aria-label={`${OTP_LENGTH}-digit verification code`}>
+                  {otpDigits.map((digit, index) => (
+                    <input
+                      key={index}
+                      ref={(element) => { otpInputRefs.current[index] = element }}
+                      aria-label={`Digit ${index + 1} of ${OTP_LENGTH}`}
+                      autoComplete={index === 0 ? 'one-time-code' : 'off'}
+                      inputMode="numeric"
+                      maxLength={index === 0 ? OTP_LENGTH : 1}
+                      name={`verification-code-${index + 1}`}
+                      pattern="[0-9]*"
+                      type="text"
+                      value={digit}
+                      onChange={(event) => handleOtpChange(index, event.target.value)}
+                      onKeyDown={(event) => handleOtpKeyDown(index, event)}
+                      onPaste={handleOtpPaste}
+                    />
+                  ))}
+                </div>
+              </fieldset>
+              {error && <p className="auth-notice auth-error" role="alert">{error}</p>}
+              <button className="auth-submit" type="submit" disabled={loading || otpDigits.some((digit) => !digit)} aria-busy={loading}>
+                {loading ? 'Verifying...' : 'Verify'} <ArrowRight size={17} />
+              </button>
+              <div className="auth-verification-actions">
+                <button type="button" onClick={() => resendVerificationCode()} disabled={loading || resendCountdown > 0}>
+                  {resendCountdown > 0 ? `Resend code in ${resendCountdown}s` : 'Resend code'}
+                </button>
+                <button type="button" onClick={useDifferentEmail} disabled={loading}>Use a different email</button>
+              </div>
+              <p className="auth-otp-status" aria-live="polite">{resendCountdown > 0 ? `You can request another code in ${resendCountdown} seconds.` : 'You can request a new code now.'}</p>
+            </form>
+          ) : (
           <form className="auth-form" onSubmit={handleSubmit} noValidate>
             {isSignUp && (
               <label>
@@ -366,11 +556,14 @@ export default function AuthPage({ mode }) {
               {googleLoading ? 'Redirecting...' : 'Continue with Google'}
             </button>
           </form>
+          )}
 
-          <p className="auth-switch">
-            {isSignUp ? 'Already have an account?' : 'New to TradeJournal?'}
-            {' '}<Link to={isSignUp ? '/login' : '/signup'} state={location.state}>{isSignUp ? 'Sign in' : 'Create an account'}</Link>
-          </p>
+          {!isVerifying && (
+            <p className="auth-switch">
+              {isSignUp ? 'Already have an account?' : 'New to TradeJournal?'}
+              {' '}<Link to={isSignUp ? '/login' : '/signup'} state={location.state}>{isSignUp ? 'Sign in' : 'Create an account'}</Link>
+            </p>
+          )}
           <p className="auth-privacy"><LockKeyhole size={13} /> Your credentials are securely handled by Supabase.</p>
           <nav className="auth-legal-footer" aria-label="Legal pages">
             <Link to="/terms">Terms</Link>
