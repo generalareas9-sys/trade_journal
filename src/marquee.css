@@ -1,0 +1,102 @@
+.mq-bar {
+  position: relative;
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  overflow: hidden;
+  padding: 0 54px 0 16px;
+  background: linear-gradient(100deg, #efedff 0%, #ddd8ff 52%, #efedff 100%);
+  color: #29205f;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.mq-viewport {
+  width: 100%;
+  overflow: hidden;
+}
+
+.mq-track {
+  display: flex;
+  width: max-content;
+  animation: mq-scroll 40s linear infinite;
+}
+
+.mq-group {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 34px;
+  padding-right: 34px;
+  white-space: nowrap;
+}
+
+.mq-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 34px;
+}
+
+.mq-separator {
+  color: var(--purple, #6c5ce7);
+  font-size: 9px;
+}
+
+.mq-toggle {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: 4px;
+  display: grid;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+}
+
+.mq-toggle:hover,
+.mq-toggle:focus-visible {
+  background: rgba(108, 92, 231, .14);
+}
+
+.mq-bar:hover .mq-track,
+.mq-bar:focus-within .mq-track,
+.mq-paused .mq-track {
+  animation-play-state: paused;
+}
+
+.mq-reduced-message {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  animation: mq-fade-in .45s ease both;
+}
+
+.dark-theme .mq-bar {
+  background: linear-gradient(100deg, #1b1740 0%, #29204f 52%, #1b1740 100%);
+  color: #fff;
+}
+
+.dark-theme .mq-toggle:hover,
+.dark-theme .mq-toggle:focus-visible {
+  background: rgba(255, 255, 255, .14);
+}
+
+@keyframes mq-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes mq-fade-in {
+  from { opacity: .35; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mq-track { animation: none; }
+}
