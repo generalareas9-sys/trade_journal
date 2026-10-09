@@ -360,13 +360,15 @@ async function deleteOne(table, id) {
   return runQuery(() => supabase.from(table).delete().eq('id', id).select('id'), (rows) => ({ count: rows?.length || 0 }))
 }
 
-export async function listTrades() {
+export async function listTrades(userId) {
+  if (!userId) return { data: null, error: new Error('A signed-in user is required to load trades.') }
   try {
     const trades = []
     for (let offset = 0; ; offset += PAGE_SIZE) {
       const { data, error } = await supabase
         .from('trades')
         .select('*')
+        .eq('user_id', userId)
         .order('entry_time', { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1)
       if (error) return { data: null, error: normalizeSupabaseError(error) }
@@ -422,8 +424,9 @@ export async function deleteDemoTrades() {
   return runQuery(() => supabase.from('trades').delete().eq('is_demo', true).select('id'), (rows) => ({ count: rows?.length || 0 }))
 }
 
-export async function deleteAllTrades() {
-  return runQuery(() => supabase.from('trades').delete().not('id', 'is', null).select('id'), (rows) => ({ count: rows?.length || 0 }))
+export async function deleteAllTrades(userId) {
+  if (!userId) return { data: null, error: new Error('A signed-in user is required to delete trades.') }
+  return runQuery(() => supabase.from('trades').delete().eq('user_id', userId).select('id'), (rows) => ({ count: rows?.length || 0 }))
 }
 
 export async function deleteAllUserRows(userId) {
@@ -441,8 +444,9 @@ export async function deleteAllUserRows(userId) {
   return { data: { deleted }, error: null }
 }
 
-export async function listJournalEntries() {
-  return runQuery(() => supabase.from('journal_entries').select('*').order('entry_date', { ascending: false }), (rows) => (rows || []).map(journalFromRow))
+export async function listJournalEntries(userId) {
+  if (!userId) return { data: null, error: new Error('A signed-in user is required to load journal entries.') }
+  return runQuery(() => supabase.from('journal_entries').select('*').eq('user_id', userId).order('entry_date', { ascending: false }), (rows) => (rows || []).map(journalFromRow))
 }
 
 export async function upsertJournalEntry(entry) {
@@ -454,8 +458,9 @@ export async function deleteJournalEntry(entryDate) {
   return runQuery(() => supabase.from('journal_entries').delete().eq('entry_date', entryDate).select('entry_date'), (rows) => ({ count: rows?.length || 0 }))
 }
 
-export async function listNotes() {
-  return runQuery(() => supabase.from('notes').select('*').order('updated_at', { ascending: false }), (rows) => (rows || []).map(noteFromRow))
+export async function listNotes(userId) {
+  if (!userId) return { data: null, error: new Error('A signed-in user is required to load notes.') }
+  return runQuery(() => supabase.from('notes').select('*').eq('user_id', userId).order('updated_at', { ascending: false }), (rows) => (rows || []).map(noteFromRow))
 }
 
 export async function createNote(note) {
@@ -472,8 +477,9 @@ export async function deleteNote(id) {
   return deleteOne('notes', id)
 }
 
-export async function listPlaybooks() {
-  return runQuery(() => supabase.from('playbooks').select('*').order('name', { ascending: true }), (rows) => (rows || []).map(playbookFromRow))
+export async function listPlaybooks(userId) {
+  if (!userId) return { data: null, error: new Error('A signed-in user is required to load playbooks.') }
+  return runQuery(() => supabase.from('playbooks').select('*').eq('user_id', userId).order('name', { ascending: true }), (rows) => (rows || []).map(playbookFromRow))
 }
 
 export async function createPlaybook(playbook) {
@@ -490,8 +496,9 @@ export async function deletePlaybook(id) {
   return deleteOne('playbooks', id)
 }
 
-export async function listAccounts() {
-  return runQuery(() => supabase.from('accounts').select('*').order('created_at', { ascending: false }), (rows) => (rows || []).map(accountFromRow))
+export async function listAccounts(userId) {
+  if (!userId) return { data: null, error: new Error('A signed-in user is required to load accounts.') }
+  return runQuery(() => supabase.from('accounts').select('*').eq('user_id', userId).order('created_at', { ascending: false }), (rows) => (rows || []).map(accountFromRow))
 }
 
 export async function createAccount(account) {
