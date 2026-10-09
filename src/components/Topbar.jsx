@@ -59,18 +59,19 @@ export default function Topbar() {
   }, [accountTrades, settings, saveStatus, toast])
 
   useEffect(() => {
+    const openSearch = () => setSearchOpen(true)
     const onKeyDown = (event) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault()
-        setSearchOpen((open) => !open)
-      }
       if (event.key === 'Escape') {
         setSearchOpen(false)
         setNotificationOpen(false)
       }
     }
+    window.addEventListener('tradejournal:open-search', openSearch)
     window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('tradejournal:open-search', openSearch)
+      window.removeEventListener('keydown', onKeyDown)
+    }
   }, [])
 
   useEffect(() => {
