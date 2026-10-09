@@ -1,0 +1,60 @@
+.sk-page {
+  display: grid;
+  gap: 14px;
+  padding: 8px 0;
+}
+.sk-stats, .sk-panels {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.sk-panels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sk-block {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line, #e5e7eb);
+  border-radius: 14px;
+  background: var(--card, #fff);
+}
+.sk-block::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(148, 163, 184, 0.13) 50%, transparent 80%);
+  content: '';
+  transform: translateX(-100%);
+  animation: sk-shimmer 1.4s ease-in-out infinite;
+}
+.sk-stat { display: grid; min-height: 104px; align-content: center; gap: 12px; padding: 16px; }
+.sk-panel { display: grid; min-height: 250px; align-content: start; gap: 14px; padding: 18px; }
+.sk-block b, .sk-block i {
+  display: block;
+  height: 12px;
+  border-radius: 99px;
+  background: var(--card-soft, #f1f2f6);
+}
+.sk-block b { width: 42%; height: 18px; }
+.sk-stat > i:first-of-type { width: 55%; }
+.sk-stat > i:last-of-type { width: 30%; height: 9px; }
+.sk-panel > i { width: 65%; height: 9px; }
+.sk-panel .sk-row { width: 100%; height: 16px; }
+.sk-panel .sk-row:nth-of-type(3n) { width: 82%; }
+.sk-trade-log .sk-panels { grid-template-columns: minmax(0, 1fr); }
+.sk-trade-log .sk-panel { min-height: 420px; }
+.sk-journal .sk-panels, .sk-notebook .sk-panels { grid-template-columns: minmax(220px, 0.75fr) minmax(0, 1.6fr); }
+.sk-notebook .sk-panels { min-height: 580px; }
+.sk-notebook .sk-panel { min-height: 580px; }
+.sk-playbooks .sk-panels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.dark-theme .sk-block { border-color: var(--line, #303345); background: var(--card, #171a23); }
+.dark-theme .sk-block b, .dark-theme .sk-block i { background: var(--card-soft, #1d2029); }
+@keyframes sk-shimmer {
+  to { transform: translateX(100%); }
+}
+@media (max-width: 600px) {
+  .sk-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sk-panels, .sk-journal .sk-panels, .sk-notebook .sk-panels { grid-template-columns: minmax(0, 1fr); }
+  .sk-panel, .sk-notebook .sk-panel { min-height: 220px; }
+  .sk-notebook .sk-panels { min-height: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk-block::after { animation: none; }
+}
