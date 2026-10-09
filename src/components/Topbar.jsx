@@ -9,7 +9,7 @@ import DateRangePicker from './DateRangePicker'
 import TradeDrawer from './TradeDrawer'
 import { currency } from '../utils/trading'
 
-const titles = { '/': ['', "Here's how your trading is looking today."], '/journal': ['Daily journal', 'Reflect on your sessions and build better habits.'], '/trades': ['Trade log', 'Review every trade, detail by detail.'], '/import': ['Import trades', 'Bring your broker history into your journal.'], '/reports': ['Reports', 'Understand your edge with a deeper performance breakdown.'], '/notebook': ['Notebook', 'Keep your trading ideas and learnings in one place.'], '/playbooks': ['Playbooks', 'Your best setups, documented and ready to repeat.'], '/backtesting': ['Backtesting', 'Test your strategies with historical setups.'], '/settings': ['Settings', 'Manage your workspace and preferences.'] }
+const titles = { '/': ['', "Here's how your trading is looking today."], '/journal': ['Daily journal', 'Reflect on your sessions and build better habits.'], '/trades': ['Trade log', 'Review every trade, detail by detail.'], '/import': ['Import trades', 'Bring your broker history into your journal.'], '/reports': ['Reports', 'Understand your edge with a deeper performance breakdown.'], '/weekly-review': ['Weekly review', 'Review your performance, discipline, and lessons week by week.'], '/notebook': ['Notebook', 'Keep your trading ideas and learnings in one place.'], '/playbooks': ['Playbooks', 'Your best setups, documented and ready to repeat.'], '/backtesting': ['Backtesting', 'Test your strategies with historical setups.'], '/settings': ['Settings', 'Manage your workspace and preferences.'] }
 
 export default function Topbar() {
   const location = useLocation()
@@ -33,6 +33,7 @@ export default function Topbar() {
       ['Daily Journal', '/journal', 'Daily reflections'],
       ['Trade Log', '/trades', 'Search and review trades'],
       ['Reports', '/reports', 'Performance reports'],
+      ['Weekly review', '/weekly-review', 'Weekly performance and reflections'],
       ['Notebook', '/notebook', 'Notes and ideas'],
       ['Playbooks', '/playbooks', 'Trading playbooks'],
       ['Backtesting', '/backtesting', 'Backtesting workspace'],

@@ -24,6 +24,8 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 const DailyJournal = lazy(() => import('./pages/DailyJournal'))
 const TradeLog = lazy(() => import('./pages/TradeLog'))
 const Reports = lazy(() => import('./pages/Reports'))
+const WeeklyReview = lazy(() => import('./pages/WeeklyReview'))
+const RiskCalculator = lazy(() => import('./pages/RiskCalculator'))
 const Notebook = lazy(() => import('./pages/Notebook'))
 const Playbooks = lazy(() => import('./pages/Playbooks'))
 const Backtesting = lazy(() => import('./pages/WorkspacePages').then((module) => ({ default: module.Backtesting })))
@@ -192,9 +194,11 @@ export default function App() {
           <Route path="/trades" element={<TradeLog />} />
           <Route path="/import" element={<TradeImport />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/weekly-review" element={<WeeklyReview />} />
           <Route path="/notebook" element={<Notebook />} />
           <Route path="/playbooks" element={<Playbooks />} />
           <Route path="/backtesting" element={<Backtesting />} />
+          <Route path="/risk-calculator" element={<RiskCalculator />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Activity, BarChart3, BookOpen, CalendarDays, ChevronLeft, CircleHelp, LayoutDashboard, LogOut, NotebookPen, Settings, SlidersHorizontal, Sparkles, Swords, X } from 'lucide-react'
+import { Activity, BarChart3, BookOpen, Calculator, CalendarDays, CalendarRange, ChevronLeft, CircleHelp, LayoutDashboard, LogOut, NotebookPen, Settings, SlidersHorizontal, Sparkles, Swords, X } from 'lucide-react'
 import { useJournal } from '../hooks/useJournal'
 import { useAuth } from '../context/AuthContext'
 import ProfileAvatar from './ProfileAvatar'
@@ -10,9 +10,11 @@ const links = [
   { to: '/journal', label: 'Daily Journal', icon: CalendarDays },
   { to: '/trades', label: 'Trade Log', icon: Activity },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
+  { to: '/weekly-review', label: 'Weekly review', icon: CalendarRange },
   { to: '/notebook', label: 'Notebook', icon: NotebookPen },
   { to: '/playbooks', label: 'Playbooks', icon: BookOpen },
   { to: '/backtesting', label: 'Backtesting', icon: Swords },
+  { to: '/risk-calculator', label: 'Risk calculator', icon: Calculator },
 ]
 
 export default function Sidebar({ collapsed, onCollapse }) {

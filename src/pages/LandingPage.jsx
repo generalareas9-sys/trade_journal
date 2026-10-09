@@ -46,11 +46,11 @@ const STEPS = [
 const MORE_TOOLS = [
   { icon: TrendingUp, title: 'Trade replay notes', text: 'Add chart-by-chart notes when historical replay is available.', status: 'Coming soon', accent: 'violet' },
   { icon: Target, title: 'Tags and mistake review', text: 'Label trades with tags and review recorded mistakes in reports.', accent: 'indigo' },
-  { icon: Shield, title: 'Risk calculator', text: 'Plan position risk with a dedicated calculator.', status: 'Coming soon', accent: 'blue' },
+  { icon: Shield, title: 'Risk calculator', text: 'Plan position risk with a dedicated calculator.', accent: 'blue' },
   { icon: Flag, title: 'Goals and progress', text: 'Track monthly P&L and win-rate goals from your dashboard.', accent: 'teal' },
   { icon: Layers3, title: 'Account overview', text: 'Switch between one account or review all accounts together.', accent: 'magenta' },
   { icon: ShieldCheck, title: 'Daily limit warnings', text: 'See a dashboard warning when your daily limits are exceeded.', accent: 'pink' },
-  { icon: CalendarDays, title: 'Weekly review report', text: 'Get a focused weekly summary of trades and reflections.', status: 'Coming soon', accent: 'emerald' },
+  { icon: CalendarDays, title: 'Weekly review report', text: 'Get a focused weekly summary of trades and reflections.', accent: 'emerald' },
   { icon: Smartphone, title: 'Mobile-friendly journal', text: 'Use the journal and review your trades on a smaller screen.', accent: 'amber' },
 ]
 
