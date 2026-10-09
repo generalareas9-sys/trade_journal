@@ -1,10 +1,10 @@
-﻿import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { format } from 'date-fns'
 import { currency } from '../utils/trading'
 import { Badge } from './UiElements'
 
-export function TradeTable({ trades, compact = false, onSelect, searchable = false, pageSize = 8, showCount = true }) {
+export function TradeTable({ trades, compact = false, onSelect, searchable = false, pageSize = 8, showCount = true, pageResetKey }) {
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState({ key: 'date', direction: 'desc' })
   const [page, setPage] = useState(1)
@@ -23,6 +23,10 @@ export function TradeTable({ trades, compact = false, onSelect, searchable = fal
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const visible = compact ? filtered.slice(0, 6) : filtered.slice((page - 1) * pageSize, page * pageSize)
   const selectSort = (key) => setSort((old) => ({ key, direction: old.key === key && old.direction === 'desc' ? 'asc' : 'desc' }))
+
+  useEffect(() => {
+    if (pageResetKey !== undefined) setPage(1)
+  }, [pageResetKey])
 
   const columns = compact ? [
     ['date', 'Date'],
