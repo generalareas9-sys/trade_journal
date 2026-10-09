@@ -1,0 +1,38 @@
+.tlx-filter-row { align-items: end; gap: 8px; }
+.tlx-filter-row > select,
+.tlx-date-filter input,
+.tlx-saved-views select,
+.tlx-saved-views input {
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--card);
+  font-size: 13px;
+}
+.tlx-filter-row > select { flex: 1 1 120px; width: auto; max-width: 190px; }
+.tlx-date-filter { display: grid; gap: 2px; min-width: 135px; color: var(--muted); font-size: 11px; }
+.tlx-date-filter input { width: 100%; }
+.tlx-clear { min-height: 44px; padding: 0 9px; white-space: nowrap; }
+.tlx-saved-views {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+.tlx-saved-views > label { display: grid; flex: 1 1 180px; gap: 2px; color: var(--muted); font-size: 11px; }
+.tlx-saved-views .tlx-view-name { flex: 1 1 150px; }
+.tlx-save-view { min-height: 44px; }
+.tlx-view-feedback { flex: 1 1 100%; color: var(--muted); font-size: 12px; }
+@media (max-width: 600px) {
+  .tlx-filter-row { align-items: stretch; }
+  .tlx-filter-row > select { flex: 1 1 calc(50% - 8px); width: calc(50% - 8px); max-width: none; }
+  .tlx-date-filter { flex: 1 1 calc(50% - 8px); min-width: 0; }
+  .tlx-clear { flex: 1 1 100%; justify-content: center; }
+  .tlx-saved-views > label { flex-basis: calc(50% - 8px); }
+  .tlx-save-view { flex: 1 1 100%; }
+}
