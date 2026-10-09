@@ -1,4 +1,4 @@
-import { Component, lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { ProtectedRoute, PublicOnlyRoute } from './components/RouteGuards'
 import Sidebar from './components/Sidebar'
@@ -7,7 +7,10 @@ import MarqueeBar from './components/MarqueeBar'
 import AddTradeModal from './components/AddTradeModal'
 import LegacyMigrationDialog from './components/LegacyMigrationDialog'
 import { SkeletonCard, SkeletonRows } from './components/UiElements'
+import Skeleton from './components/Skeleton'
 import { useJournal } from './hooks/useJournal'
+import useShortcuts from './hooks/useShortcuts'
+import WelcomeTour from './components/WelcomeTour'
 
 const LandingPage = lazy(() => import('./pages/LandingPage'))
 const AuthPage = lazy(() => import('./pages/AuthPage'))
@@ -80,51 +83,33 @@ function PageSkeleton() {
 
 function ProtectedLayout() {
   const [collapsed, setCollapsed] = useState(false)
-  const [shortcutsOpen, setShortcutsOpen] = useState(false)
-  const goTimer = useRef(0)
-  const goPending = useRef(false)
+  const [tourOpen, setTourOpen] = useState(false)
   const navigate = useNavigate()
-  const { dark, setAddTradeOpen, setEditingTrade, toast, demoTradeCount, removeDemoTrades } = useJournal()
+  const location = useLocation()
+  const { dark, settings = {}, setSettings, setAddTradeOpen, setEditingTrade, toast, demoTradeCount, removeDemoTrades } = useJournal()
+  const onAddTrade = useCallback(() => {
+    setEditingTrade(null)
+    setAddTradeOpen(true)
+  }, [setAddTradeOpen, setEditingTrade])
+  const { helpOpen: shortcutsOpen, closeHelp: closeShortcuts } = useShortcuts({ navigate, onAddTrade, enabled: !tourOpen })
+  const finishTour = useCallback(() => {
+    setSettings((current) => ({ ...current, welcomeTourCompleted: true }))
+    setTourOpen(false)
+  }, [setSettings])
 
   useEffect(() => {
     document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
   }, [dark])
 
   useEffect(() => {
-    const handleShortcut = (event) => {
-      const target = event.target
-      if (target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) return
-      if (event.ctrlKey || event.metaKey || event.altKey) return
-      if (event.key === '?') {
-        event.preventDefault()
-        setShortcutsOpen(true)
-        return
-      }
-      if (goPending.current) {
-        const routes = { d: '/', j: '/journal', t: '/trades', r: '/reports' }
-        const route = routes[event.key.toLowerCase()]
-        goPending.current = false
-        window.clearTimeout(goTimer.current)
-        if (route) {
-          event.preventDefault()
-          navigate(route)
-          return
-        }
-      }
-      if (event.key.toLowerCase() === 'g') {
-        goPending.current = true
-        window.clearTimeout(goTimer.current)
-        goTimer.current = window.setTimeout(() => { goPending.current = false }, 1200)
-        return
-      }
-      if (event.key.toLowerCase() !== 'n') return
-      event.preventDefault()
-      setEditingTrade(null)
-      setAddTradeOpen(true)
-    }
-    window.addEventListener('keydown', handleShortcut)
-    return () => window.removeEventListener('keydown', handleShortcut)
-  }, [navigate, setAddTradeOpen, setEditingTrade])
+    if (settings.welcomeTourCompleted !== true) setTourOpen(true)
+  }, [settings.welcomeTourCompleted])
+
+  useEffect(() => {
+    if (!location.state?.showWelcomeTour) return
+    setTourOpen(true)
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location.pathname, location.state, navigate])
 
   return (
     <div className={`app-shell ${dark ? 'dark-theme' : ''}`}>
@@ -150,24 +135,42 @@ function ProtectedLayout() {
       <LegacyMigrationDialog />
       {toast && <div className="toast-message" role="status" aria-live="polite">{toast}</div>}
       <UndoDeleteToast />
-      {shortcutsOpen && <div className="shortcuts-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShortcutsOpen(false) }}>
+      {shortcutsOpen && <div className="shortcuts-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeShortcuts() }}>
         <section className="shortcuts-dialog" role="dialog" aria-modal="true" aria-labelledby="shortcuts-title">
-          <div><h2 id="shortcuts-title">Keyboard shortcuts</h2><button type="button" className="icon-button" aria-label="Close shortcuts" onClick={() => setShortcutsOpen(false)}>×</button></div>
+          <div><h2 id="shortcuts-title">Keyboard shortcuts</h2><button type="button" className="icon-button" aria-label="Close shortcuts" onClick={closeShortcuts}>×</button></div>
           <p><kbd>N</kbd><span>Add a trade</span></p><p><kbd>G</kbd> then <kbd>D</kbd><span>Go to Dashboard</span></p><p><kbd>G</kbd> then <kbd>J</kbd><span>Go to Daily Journal</span></p><p><kbd>G</kbd> then <kbd>T</kbd><span>Go to Trade Log</span></p><p><kbd>G</kbd> then <kbd>R</kbd><span>Go to Reports</span></p><p><kbd>Ctrl</kbd> + <kbd>K</kbd><span>Open global search</span></p><p><kbd>?</kbd><span>Show this help</span></p>
         </section>
       </div>}
+      {tourOpen && <WelcomeTour onFinish={finishTour} />}
     </div>
   )
 }
 
 export default function App() {
   const location = useLocation()
+  const { settings = {}, dark, setDark } = useJournal()
+  const setDarkRef = useRef(setDark)
+  setDarkRef.current = setDark
 
   useEffect(() => {
-    if (location.pathname === '/landing' || location.pathname === '/welcome') {
-      document.documentElement.style.colorScheme = 'light'
+    const workspacePaths = ['/', '/journal', '/trades', '/import', '/reports', '/weekly-review', '/notebook', '/playbooks', '/backtesting', '/risk-calculator', '/settings']
+    const workspacePage = workspacePaths.includes(location.pathname)
+    document.documentElement.classList.toggle('dark-theme', workspacePage && dark)
+    document.documentElement.style.colorScheme = workspacePage && dark ? 'dark' : 'light'
+  }, [location.pathname, dark])
+
+  useEffect(() => {
+    if (settings.themePreference === 'light' || settings.themePreference === 'dark') {
+      setDarkRef.current(settings.themePreference === 'dark')
+      return undefined
     }
-  }, [location.pathname])
+    if (settings.themePreference !== 'system') return undefined
+    const colorScheme = window.matchMedia('(prefers-color-scheme: dark)')
+    const applySystemTheme = () => setDarkRef.current(colorScheme.matches)
+    applySystemTheme()
+    colorScheme.addEventListener('change', applySystemTheme)
+    return () => colorScheme.removeEventListener('change', applySystemTheme)
+  }, [settings.themePreference])
 
   return (
     <PageErrorBoundary key={location.pathname}><Suspense fallback={<PageSkeleton />}><Routes>
@@ -189,14 +192,14 @@ export default function App() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<ProtectedLayout />}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/journal" element={<DailyJournal />} />
-          <Route path="/trades" element={<TradeLog />} />
+          <Route path="/" element={<Suspense fallback={<Skeleton variant="dashboard" />}><Dashboard /></Suspense>} />
+          <Route path="/journal" element={<Suspense fallback={<Skeleton variant="journal" />}><DailyJournal /></Suspense>} />
+          <Route path="/trades" element={<Suspense fallback={<Skeleton variant="trade-log" />}><TradeLog /></Suspense>} />
           <Route path="/import" element={<TradeImport />} />
-          <Route path="/reports" element={<Reports />} />
+          <Route path="/reports" element={<Suspense fallback={<Skeleton variant="reports" />}><Reports /></Suspense>} />
           <Route path="/weekly-review" element={<WeeklyReview />} />
-          <Route path="/notebook" element={<Notebook />} />
-          <Route path="/playbooks" element={<Playbooks />} />
+          <Route path="/notebook" element={<Suspense fallback={<Skeleton variant="notebook" />}><Notebook /></Suspense>} />
+          <Route path="/playbooks" element={<Suspense fallback={<Skeleton variant="playbooks" />}><Playbooks /></Suspense>} />
           <Route path="/backtesting" element={<Backtesting />} />
           <Route path="/risk-calculator" element={<RiskCalculator />} />
           <Route path="/settings" element={<SettingsPage />} />
