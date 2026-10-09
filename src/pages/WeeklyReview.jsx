@@ -6,6 +6,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useJournal } from '../hooks/useJournal'
 import { calculateStats, currency, percent } from '../utils/trading'
 import { EmptyState } from '../components/UiElements'
+import PrintableReport from '../components/PrintableReport'
 import '../weekly-review.css'
 
 const disciplineFields = [
@@ -135,6 +136,7 @@ export default function WeeklyReview() {
         <p>Review your trades, discipline, and takeaways for the week.</p>
       </div>
       <div className="wr-actions">
+        <PrintableReport trades={weekTrades} periodLabel={`Week · ${format(weekStart, 'MMM d')} – ${format(weekEnd, 'MMM d, yyyy')}`} />
         <button type="button" className="wr-button" onClick={() => window.print()}><Printer size={16} />Print / Save as PDF</button>
         <button type="button" className="wr-button wr-primary-button" onClick={() => void copySummary()}><Copy size={16} />Copy summary</button>
       </div>
