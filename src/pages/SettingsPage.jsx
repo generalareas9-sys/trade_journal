@@ -71,6 +71,9 @@ export function SettingsPage() {
   const displayName = profile.name || authProfile?.display_name || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || ''
   const avatarPath = authProfile?.settings?.avatarPath || authProfile?.settings?.appSettings?.avatarPath || ''
   const avatarInitials = initials(displayName, user?.email)
+  const themePreference = ['light', 'dark', 'system'].includes(settings.themePreference)
+    ? settings.themePreference
+    : dark ? 'dark' : 'light'
 
   useEffect(() => {
     setDraftName(profile.name || displayName)
@@ -83,6 +86,18 @@ export function SettingsPage() {
 
   const notifyError = (value) => { setMessage(''); setError(value) }
   const notifySuccess = (value) => { setError(''); setMessage(value) }
+  const changeThemePreference = (preference) => {
+    const nextDark = preference === 'system'
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches
+      : preference === 'dark'
+    try {
+      window.localStorage.setItem('trade-journal-theme-preference', preference)
+    } catch (storageError) {
+      notifyError(`Could not remember the theme choice on this device: ${storageError.message || 'Storage is unavailable.'}`)
+    }
+    setDark(nextDark)
+    setSettings((current) => ({ ...current, themePreference: preference, theme: nextDark }))
+  }
   const authErrorMessage = (authError, action) => {
     const rawMessage = authError?.message || ''
     if (/fetch|network|failed to reach/i.test(rawMessage)) return 'A network error occurred. Check your connection and try again.'
@@ -343,7 +358,7 @@ export function SettingsPage() {
       <button className="settings-signout" disabled={busy} onClick={async () => { setBusy(true); const result = await signOut(); setBusy(false); if (result?.error) notifyError(`Could not sign out: ${result.error.message}`); else navigate('/welcome', { replace: true }) }}>Sign out of this device</button>
     </div>
     if (tab === 'Preferences') return <div className="settings-tab-content">
-      <label className="settings-preference-row"><span><strong>Theme</strong><small>Choose your workspace appearance.</small></span><select value={dark ? 'dark' : 'light'} onChange={(event) => { const nextDark = event.target.value === 'dark'; setDark(nextDark); setSettings((current) => ({ ...current, theme: nextDark })) }}><option value="light">Light</option><option value="dark">Dark</option></select></label>
+      <label className="settings-preference-row"><span><strong>Theme</strong><small>Choose your workspace appearance.</small></span><select value={themePreference} onChange={(event) => changeThemePreference(event.target.value)}><option value="light">Light</option><option value="dark">Dark</option><option value="system">Match my device</option></select></label>
       <label className="settings-preference-row"><span><strong>Default account</strong><small>Choose the account shown when you open your journal.</small></span><select value={settings.defaultAccount || 'all'} onChange={(event) => { setSettings((current) => ({ ...current, defaultAccount: event.target.value })); setAccount(event.target.value) }}><option value="all">All accounts</option>{accounts.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
       <label className="settings-preference-row"><span><strong>Currency display</strong><small>Changes the displayed currency symbol; it does not convert trade values.</small></span><select value={settings.currencyDisplay || 'USD'} onChange={(event) => setSettings((current) => ({ ...current, currencyDisplay: event.target.value }))}><option value="USD">USD ($)</option><option value="EUR">EUR (€)</option><option value="GBP">GBP (£)</option><option value="JPY">JPY (¥)</option><option value="CAD">CAD ($)</option><option value="AUD">AUD ($)</option></select></label>
       {[
