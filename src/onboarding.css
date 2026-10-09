@@ -163,3 +163,111 @@ a.onb-item:hover {
     padding: 0 3px;
   }
 }
+
+.onb-card {
+  display: grid;
+  grid-template-rows: 0fr 1fr;
+  overflow: hidden;
+  padding: 0;
+  transition: grid-template-rows 250ms ease, padding 250ms ease;
+}
+.onb-card.onb-collapsed {
+  grid-template-rows: 1fr 0fr;
+}
+.onb-bar-wrap,
+.onb-expand-wrap {
+  min-height: 0;
+  overflow: hidden;
+  transition: opacity 250ms ease;
+}
+.onb-collapsed-bar {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+}
+.onb-bar-check {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--profit);
+}
+.onb-bar-summary {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 4px;
+  color: var(--text-strong);
+  font-size: 13px;
+  font-weight: 650;
+}
+.onb-bar-progress {
+  display: block;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--line);
+}
+.onb-bar-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--purple);
+  transition: width 200ms ease;
+}
+.onb-show {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  color: var(--purple);
+}
+.onb-show:hover {
+  background: var(--card-soft);
+}
+.onb-expand-wrap[aria-hidden="true"],
+.onb-card:not(.onb-collapsed) .onb-bar-wrap {
+  opacity: 0;
+  visibility: hidden;
+}
+.onb-expanded-content {
+  padding: 20px;
+  transition: padding 250ms ease;
+}
+.onb-collapsed .onb-expanded-content {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.onb-complete {
+  min-height: 44px;
+}
+.onb-complete .onb-dismiss {
+  margin-left: auto;
+}
+.onb-card button:focus-visible {
+  outline: 3px solid rgba(108, 92, 231, 0.35);
+  outline-offset: 2px;
+}
+@media (max-width: 600px) {
+  .onb-expanded-content { padding: 15px 12px; }
+  .onb-collapsed-bar { gap: 7px; padding: 0 8px; }
+  .onb-bar-summary { font-size: 12px; }
+}
+@media (max-width: 375px) {
+  .onb-collapsed-bar { gap: 5px; padding: 0 6px; }
+  .onb-show { padding: 0 7px; font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .onb-card,
+  .onb-bar-progress > span,
+  .onb-bar-wrap,
+  .onb-expand-wrap,
+  .onb-expanded-content,
+  .onb-progress span {
+    transition: none;
+  }
+}
