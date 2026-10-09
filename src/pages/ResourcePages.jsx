@@ -147,7 +147,8 @@ export function HelpCenterPage() {
   return <ResourceLayout showBackToApp>
     <ResourceHero eyebrow="Help Center" title="How can we help?" subtitle="Find answers, learn how TradeJournal works, and get the most out of your trading journal." />
     <div className="lp-wrap resource-content">
-      <label className="resource-search"><Search size={20} /><span className="visually-hidden">Search help articles</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search help articles..." /></label>
+    <div className="tour-help-action"><p>New to TradeJournal?</p><Link className="lp-btn" to="/" state={{ showWelcomeTour: true }}>Take the tour again</Link></div>
+    <label className="resource-search"><Search size={20} /><span className="visually-hidden">Search help articles</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search help articles..." /></label>
       <section className="resource-category-grid" aria-label="Help articles">
         {categories.map((category) => <article className="resource-card resource-category" key={category.title}>
           <h2>{category.title}</h2>
