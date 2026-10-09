@@ -244,11 +244,11 @@ export function DataProvider({ children }) {
     setSaveStatus('saved')
 
     Promise.all([
-      repo.listAccounts(),
-      repo.listTrades(),
-      repo.listJournalEntries(),
-      repo.listNotes(),
-      repo.listPlaybooks(),
+      repo.listAccounts(currentUser.id),
+      repo.listTrades(currentUser.id),
+      repo.listJournalEntries(currentUser.id),
+      repo.listNotes(currentUser.id),
+      repo.listPlaybooks(currentUser.id),
       repo.getProfileSettings(currentUser.id),
     ]).then((results) => {
       if (!active) return
@@ -750,7 +750,7 @@ export function DataProvider({ children }) {
     if (!ownerId) return { data: null, error: new Error('Sign in before deleting trades.') }
     const previous = dataRef.current.trades
     applyData((current) => ({ ...current, trades: [] }))
-    const result = await repo.deleteAllTrades()
+    const result = await repo.deleteAllTrades(ownerId)
     if (userRef.current?.id !== ownerId) return { data: null, error: new Error('The active account changed during deletion.') }
     if (result.error) {
       applyData((current) => ({ ...current, trades: previous }))
