@@ -1,0 +1,66 @@
+.pr-export-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 15px;
+  border: 1px solid var(--purple);
+  border-radius: 9px;
+  color: #fff;
+  background: var(--purple);
+  font-size: 13px;
+  font-weight: 700;
+}
+.pr-export-button:disabled { opacity: .55; cursor: not-allowed; }
+.pr-sheet { display: none; }
+@media print {
+  @page { size: A4 portrait; margin: 11mm; }
+  html.pr-printing body,
+  html.pr-printing body * { visibility: hidden !important; }
+  html.pr-printing .pr-sheet,
+  html.pr-printing .pr-sheet * { visibility: visible !important; }
+  html.pr-printing .pr-sheet {
+    position: absolute;
+    inset: 0 auto auto 0;
+    display: grid !important;
+    width: 100%;
+    height: 274mm;
+    max-height: 274mm;
+    grid-template-rows: auto auto auto 1fr auto auto;
+    gap: 7mm;
+    overflow: hidden;
+    padding: 0;
+    color: #172033 !important;
+    background: #fff !important;
+    font-family: Arial, sans-serif;
+  }
+  .pr-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #dce1ec; padding-bottom: 5mm; }
+  .pr-header span { color: #6655c8; font-size: 8pt; font-weight: 700; letter-spacing: 1.2px; }
+  .pr-header h1 { margin: 2mm 0 1mm; font-size: 24pt; }
+  .pr-header p, .pr-header > strong { margin: 0; color: #667085; font-size: 10pt; }
+  .pr-metrics, .pr-days { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4mm; }
+  .pr-metrics > div, .pr-days > div { display: grid; align-content: center; gap: 2mm; min-height: 20mm; padding: 4mm; border: 1px solid #e5e7ef; border-radius: 3mm; background: #f8f8fc; }
+  .pr-metrics span, .pr-days span { color: #667085; font-size: 9pt; }
+  .pr-metrics strong, .pr-days strong { color: #172033; font-size: 14pt; font-variant-numeric: tabular-nums; }
+  .pr-days { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pr-chart-section, .pr-mistakes-section { min-height: 0; }
+  .pr-chart-section h2, .pr-mistakes-section h2 { margin: 0; font-size: 14pt; }
+  .pr-chart-section p, .pr-mistakes-section > div > p { margin: 1mm 0 0; color: #667085; font-size: 9pt; }
+  .pr-equity-chart { display: block; width: 100%; height: 68mm; margin-top: 3mm; overflow: visible; }
+  .pr-equity-chart text { fill: #667085; font-size: 3px; }
+  .pr-zero-line { fill: none; stroke: #d8dce6; stroke-width: .5; stroke-dasharray: 1.5 1.5; }
+  .pr-equity-line { fill: none; stroke: #6c5ce7; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+  .pr-mistakes-section ol { display: grid; gap: 2mm; padding: 0; margin: 3mm 0 0; list-style: none; }
+  .pr-mistakes-section li { display: flex; align-items: center; justify-content: space-between; gap: 5mm; padding: 2.5mm 3mm; border-bottom: 1px solid #edf0f5; }
+  .pr-mistakes-section li > span { display: grid; gap: 1mm; }
+  .pr-mistakes-section li strong, .pr-mistakes-section li b { color: #172033; font-size: 10pt; }
+  .pr-mistakes-section li small { color: #667085; font-size: 8pt; }
+  .pr-positive { color: #16803c !important; }
+  .pr-negative { color: #c53030 !important; }
+  .pr-empty { color: #667085; font-size: 10pt; }
+  .pr-sheet footer { align-self: end; padding-top: 3mm; border-top: 1px solid #dce1ec; color: #667085; font-size: 8pt; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pr-export-button { scroll-behavior: auto; }
+}
