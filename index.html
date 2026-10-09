@@ -24,8 +24,40 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-v4.png?v=4" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-v4-192.png?v=4" />
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-v4-512.png?v=4" />
-    <link rel="manifest" href="/site.webmanifest?v=4" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <title>TradeJournal</title>
+    <script>
+      (() => {
+        let dark = false
+        let preference = null
+        try {
+          preference = localStorage.getItem('trade-journal-theme-preference')
+        } catch {
+          dark = window.matchMedia('(prefers-color-scheme: dark)').matches
+        }
+        if (preference === 'dark' || preference === 'system') {
+          dark = preference === 'dark' || window.matchMedia('(prefers-color-scheme: dark)').matches
+        } else if (preference === 'light') {
+          dark = false
+        } else {
+          try {
+            dark = JSON.parse(localStorage.getItem('trade-journal-dark') || 'false') === true
+          } catch {
+            dark = window.matchMedia('(prefers-color-scheme: dark)').matches
+          }
+        }
+        if (preference !== null) {
+          try {
+            localStorage.setItem('trade-journal-dark', JSON.stringify(dark))
+          } catch (error) {
+            console.error('Could not initialize the saved theme:', error)
+          }
+        }
+        const workspacePage = ['/', '/journal', '/trades', '/import', '/reports', '/weekly-review', '/notebook', '/playbooks', '/backtesting', '/risk-calculator', '/settings'].includes(window.location.pathname)
+        document.documentElement.classList.toggle('dark-theme', workspacePage && dark)
+        document.documentElement.style.colorScheme = workspacePage && dark ? 'dark' : 'light'
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
