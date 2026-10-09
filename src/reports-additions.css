@@ -1,0 +1,31 @@
+.rp-print-controls {
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.rp-print-controls label { display: grid; gap: 3px; color: var(--muted); font-size: 12px; }
+.rp-print-controls select, .rp-print-controls input {
+  min-width: 130px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--card);
+}
+.rp-mistakes { margin: 14px 0; }
+.rp-frequency-chart { width: 100%; height: max(190px, calc(var(--rp-mistake-count, 1) * 42px)); max-height: 420px; margin: 14px 0; }
+.rp-mistakes .table-scroll { margin-top: 10px; }
+@media (max-width: 600px) {
+  .rp-print-controls { align-items: stretch; justify-content: stretch; }
+  .rp-print-controls label { flex: 1 1 42%; }
+  .rp-print-controls select, .rp-print-controls input { width: 100%; min-width: 0; }
+  .rp-print-controls .pr-export-button { flex: 1 1 100%; }
+  .rp-mistakes { padding: 13px 10px; }
+}
+@media print {
+  .rp-print-controls { display: none !important; }
+}
