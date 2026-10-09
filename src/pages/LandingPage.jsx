@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import MarqueeBar from '../components/MarqueeBar'
+import BackToTop from '../components/BackToTop'
 import {
   ArrowRight,
   ArrowUpRight,
@@ -46,11 +47,11 @@ const STEPS = [
 const MORE_TOOLS = [
   { icon: TrendingUp, title: 'Trade replay notes', text: 'Add chart-by-chart notes when historical replay is available.', status: 'Coming soon', accent: 'violet' },
   { icon: Target, title: 'Tags and mistake review', text: 'Label trades with tags and review recorded mistakes in reports.', accent: 'indigo' },
-  { icon: Shield, title: 'Risk calculator', text: 'Plan position risk with a dedicated calculator.', accent: 'blue' },
+  { icon: Shield, title: 'Risk calculator', text: 'Plan position risk with a dedicated calculator.', status: 'Available now', accent: 'blue' },
   { icon: Flag, title: 'Goals and progress', text: 'Track monthly P&L and win-rate goals from your dashboard.', accent: 'teal' },
   { icon: Layers3, title: 'Account overview', text: 'Switch between one account or review all accounts together.', accent: 'magenta' },
   { icon: ShieldCheck, title: 'Daily limit warnings', text: 'See a dashboard warning when your daily limits are exceeded.', accent: 'pink' },
-  { icon: CalendarDays, title: 'Weekly review report', text: 'Get a focused weekly summary of trades and reflections.', accent: 'emerald' },
+  { icon: CalendarDays, title: 'Weekly review report', text: 'Get a focused weekly summary of trades and reflections.', status: 'Available now', accent: 'emerald' },
   { icon: Smartphone, title: 'Mobile-friendly journal', text: 'Use the journal and review your trades on a smaller screen.', accent: 'amber' },
 ]
 
@@ -411,11 +412,13 @@ export default function LandingPage() {
             </Reveal>
             <div className="lp-more-grid">
               {MORE_TOOLS.map(({ icon: Icon, title, text, status, accent }, index) => (
-                <Reveal key={title} className={`lp-more-card lp-more-${accent} ${status ? 'is-coming-soon' : 'is-available'}`} style={{ '--lp-delay': `${index * 60}ms` }}>
+                <Reveal key={title} className={`lp-more-card lp-more-${accent} ${status === 'Coming soon' ? 'is-coming-soon' : 'is-available'}`} style={{ '--lp-delay': `${index * 60}ms` }}>
                   <div className="lp-more-card-top">
                     <span className="lp-more-icon"><Icon size={20} /></span>
                     {status
-                      ? <span className="lp-coming-soon"><Clock3 size={12} />Coming soon</span>
+                      ? status === 'Coming soon'
+                        ? <span className="lp-coming-soon"><Clock3 size={12} />Coming soon</span>
+                        : <span className="lp-available"><i />{status}</span>
                       : <span className="lp-available"><i />Available now</span>}
                   </div>
                   <h3>{title}</h3>
@@ -536,6 +539,7 @@ export default function LandingPage() {
           <p>© {new Date().getFullYear()} TradeJournal. All rights reserved.</p>
         </div>
       </footer>
+      <BackToTop />
     </div>
   )
 }
