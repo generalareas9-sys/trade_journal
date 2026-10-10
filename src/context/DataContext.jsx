@@ -23,7 +23,15 @@ const LEGACY_KEYS = {
   notes: 'trade-journal-notes',
   playbookChecklists: 'trade-journal-playbook-checklists',
 }
-const SETTINGS_DEFAULTS = { dailyLossLimit: 500, maxTradesPerDay: 8, monthlyPnlGoal: 3000, winRateGoal: 55 }
+const SETTINGS_DEFAULTS = {
+  dailyLossLimit: 500,
+  maxTradesPerDay: 8,
+  monthlyPnlGoal: 3000,
+  winRateGoal: 55,
+  themePreference: 'dark',
+  themeChosen: false,
+  theme: true,
+}
 const IMPORT_SETTINGS_DEFAULTS = {
   dateFormat: 'auto',
   timezone: 'local',
@@ -41,6 +49,15 @@ function readJson(key, fallback) {
   } catch {
     return fallback
   }
+}
+
+function getInitialDark() {
+  if (readJson('trade-journal-theme-chosen', false) !== true) return true
+  const preference = readJson('trade-journal-theme-preference', '')
+  if (preference === 'dark') return true
+  if (preference === 'light') return false
+  if (preference === 'system') return window.matchMedia('(prefers-color-scheme: dark)').matches
+  return readJson('trade-journal-dark', true) === true
 }
 
 function hydrateTrades(savedTrades, regenerateSeededTrades = false) {
@@ -100,7 +117,7 @@ function defaultData() {
     settings: SETTINGS_DEFAULTS,
     importSettings: IMPORT_SETTINGS_DEFAULTS,
     profile: { name: '' },
-    dark: readJson('trade-journal-dark', false),
+    dark: getInitialDark(),
     account: 'all',
     range: 'All',
     customStart: format(subDays(new Date(), 29), 'yyyy-MM-dd'),
@@ -261,6 +278,11 @@ export function DataProvider({ children }) {
       const [accountsResult, tradesResult, journalResult, notesResult, playbooksResult, profileSettingsResult] = results
       const storedSettings = profileSettingsResult.data || {}
       const journal = Object.fromEntries((journalResult.data || []).map((entry) => [entry.date, entry]))
+      const appSettings = storedSettings.appSettings || {}
+      const themeChosen = appSettings.themeChosen === true
+      const themePreference = themeChosen && ['light', 'dark', 'system'].includes(appSettings.themePreference)
+        ? appSettings.themePreference
+        : 'dark'
       const next = {
         ...defaultData(),
         accounts: accountsResult.data || [],
@@ -268,7 +290,13 @@ export function DataProvider({ children }) {
         journal,
         notes: notesResult.data || [],
         playbooks: playbooksResult.data || [],
-        settings: { ...SETTINGS_DEFAULTS, ...(storedSettings.appSettings || {}) },
+        settings: {
+          ...SETTINGS_DEFAULTS,
+          ...appSettings,
+          themePreference,
+          themeChosen,
+          theme: themePreference === 'dark' || (themePreference === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches),
+        },
         importSettings: {
           ...IMPORT_SETTINGS_DEFAULTS,
           ...(storedSettings.importSettings || {}),
@@ -280,7 +308,11 @@ export function DataProvider({ children }) {
           country: storedSettings.profile?.country || '',
         },
         account: storedSettings.defaultAccount || 'all',
-        dark: typeof storedSettings.theme === 'boolean' ? storedSettings.theme : dataRef.current.dark,
+        dark: themeChosen
+          ? themePreference === 'system'
+            ? window.matchMedia('(prefers-color-scheme: dark)').matches
+            : themePreference === 'dark'
+          : true,
       }
       dataRef.current = next
       setCurrencyDisplay(next.settings.currencyDisplay || 'USD')
@@ -871,6 +903,31 @@ export function DataProvider({ children }) {
     applyData((state) => ({ ...state, [key]: nextValue }))
   }, [applyData])
 
+  const setThemeChoice = useCallback((preference) => {
+    if (!['light', 'dark', 'system'].includes(preference)) {
+      notify(`Unsupported theme preference: ${preference}`)
+      return
+    }
+    const nextDark = preference === 'system'
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches
+      : preference === 'dark'
+    try {
+      window.localStorage.setItem('trade-journal-theme-chosen', 'true')
+      window.localStorage.setItem('trade-journal-theme-preference', preference)
+      window.localStorage.setItem('trade-journal-dark', JSON.stringify(nextDark))
+    } catch (error) {
+      console.error('Could not save the chosen theme on this device:', error)
+      notify(`Could not save the chosen theme on this device: ${error?.message || 'Storage is unavailable.'}`)
+    }
+    setLocalValue('dark', nextDark)
+    updateSettingsSlot('settings', (current) => ({
+      ...current,
+      themePreference: preference,
+      themeChosen: true,
+      theme: nextDark,
+    }))
+  }, [notify, setLocalValue, updateSettingsSlot])
+
   const value = useMemo(() => ({
     ...data,
     trades: data.trades,
@@ -880,6 +937,7 @@ export function DataProvider({ children }) {
     setCustomStart: (next) => { setLocalValue('customStart', next) },
     setCustomEnd: (next) => { setLocalValue('customEnd', next) },
     setDark: (next) => { setLocalValue('dark', next) },
+    setThemeChoice,
     setAccount: (next) => { setLocalValue('account', next) },
     setProfile,
     setSettings: (next) => { updateSettingsSlot('settings', next) },
@@ -920,7 +978,7 @@ export function DataProvider({ children }) {
     exportBackup,
     replaceData,
     resetAllData,
-  }), [data, setTrades, clearAllTrades, setLocalValue, setProfile, updateSettingsSlot, setPlaybooks, setJournal, setNotes, setAccounts, accountTrades, filteredTrades, stats, storageUsage, saveStatus, dataLoading, dataError, retryLoad, sidebarOpen, addTradeOpen, editingTrade, toast, notify, addTrade, updateTrade, deleteTrade, importTrades, undoImport, removeDemoTrades, loadDemoData, addAccount, updateAccount, deleteAccount, exportBackup, replaceData, resetAllData])
+  }), [data, setTrades, clearAllTrades, setLocalValue, setThemeChoice, setProfile, updateSettingsSlot, setPlaybooks, setJournal, setNotes, setAccounts, accountTrades, filteredTrades, stats, storageUsage, saveStatus, dataLoading, dataError, retryLoad, sidebarOpen, addTradeOpen, editingTrade, toast, notify, addTrade, updateTrade, deleteTrade, importTrades, undoImport, removeDemoTrades, loadDemoData, addAccount, updateAccount, deleteAccount, exportBackup, replaceData, resetAllData])
 
   if (user && dataError && dataUserId !== user.id) {
     return <DataContext.Provider value={value}><main className="page-error-state" role="alert"><strong>Could not load your account data</strong><span>{dataError}</span><button type="button" className="button-primary" onClick={retryLoad}>Retry</button></main></DataContext.Provider>
