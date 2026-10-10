@@ -26,7 +26,17 @@ export async function getOrCreateProfile(user) {
     const displayName = metadataName || user.email?.split('@')[0] || 'Trader'
     const { data: createdProfile, error: insertError } = await supabase
       .from('profiles')
-      .insert({ user_id: user.id, display_name: displayName })
+      .insert({
+        user_id: user.id,
+        display_name: displayName,
+        settings: {
+          appSettings: {
+            themePreference: 'dark',
+            themeChosen: false,
+            theme: true,
+          },
+        },
+      })
       .select('*')
       .single()
 
