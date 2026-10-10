@@ -20,7 +20,7 @@ export default function Topbar() {
   const [searchText, setSearchText] = useState('')
   const [selectedTrade, setSelectedTrade] = useState(null)
   const searchInput = useRef(null)
-  const { range, setRange, customStart, setCustomStart, customEnd, setCustomEnd, dark, setDark, account, setAccount, setSidebarOpen, setAddTradeOpen, setEditingTrade, saveStatus, trades, notes, playbooks, settings, accountTrades, deleteTrade, updateTrade, toast } = useJournal()
+  const { range, setRange, customStart, setCustomStart, customEnd, setCustomEnd, dark, setThemeChoice, account, setAccount, setSidebarOpen, setAddTradeOpen, setEditingTrade, saveStatus, trades, notes, playbooks, settings, accountTrades, deleteTrade, updateTrade, toast } = useJournal()
   const { profile, user } = useAuth()
   const displayName = profile?.display_name || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Trader'
   const title = titles[location.pathname] || titles['/']
@@ -105,7 +105,7 @@ export default function Topbar() {
           </div>}
         </div>
         <button className="icon-button search-button" aria-label="Search TradeJournal" title="Search (Ctrl+K)" onClick={() => setSearchOpen(true)}><Search size={18} /></button>
-        <button className="icon-button theme-button" aria-label="Toggle theme" onClick={() => setDark(!dark)}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button>
+        <button className="icon-button theme-button" aria-label="Toggle theme" onClick={() => setThemeChoice(dark ? 'light' : 'dark')}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button>
         <button className="button-primary add-trade-button" onClick={() => { setEditingTrade(null); setAddTradeOpen(true) }}><Plus size={17} /><span>Add trade</span></button>
       </div>
       {searchOpen && <div className="command-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSearchOpen(false) }}>
