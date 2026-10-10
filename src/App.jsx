@@ -153,7 +153,7 @@ export default function App() {
   setDarkRef.current = setDark
 
   useEffect(() => {
-    const workspacePaths = ['/', '/journal', '/trades', '/import', '/reports', '/weekly-review', '/notebook', '/playbooks', '/backtesting', '/risk-calculator', '/settings']
+    const workspacePaths = ['/', '/journal', '/trades', '/import', '/reports', '/weekly-review', '/notebook', '/playbooks', '/backtesting', '/risk-calculator', '/settings', '/help', '/contact', '/changelog']
     const workspacePage = workspacePaths.includes(location.pathname)
     document.documentElement.classList.toggle('dark-theme', workspacePage && dark)
     document.documentElement.style.colorScheme = workspacePage && dark ? 'dark' : 'light'
