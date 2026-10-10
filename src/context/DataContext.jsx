@@ -213,6 +213,7 @@ export function DataProvider({ children }) {
   const [editingTrade, setEditingTrade] = useState(null)
   const dataRef = useRef(data)
   const userRef = useRef(user)
+  const loadDemoDataRef = useRef(null)
   const profileWriteQueue = useRef(Promise.resolve())
   const journalSaveRef = useRef({ timer: null, ownerId: null, before: null, after: null })
   const toastTimer = useRef(null)
@@ -260,14 +261,14 @@ export function DataProvider({ children }) {
     setDataUserId('')
     setSaveStatus('saved')
 
-    Promise.all([
+    Promise.resolve(refreshProfile()).then(() => Promise.all([
       repo.listAccounts(currentUser.id),
       repo.listTrades(currentUser.id),
       repo.listJournalEntries(currentUser.id),
       repo.listNotes(currentUser.id),
       repo.listPlaybooks(currentUser.id),
       repo.getProfileSettings(currentUser.id),
-    ]).then((results) => {
+    ])).then(async (results) => {
       if (!active) return
       const failed = results.find((result) => result.error)
       if (failed) {
@@ -283,6 +284,12 @@ export function DataProvider({ children }) {
       const themePreference = themeChosen && ['light', 'dark', 'system'].includes(appSettings.themePreference)
         ? appSettings.themePreference
         : 'dark'
+      const shouldLoadDemoData = appSettings.demoDataInitialized === false
+        && !(accountsResult.data || []).length
+        && !(tradesResult.data || []).length
+        && !(journalResult.data || []).length
+        && !(notesResult.data || []).length
+        && !(playbooksResult.data || []).length
       const next = {
         ...defaultData(),
         accounts: accountsResult.data || [],
@@ -296,6 +303,7 @@ export function DataProvider({ children }) {
           themePreference,
           themeChosen,
           theme: themePreference === 'dark' || (themePreference === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches),
+          ...(shouldLoadDemoData ? { demoDataInitialized: true } : {}),
         },
         importSettings: {
           ...IMPORT_SETTINGS_DEFAULTS,
@@ -314,11 +322,32 @@ export function DataProvider({ children }) {
             : themePreference === 'dark'
           : true,
       }
+      if (shouldLoadDemoData) {
+        const markerResult = await repo.updateProfileSettings(currentUser.id, {
+          ...storedSettings,
+          appSettings: { ...appSettings, demoDataInitialized: true },
+        })
+        if (!active) return
+        if (markerResult.error) {
+          setDataError(`Could not prepare demo data: ${markerResult.error.message || 'Unknown error'}`)
+          setDataLoading(false)
+          return
+        }
+      }
       dataRef.current = next
       setCurrencyDisplay(next.settings.currencyDisplay || 'USD')
       setData(next)
-      setDataLoading(false)
       setDataUserId(currentUser.id)
+      if (shouldLoadDemoData) {
+        const loadDemoData = loadDemoDataRef.current
+        if (!loadDemoData) {
+          setDataError('Could not initialize demo data because the demo loader is unavailable.')
+          setDataLoading(false)
+          return
+        }
+        await loadDemoData()
+      }
+      setDataLoading(false)
     }).catch((error) => {
       console.error('Failed to load account data:', error)
       if (!active) return
@@ -327,7 +356,7 @@ export function DataProvider({ children }) {
     })
 
     return () => { active = false }
-  }, [user?.id, retryCount])
+  }, [user?.id, retryCount, refreshProfile])
 
   useEffect(() => {
     try {
@@ -603,6 +632,7 @@ export function DataProvider({ children }) {
     notify(`${result.data?.insertedCount || 0} demo trades loaded.`)
     return { inserted: result.data?.insertedCount || 0, failed: 0 }
   }, [applyData, notify, tempId])
+  loadDemoDataRef.current = loadDemoData
 
   const replaceArray = useCallback((key, value, type) => {
     const ownerId = userRef.current?.id
