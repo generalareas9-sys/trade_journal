@@ -43,7 +43,7 @@ function downloadFile(name, content, type) {
 
 export function SettingsPage() {
   const {
-    accounts = [], account, setAccount, dark, setDark, profile = {}, setProfile,
+    accounts = [], account, setAccount, dark, setThemeChoice, profile = {}, setProfile,
     settings = {}, setSettings, importSettings, playbookChecklists, trades = [],
     journal = {}, notes = [], playbooks = [], clearAllTrades, replaceData, exportBackup,
   } = useJournal()
@@ -71,9 +71,9 @@ export function SettingsPage() {
   const displayName = profile.name || authProfile?.display_name || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || ''
   const avatarPath = authProfile?.settings?.avatarPath || authProfile?.settings?.appSettings?.avatarPath || ''
   const avatarInitials = initials(displayName, user?.email)
-  const themePreference = ['light', 'dark', 'system'].includes(settings.themePreference)
+  const themePreference = settings.themeChosen === true && ['light', 'dark', 'system'].includes(settings.themePreference)
     ? settings.themePreference
-    : dark ? 'dark' : 'light'
+    : 'dark'
 
   useEffect(() => {
     setDraftName(profile.name || displayName)
@@ -87,16 +87,7 @@ export function SettingsPage() {
   const notifyError = (value) => { setMessage(''); setError(value) }
   const notifySuccess = (value) => { setError(''); setMessage(value) }
   const changeThemePreference = (preference) => {
-    const nextDark = preference === 'system'
-      ? window.matchMedia('(prefers-color-scheme: dark)').matches
-      : preference === 'dark'
-    try {
-      window.localStorage.setItem('trade-journal-theme-preference', preference)
-    } catch (storageError) {
-      notifyError(`Could not remember the theme choice on this device: ${storageError.message || 'Storage is unavailable.'}`)
-    }
-    setDark(nextDark)
-    setSettings((current) => ({ ...current, themePreference: preference, theme: nextDark }))
+    setThemeChoice(preference)
   }
   const authErrorMessage = (authError, action) => {
     const rawMessage = authError?.message || ''
