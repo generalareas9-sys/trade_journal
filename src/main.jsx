@@ -5,6 +5,7 @@ import App from './App'
 import { AuthProvider } from './context/AuthContext'
 import { DataProvider } from './context/DataContext'
 import './styles.css'
+import './dark-theme.css'
 
 class ErrorBoundary extends Component {
   state = { hasError: false }
