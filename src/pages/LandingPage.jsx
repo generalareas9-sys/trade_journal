@@ -29,6 +29,27 @@ import {
   Mail,
 } from 'lucide-react'
 
+const LANDING_STRUCTURED_DATA = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      name: 'TradeJournal',
+      url: 'https://trade-journal-livid-five.vercel.app/',
+      description: 'A trading journal to record trades, review decisions, track win rate and profit, and build your edge.',
+      author: { '@type': 'Person', name: 'Osman Seid Ebrahim' },
+    },
+    {
+      '@type': 'SoftwareApplication',
+      name: 'TradeJournal',
+      description: 'A trading journal to record trades, review decisions, track win rate and profit, and build your edge.',
+      applicationCategory: 'FinanceApplication',
+      url: 'https://trade-journal-livid-five.vercel.app/',
+      author: { '@type': 'Person', name: 'Osman Seid Ebrahim' },
+    },
+  ],
+}
+
 const FEATURES = [
   { icon: BarChart3, title: 'Performance analytics', text: 'See the key stats calculated from the trades you have logged.', visual: 'bars', tone: 'indigo' },
   { icon: CalendarDays, title: 'P&L calendar', text: 'Scan profitable and losing days in a clear calendar view.', visual: 'calendar', tone: 'magenta' },
@@ -295,11 +316,12 @@ export default function LandingPage() {
 
   return (
     <div className="lp">
+      <script type="application/ld+json">{JSON.stringify(LANDING_STRUCTURED_DATA)}</script>
       <a className="skip-to-content lp-skip-link" href="#landing-main">Skip to content</a>
       <header className={`lp-nav ${scrolled ? 'scrolled' : ''}`}>
         <div className="lp-wrap lp-nav-in">
           <Link to="/welcome" className="lp-brand" aria-label="TradeJournal home">
-            <img src="/bear-logo.png" alt="" /><span>Trade<b>Journal</b></span>
+            <img src="/bear-logo.png" alt="TradeJournal bear logo" /><span>Trade<b>Journal</b></span>
           </Link>
           <nav className={menuOpen ? 'open' : ''} aria-label="Main navigation">
             {navLink('#features', 'features', 'Why TradeJournal')}
@@ -511,7 +533,7 @@ export default function LandingPage() {
         <section className="lp-final">
           <div className="lp-wrap">
             <Reveal>
-              <img className="lp-final-bear" src="/bear-logo.png" alt="" />
+              <img className="lp-final-bear" src="/bear-logo.png" alt="TradeJournal bear logo" />
               <span className="lp-final-eyebrow">YOUR NEXT REVIEW STARTS HERE</span>
               <h2>Ready to trade with a clearer head?</h2>
               <p>Bring your trades, notes, and review routine into one focused workspace.</p>
@@ -524,7 +546,7 @@ export default function LandingPage() {
       <footer className="lp-footer">
         <Reveal className="lp-wrap lp-foot-in">
           <div>
-            <Link to="/welcome" className="lp-brand"><img src="/bear-logo.png" alt="" /><span>Trade<b>Journal</b></span></Link>
+            <Link to="/welcome" className="lp-brand"><img src="/bear-logo.png" alt="TradeJournal bear logo" /><span>Trade<b>Journal</b></span></Link>
             <p>A journal and analytics workspace for traders.</p>
             <p>Track every trade, review every decision, and build your edge.</p>
             <p>Created by Osman Seid Ebrahim<br />Information Science Student &amp; Developer<br />Haramaya University, Ethiopia</p>
