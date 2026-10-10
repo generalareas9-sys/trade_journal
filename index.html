@@ -28,22 +28,32 @@
     <title>TradeJournal</title>
     <script>
       (() => {
-        let dark = false
+        let dark = true
         let preference = null
+        let savedDark = null
         try {
           preference = localStorage.getItem('trade-journal-theme-preference')
-        } catch {
-          dark = window.matchMedia('(prefers-color-scheme: dark)').matches
+          savedDark = localStorage.getItem('trade-journal-dark')
+        } catch (error) {
+          console.error('Could not read the saved theme:', error)
         }
         if (preference === 'dark' || preference === 'system') {
           dark = preference === 'dark' || window.matchMedia('(prefers-color-scheme: dark)').matches
         } else if (preference === 'light') {
           dark = false
         } else {
-          try {
-            dark = JSON.parse(localStorage.getItem('trade-journal-dark') || 'false') === true
-          } catch {
-            dark = window.matchMedia('(prefers-color-scheme: dark)').matches
+          if (savedDark !== null) {
+            try {
+              dark = JSON.parse(savedDark) === true
+            } catch (error) {
+              console.error('Could not parse the saved theme:', error)
+            }
+          } else {
+            try {
+              localStorage.setItem('trade-journal-dark', 'true')
+            } catch (error) {
+              console.error('Could not save the default dark theme:', error)
+            }
           }
         }
         if (preference !== null) {
@@ -53,7 +63,7 @@
             console.error('Could not initialize the saved theme:', error)
           }
         }
-        const workspacePage = ['/', '/journal', '/trades', '/import', '/reports', '/weekly-review', '/notebook', '/playbooks', '/backtesting', '/risk-calculator', '/settings'].includes(window.location.pathname)
+        const workspacePage = ['/', '/journal', '/trades', '/import', '/reports', '/weekly-review', '/notebook', '/playbooks', '/backtesting', '/risk-calculator', '/settings', '/help', '/contact', '/changelog'].includes(window.location.pathname)
         document.documentElement.classList.toggle('dark-theme', workspacePage && dark)
         document.documentElement.style.colorScheme = workspacePage && dark ? 'dark' : 'light'
       })()
