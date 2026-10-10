@@ -734,11 +734,12 @@ html, body, .app-shell { background: var(--bg); }
 .auth-legal a { color: #b6adff; text-decoration: underline; text-underline-offset: 2px; }
 .auth-legal small { display: block; color: #aeb4c2; font-size: 11px; font-weight: 400; }
 .auth-submit { display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 48px; margin-top: 0; color: #fff; border: 1px solid #6c5ce7; border-radius: 9px; background: #6c5ce7; font-size: 15px; font-weight: 700; transition: background .15s ease; animation: auth-field-in .4s ease-out both; animation-delay: 250ms; }
+.auth-form:not(.auth-verification-form) .auth-submit { margin-bottom: 14px; }
 .auth-submit:hover { background: #5949d6; }
 .auth-submit:disabled { opacity: .58; cursor: not-allowed; }
 .auth-submit-link { color: #fff; text-decoration: none; }
 .auth-submit-link:focus-visible { outline: 3px solid rgba(108,92,231,.45); outline-offset: 3px; }
-.auth-or-divider { display: flex; align-items: center; gap: 12px; color: #64748b; font-size: 12px; line-height: 1; }
+.auth-or-divider { display: flex; align-items: center; gap: 12px; margin: 16px 0; color: #64748b; font-size: 12px; line-height: 1; }
 .auth-or-divider::before, .auth-or-divider::after { content: ''; flex: 1; height: 1px; background: #cbd5e1; }
 .auth-google-button { display: flex; align-items: center; justify-content: center; gap: 11px; width: 100%; min-height: 44px; padding: 0 14px; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 9px; background: #fff; font: inherit; font-size: 14px; font-weight: 650; cursor: pointer; }
 .auth-google-button:hover:not(:disabled) { background: #f8fafc; border-color: #94a3b8; }
@@ -747,7 +748,7 @@ html, body, .app-shell { background: var(--bg); }
 .auth-google-button svg { width: 19px; height: 19px; flex: 0 0 19px; }
 .auth-form-panel .auth-legal small.auth-legal-error { color: #dc2626; }
 .auth-notice { margin: 0; padding: 11px 12px; color: #d7d3ff; border: 1px solid #433d69; border-radius: 8px; background: #201d2e; font-size: 13px; line-height: 1.5; }
-.auth-switch { margin: 12px 0 0; color: #b4b9c6; text-align: center; font-size: 14px; }
+.auth-switch { margin: 16px 0 0; color: #b4b9c6; text-align: center; font-size: 14px; }
 .auth-switch a { color: #b6adff; font-weight: 700; text-decoration: none; }
 .auth-switch a:hover { color: #d7d3ff; }
 .auth-privacy { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 10px 0 0; color: #b4b9c6; font-size: 12px; text-align: center; }
@@ -1063,19 +1064,21 @@ html, body, .app-shell { background: var(--bg); }
 .auth-verification-actions button:hover:not(:disabled) { color: #5142c7; text-decoration: underline; }
 .auth-verification-actions button:disabled { color: #64748b; cursor: not-allowed; }
 .auth-otp-status { min-height: 18px; margin: -8px 0 0; color: #475569; font-size: 12px; }
-.auth-legal-footer { display: flex; justify-content: center; gap: 16px; margin-top: 10px; }
+.auth-legal-footer { display: flex; justify-content: center; gap: 16px; margin-top: 12px; }
 .auth-legal-footer a { min-height: 32px; display: inline-flex; align-items: center; color: #6c5ce7; font-size: 12px; font-weight: 600; text-decoration: none; }
 .auth-legal-footer a:hover { text-decoration: underline; }
 .auth-legal-footer a:focus-visible { border-radius: 3px; outline: 3px solid rgba(108,92,231,.35); outline-offset: 2px; }
 @media (max-height: 800px) and (min-width: 900px) {
-  .auth-form-panel { padding-top: 20px; padding-bottom: 20px; }
+  .auth-form-panel { padding-top: 16px; padding-bottom: 16px; }
   .auth-privacy { display: none; }
-  .auth-switch { margin-top: 8px; }
-  .auth-legal-footer { margin-top: 0; }
+  .auth-switch { margin-top: 16px; }
+  .auth-legal-footer { margin-top: 12px; }
   .auth-legal-footer a { min-height: 20px; }
-  .auth-form-panel .auth-form { gap: 8px; }
-  .auth-form-panel .auth-intro { margin-bottom: 15px; }
-  .auth-form-panel .auth-back-link { margin-bottom: 16px; }
+  .auth-form-panel .auth-form { gap: 3px; }
+  .auth-form-panel .auth-form > label { gap: 3px; }
+  .auth-form-panel .auth-intro { margin-bottom: 10px; }
+  .auth-form-panel .auth-kicker { margin-bottom: 6px; }
+  .auth-form-panel .auth-back-link { margin-bottom: 12px; }
 }
 @media (max-width: 899px) {
   .auth-art-panel { background-image: linear-gradient(180deg, rgba(14,16,22,.08) 0%, rgba(14,16,22,.18) 46%, #f4f8ff 100%), linear-gradient(90deg, rgba(14,16,22,.15), rgba(14,16,22,.08)), url("/bear-landing.jpg"); }
