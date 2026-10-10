@@ -12,6 +12,65 @@ import { useJournal } from './hooks/useJournal'
 import useShortcuts from './hooks/useShortcuts'
 import WelcomeTour from './components/WelcomeTour'
 
+const LIVE_ORIGIN = 'https://trade-journal-livid-five.vercel.app'
+const LANDING_DESCRIPTION = 'TradeJournal is a trading journal to record trades, review your decisions, track win rate and profit, and build your edge. Created by Osman Seid Ebrahim.'
+const ROUTE_SEO = {
+  '/': { title: 'TradeJournal | Trading Journal for Traders', description: LANDING_DESCRIPTION },
+  '/welcome': { title: 'TradeJournal | Trading Journal for Traders', description: LANDING_DESCRIPTION },
+  '/login': { title: 'Sign In | TradeJournal', description: 'Sign in to TradeJournal to access your private trading journal, review your trades, and track your performance.' },
+  '/signup': { title: 'Create Your Account | TradeJournal', description: 'Create a TradeJournal account to record trades, review decisions, and track your trading performance.' },
+  '/help': { title: 'Help Center | TradeJournal', description: 'Find answers and guidance for recording trades, managing your journal, and understanding TradeJournal features.' },
+  '/changelog': { title: 'Changelog | TradeJournal', description: 'See product updates and improvements to the TradeJournal trading journal.' },
+  '/contact': { title: 'Contact | TradeJournal', description: 'Contact the TradeJournal team with questions, feedback, or support requests.' },
+  '/terms': { title: 'Terms of Service | TradeJournal', description: 'Read the terms that apply when using the TradeJournal trading journal and analytics service.' },
+  '/privacy': { title: 'Privacy Policy | TradeJournal', description: 'Learn what information TradeJournal collects, how it is used, and how your journal data is handled.' },
+  '/disclaimer': { title: 'Disclaimer | TradeJournal', description: 'Read important information about the limitations of TradeJournal and the risks of trading.' },
+}
+const PRIVATE_ROUTES = new Set([
+  '/settings', '/trades', '/journal', '/reports', '/import', '/risk-calculator',
+  '/weekly-review', '/notebook', '/playbooks', '/backtesting', '/forgot-password',
+  '/reset-password',
+])
+
+function useRouteSeo(pathname) {
+  useEffect(() => {
+    const route = ROUTE_SEO[pathname]
+    const title = route?.title || 'Page Not Found | TradeJournal'
+    const description = route?.description || 'The requested TradeJournal page could not be found.'
+    const robots = route && !PRIVATE_ROUTES.has(pathname) ? 'index, follow' : 'noindex, follow'
+    const canonicalUrl = `${LIVE_ORIGIN}${pathname === '/' ? '/' : pathname}`
+    document.title = title
+
+    const setMeta = (selector, attribute, value, create) => {
+      let element = document.head.querySelector(selector)
+      if (!element) {
+        element = document.createElement('meta')
+        Object.entries(create).forEach(([key, item]) => element.setAttribute(key, item))
+        document.head.append(element)
+      }
+      element.setAttribute(attribute, value)
+    }
+    const setLink = (rel, href) => {
+      let element = document.head.querySelector(`link[rel="${rel}"]`)
+      if (!element) {
+        element = document.createElement('link')
+        element.setAttribute('rel', rel)
+        document.head.append(element)
+      }
+      element.setAttribute('href', href)
+    }
+
+    setMeta('meta[name="description"]', 'content', description, { name: 'description' })
+    setMeta('meta[name="robots"]', 'content', robots, { name: 'robots' })
+    setMeta('meta[property="og:title"]', 'content', title, { property: 'og:title' })
+    setMeta('meta[property="og:description"]', 'content', description, { property: 'og:description' })
+    setMeta('meta[property="og:url"]', 'content', canonicalUrl, { property: 'og:url' })
+    setMeta('meta[name="twitter:title"]', 'content', title, { name: 'twitter:title' })
+    setMeta('meta[name="twitter:description"]', 'content', description, { name: 'twitter:description' })
+    setLink('canonical', canonicalUrl)
+  }, [pathname])
+}
+
 const LandingPage = lazy(() => import('./pages/LandingPage'))
 const AuthPage = lazy(() => import('./pages/AuthPage'))
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
@@ -149,6 +208,7 @@ function ProtectedLayout() {
 export default function App() {
   const location = useLocation()
   const { settings = {}, dark, setDark } = useJournal()
+  useRouteSeo(location.pathname)
   const setDarkRef = useRef(setDark)
   setDarkRef.current = setDark
 
