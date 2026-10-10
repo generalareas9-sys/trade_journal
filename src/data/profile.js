@@ -34,6 +34,7 @@ export async function getOrCreateProfile(user) {
             themePreference: 'dark',
             themeChosen: false,
             theme: true,
+            demoDataInitialized: false,
           },
         },
       })
