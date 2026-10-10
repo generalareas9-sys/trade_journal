@@ -14,8 +14,8 @@ html.dark-theme {
   --risk-purple: #8B81FF;
   --risk-purple-soft: rgba(139, 129, 255, 0.14);
   --risk-blue-soft: rgba(96, 165, 250, 0.12);
-  --risk-green-soft: rgba(52, 211, 153, 0.12);
-  --risk-red-soft: rgba(248, 113, 113, 0.12);
+  --risk-green-soft: rgba(34, 197, 94, 0.16);
+  --risk-red-soft: rgba(239, 68, 68, 0.16);
   --risk-warning-bg: #2B220B;
   --risk-warning-border: #6F5822;
   --risk-warning-text: #F3D37D;
@@ -54,8 +54,10 @@ html.dark-theme {
   --topbar-subtitle: #B4B9C6;
   --purple: #B7AFFF;
   --purple-soft: var(--risk-purple-soft);
-  --profit: #8FE3B8;
-  --loss: #FDA4AF;
+  --profit: #22C55E;
+  --profit-strong: #16A34A;
+  --loss: #EF4444;
+  --loss-strong: #DC2626;
   --radius: 16px;
   --shadow: var(--dark-card-shadow);
 }
@@ -308,7 +310,7 @@ html.dark-theme .stat-card:has(.donut-svg) {
 }
 
 html.dark-theme .stat-card:has(.ratio-bar) {
-  background-image: linear-gradient(145deg, rgba(34, 197, 94, .10), rgba(248, 113, 113, .07), #0F0D1E);
+  background-image: linear-gradient(145deg, rgba(34, 197, 94, .10), rgba(239, 68, 68, .07), #0F0D1E);
 }
 
 html.dark-theme .purple-stat,
@@ -323,12 +325,12 @@ html.dark-theme .resource-faq-item button svg {
 html.dark-theme .green-stat,
 html.dark-theme .profit,
 html.dark-theme .profit-bg {
-  color: #8FE3B8 !important;
+  color: var(--profit) !important;
 }
 
 html.dark-theme .loss,
 html.dark-theme .loss-bg {
-  color: #FDA4AF !important;
+  color: var(--loss) !important;
 }
 
 html.dark-theme .green-stat,
@@ -630,14 +632,14 @@ html.dark-theme .backup-preview-grid > div {
 
 html.dark-theme .calendar-profit,
 html.dark-theme .heat-profit {
-  border-color: rgba(52, 211, 153, .34);
-  background: rgba(52, 211, 153, .10);
+  border-color: rgba(34, 197, 94, .55);
+  background: rgba(34, 197, 94, .24);
 }
 
 html.dark-theme .calendar-loss,
 html.dark-theme .heat-loss {
-  border-color: rgba(248, 113, 113, .34);
-  background: rgba(248, 113, 113, .10);
+  border-color: rgba(239, 68, 68, .55);
+  background: rgba(239, 68, 68, .24);
 }
 
 html.dark-theme .warning-banner,
@@ -864,7 +866,7 @@ html.dark-theme .dj-progress {
 .app-shell.dark-theme .stat-icon.green-stat,
 .app-shell.dark-theme .playbook-icon.green {
   background-color: var(--risk-green-soft);
-  color: #8FE3B8;
+  color: var(--profit);
 }
 
 .app-shell.dark-theme .stat-icon.orange-stat {
@@ -877,9 +879,9 @@ html.dark-theme .dj-progress {
 .app-shell.dark-theme .profit-bg,
 .app-shell.dark-theme .calendar-profit,
 .app-shell.dark-theme .heat-profit {
-  border-color: rgba(52, 211, 153, .30);
+  border-color: rgba(34, 197, 94, .55);
   background-color: var(--risk-green-soft);
-  color: #8FE3B8;
+  color: var(--profit);
 }
 
 .app-shell.dark-theme .blue-stat {
@@ -892,9 +894,9 @@ html.dark-theme .dj-progress {
 .app-shell.dark-theme .side-badge.short,
 .app-shell.dark-theme .calendar-loss,
 .app-shell.dark-theme .heat-loss {
-  border-color: rgba(248, 113, 113, .30);
+  border-color: rgba(239, 68, 68, .55);
   background-color: var(--risk-red-soft);
-  color: #FDA4AF;
+  color: var(--loss);
 }
 
 .app-shell.dark-theme .orange-stat,
@@ -907,12 +909,12 @@ html.dark-theme .dj-progress {
 
 .app-shell.dark-theme .profit,
 .app-shell.dark-theme .stat-card .profit {
-  color: #8FE3B8;
+  color: var(--profit);
 }
 
 .app-shell.dark-theme .loss,
 .app-shell.dark-theme .stat-card .loss {
-  color: #FDA4AF;
+  color: var(--loss);
 }
 
 .app-shell.dark-theme .button-primary,
@@ -1145,4 +1147,308 @@ html.dark-theme .rc-page select option,
 html.dark-theme .rc-page select optgroup {
   background: revert;
   color: revert;
+}
+
+.app-shell.dark-theme {
+  --profit: #22C55E;
+  --profit-strong: #16A34A;
+  --loss: #EF4444;
+  --loss-strong: #DC2626;
+}
+
+.app-shell.dark-theme .rc-page {
+  --rc-green-soft: rgba(34, 197, 94, .16);
+  --rc-red-soft: rgba(239, 68, 68, .16);
+}
+
+.app-shell.dark-theme .profit,
+.app-shell.dark-theme .stat-card .profit,
+.app-shell.dark-theme .profit-bg,
+.app-shell.dark-theme .green-stat,
+.app-shell.dark-theme .stat-icon.green-stat,
+.app-shell.dark-theme .playbook-icon.green,
+.app-shell.dark-theme .side-badge.long,
+.app-shell.dark-theme .badge-long,
+.app-shell.dark-theme .result-win,
+.app-shell.dark-theme .result-manual-win,
+.app-shell.dark-theme .calendar-profit strong,
+.app-shell.dark-theme .heat-profit strong,
+.app-shell.dark-theme .rc-output-green > strong {
+  color: var(--profit) !important;
+}
+
+.app-shell.dark-theme .loss,
+.app-shell.dark-theme .stat-card .loss,
+.app-shell.dark-theme .loss-bg,
+.app-shell.dark-theme .side-badge.short,
+.app-shell.dark-theme .badge-short,
+.app-shell.dark-theme .result-loss,
+.app-shell.dark-theme .result-manual-loss,
+.app-shell.dark-theme .calendar-loss strong,
+.app-shell.dark-theme .heat-loss strong,
+.app-shell.dark-theme .rc-output-red > strong {
+  color: var(--loss) !important;
+}
+
+.app-shell.dark-theme .profit-bg,
+.app-shell.dark-theme .green-stat,
+.app-shell.dark-theme .stat-icon.green-stat,
+.app-shell.dark-theme .playbook-icon.green,
+.app-shell.dark-theme .side-badge.long,
+.app-shell.dark-theme .badge-long,
+.app-shell.dark-theme .result-win,
+.app-shell.dark-theme .result-manual-win {
+  border-color: rgba(34, 197, 94, .55);
+  background-color: rgba(34, 197, 94, .16);
+}
+
+.app-shell.dark-theme .loss-bg,
+.app-shell.dark-theme .side-badge.short,
+.app-shell.dark-theme .badge-short,
+.app-shell.dark-theme .result-loss,
+.app-shell.dark-theme .result-manual-loss {
+  border-color: rgba(239, 68, 68, .55);
+  background-color: rgba(239, 68, 68, .16);
+}
+
+.app-shell.dark-theme .calendar-profit,
+.app-shell.dark-theme .heat-profit {
+  border: 1px solid rgba(34, 197, 94, .55);
+  background-color: rgba(34, 197, 94, .24);
+}
+
+.app-shell.dark-theme .calendar-loss,
+.app-shell.dark-theme .heat-loss {
+  border: 1px solid rgba(239, 68, 68, .55);
+  background-color: rgba(239, 68, 68, .24);
+}
+
+.app-shell.dark-theme .calendar-profit strong,
+.app-shell.dark-theme .heat-profit strong {
+  color: var(--profit) !important;
+}
+
+.app-shell.dark-theme .calendar-loss strong,
+.app-shell.dark-theme .heat-loss strong {
+  color: var(--loss) !important;
+}
+
+.app-shell.dark-theme .ratio-bar span:first-child {
+  background: var(--profit);
+}
+
+.app-shell.dark-theme .ratio-bar span:last-child {
+  background: var(--loss);
+}
+
+.app-shell.dark-theme .rc-risk-meter-green .rc-risk-meter-track > span,
+.app-shell.dark-theme .rc-rr-reward {
+  background: var(--profit);
+}
+
+.app-shell.dark-theme .rc-risk-meter-red .rc-risk-meter-track > span,
+.app-shell.dark-theme .rc-rr-risk {
+  background: var(--loss);
+}
+
+.app-shell.dark-theme .rc-risk-meter-green .rc-risk-meter-track > span,
+.app-shell.dark-theme .rc-rr-reward {
+  filter: drop-shadow(0 0 5px var(--profit));
+}
+
+.app-shell.dark-theme .rc-risk-meter-red .rc-risk-meter-track > span,
+.app-shell.dark-theme .rc-rr-risk {
+  filter: drop-shadow(0 0 5px var(--loss));
+}
+
+.app-shell.dark-theme .recharts-bar-rectangle path[fill="var(--profit)"],
+.app-shell.dark-theme .recharts-bar-rectangle path[fill="var(--loss)"] {
+  filter: drop-shadow(0 0 4px currentColor);
+  transition: filter 180ms ease, transform 180ms ease;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+
+.app-shell.dark-theme .recharts-bar-rectangle path[fill="var(--profit)"] {
+  fill: var(--profit) !important;
+  color: var(--profit);
+}
+
+.app-shell.dark-theme .recharts-bar-rectangle path[fill="var(--loss)"] {
+  fill: var(--loss) !important;
+  color: var(--loss);
+}
+
+.app-shell :is(
+  .stat-card,
+  .panel,
+  .wr-card,
+  .dj-card,
+  .report-stat,
+  .playbook-card,
+  .playbook-detail,
+  .settings-card,
+  .settings-section,
+  .settings-tab-panel,
+  .backtest-card,
+  .rc-card,
+  .notebook-card,
+  .notebook-sidebar .note-list-item,
+  .note-list-item,
+  .calendar-cell,
+  .dj-calendar-day,
+  .calendar-week-total,
+  .heatmap-cell
+) {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.app-shell :is(
+  .button-primary,
+  .button-secondary,
+  button,
+  a[class*="button"],
+  .wr-primary-button,
+  .wr-button,
+  .wr-icon-button,
+  .icon-button,
+  .subtle-icon,
+  .dj-header-actions button,
+  .dj-nav-button,
+  .dj-today-button,
+  .dj-calendar-nav button,
+  .nav-link,
+  .recharts-legend-item,
+  .recharts-default-tooltip
+) {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease;
+}
+
+.app-shell :is(.stat-card, .panel, .wr-card, .dj-card, .report-stat, .playbook-card, .playbook-detail, .settings-card, .settings-section, .settings-tab-panel, .backtest-card, .notebook-card, .notebook-sidebar .note-list-item, .note-list-item, .calendar-cell, .calendar-week-total, .heatmap-cell):has(.profit) {
+  --hover-glow: rgba(34, 197, 94, .22);
+}
+
+.app-shell :is(.stat-card, .panel, .wr-card, .dj-card, .report-stat, .playbook-card, .playbook-detail, .settings-card, .settings-section, .settings-tab-panel, .backtest-card, .notebook-card, .notebook-sidebar .note-list-item, .note-list-item, .calendar-cell, .calendar-week-total, .heatmap-cell):has(.loss) {
+  --hover-glow: rgba(239, 68, 68, .22);
+}
+
+.app-shell :is(.stat-card, .panel, .wr-card, .dj-card, .report-stat, .playbook-card, .playbook-detail, .settings-card, .settings-section, .settings-tab-panel, .backtest-card, .notebook-card, .notebook-sidebar .note-list-item, .note-list-item, .calendar-cell, .calendar-week-total, .heatmap-cell) {
+  --hover-glow: rgba(139, 92, 246, .18);
+}
+
+@media (hover: hover) {
+  .app-shell :is(.stat-card, .panel, .wr-card, .dj-card, .report-stat, .playbook-card, .playbook-detail, .settings-card, .settings-section, .settings-tab-panel, .backtest-card, .rc-card, .notebook-card, .notebook-sidebar .note-list-item, .note-list-item, .calendar-week-total, .heatmap-cell):hover {
+    position: relative;
+    z-index: 2;
+    transform: translateY(-4px);
+    border-color: rgba(167, 139, 250, .52);
+    box-shadow: 0 16px 30px rgba(6, 5, 16, .28), 0 0 20px var(--hover-glow, rgba(139, 92, 246, .18));
+  }
+
+  .app-shell :is(.calendar-cell.calendar-day, .dj-calendar-day):hover {
+    position: relative;
+    z-index: 2;
+    transform: scale(1.04);
+    box-shadow: 0 0 16px var(--hover-glow, rgba(139, 92, 246, .18));
+    cursor: pointer;
+  }
+
+  .app-shell .calendar-profit:hover {
+    --hover-glow: rgba(34, 197, 94, .35);
+  }
+
+  .app-shell .calendar-loss:hover {
+    --hover-glow: rgba(239, 68, 68, .35);
+  }
+
+  .app-shell table tbody tr:hover td:first-child {
+    box-shadow: inset 3px 0 0 #8B5CF6;
+  }
+
+  .app-shell :is(button, .button-primary, .button-secondary, .wr-primary-button, .wr-button, .wr-icon-button, .icon-button, .subtle-icon):hover {
+    transform: translateY(-2px);
+  }
+
+  .app-shell :is(.icon-button, .subtle-icon, .wr-icon-button):hover {
+    border-radius: 50%;
+    background-color: rgba(139, 92, 246, .14);
+    box-shadow: 0 0 14px rgba(139, 92, 246, .16);
+  }
+
+  .app-shell .nav-link:hover svg {
+    transform: translateX(3px);
+  }
+
+  .app-shell .nav-link svg {
+    transition: transform 180ms ease, filter 180ms ease;
+  }
+
+  .app-shell .nav-link:hover {
+    box-shadow: 0 0 16px rgba(139, 92, 246, .16);
+  }
+
+  .app-shell .recharts-rectangle:hover {
+    filter: brightness(1.18) drop-shadow(0 0 5px currentColor);
+    transform: translateY(-2px);
+  }
+
+  .app-shell .recharts-legend-item:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.app-shell :is(button, .button-primary, .button-secondary, .wr-primary-button, .wr-button, .wr-icon-button, .icon-button, .subtle-icon):active {
+  transform: scale(.97);
+}
+
+.app-shell table tbody tr,
+.app-shell table tbody tr td:first-child {
+  transition: background-color 180ms ease, box-shadow 180ms ease;
+}
+
+.app-shell table tbody tr:hover td {
+  background-color: rgba(139, 92, 246, .08);
+}
+
+.app-shell .recharts-default-tooltip {
+  animation: chart-tooltip-in 180ms ease both;
+}
+
+.app-shell :is(.stat-card strong, .wr-metrics strong, .report-stat strong, .trade-stats-strip strong, .dj-kpis strong) {
+  animation: kpi-value-in 400ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+@keyframes kpi-value-in {
+  from { opacity: .65; transform: scale(.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes chart-tooltip-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell *,
+  .app-shell *::before,
+  .app-shell *::after {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .app-shell *:hover,
+  .app-shell *:active {
+    transform: none !important;
+  }
+}
+
+@media (hover: none) {
+  .app-shell.dark-theme :is(.panel, .stat-card, .wr-card, .dj-card, .calendar-panel, .playbook-card, .playbook-detail, .backtest-intro, .backtest-filter, .settings-tab-panel, .settings-backup-preview, .notebook-sidebar, .note-editor, .calendar-cell.calendar-day, .dj-calendar-day):hover {
+    transform: none;
+  }
+}
+
+.app-shell:not(.dark-theme) table tbody tr:hover td {
+  background-color: rgba(139, 92, 246, .08);
 }
