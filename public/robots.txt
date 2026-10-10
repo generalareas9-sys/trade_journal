@@ -1,10 +1,23 @@
 User-agent: *
+Allow: /$
 Allow: /welcome
 Allow: /login
 Allow: /signup
 Allow: /terms
 Allow: /privacy
 Allow: /disclaimer
-Disallow: /
+Allow: /help
+Allow: /changelog
+Allow: /contact
+Disallow: /settings
+Disallow: /trades
+Disallow: /journal
+Disallow: /reports
+Disallow: /import
+Disallow: /risk-calculator
+Disallow: /weekly-review
+Disallow: /notebook
+Disallow: /playbooks
+Disallow: /backtesting
 
-Sitemap: https://your-domain.com/sitemap.xml
+Sitemap: https://trade-journal-livid-five.vercel.app/sitemap.xml
