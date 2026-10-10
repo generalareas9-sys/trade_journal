@@ -1,4 +1,4 @@
-import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { Component, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { ProtectedRoute, PublicOnlyRoute } from './components/RouteGuards'
 import Sidebar from './components/Sidebar'
@@ -212,7 +212,7 @@ export default function App() {
   const setDarkRef = useRef(setDark)
   setDarkRef.current = setDark
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const workspacePaths = ['/', '/journal', '/trades', '/import', '/reports', '/weekly-review', '/notebook', '/playbooks', '/backtesting', '/risk-calculator', '/settings', '/help', '/contact', '/changelog']
     const workspacePage = workspacePaths.includes(location.pathname)
     document.documentElement.classList.toggle('dark-theme', workspacePage && dark)
@@ -220,6 +220,10 @@ export default function App() {
   }, [location.pathname, dark])
 
   useEffect(() => {
+    if (settings.themeChosen !== true) {
+      setDarkRef.current(true)
+      return undefined
+    }
     if (settings.themePreference === 'light' || settings.themePreference === 'dark') {
       setDarkRef.current(settings.themePreference === 'dark')
       return undefined
@@ -230,7 +234,7 @@ export default function App() {
     applySystemTheme()
     colorScheme.addEventListener('change', applySystemTheme)
     return () => colorScheme.removeEventListener('change', applySystemTheme)
-  }, [settings.themePreference])
+  }, [settings.themeChosen, settings.themePreference])
 
   return (
     <PageErrorBoundary key={location.pathname}><Suspense fallback={<PageSkeleton />}><Routes>
