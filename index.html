@@ -35,15 +35,19 @@
     <script>
       (() => {
         let dark = true
+        let themeChosen = false
         let preference = null
         let savedDark = null
         try {
+          themeChosen = localStorage.getItem('trade-journal-theme-chosen') === 'true'
           preference = localStorage.getItem('trade-journal-theme-preference')
           savedDark = localStorage.getItem('trade-journal-dark')
         } catch (error) {
           console.error('Could not read the saved theme:', error)
         }
-        if (preference === 'dark' || preference === 'system') {
+        if (!themeChosen) {
+          dark = true
+        } else if (preference === 'dark' || preference === 'system') {
           dark = preference === 'dark' || window.matchMedia('(prefers-color-scheme: dark)').matches
         } else if (preference === 'light') {
           dark = false
@@ -62,12 +66,10 @@
             }
           }
         }
-        if (preference !== null) {
-          try {
-            localStorage.setItem('trade-journal-dark', JSON.stringify(dark))
-          } catch (error) {
-            console.error('Could not initialize the saved theme:', error)
-          }
+        try {
+          localStorage.setItem('trade-journal-dark', JSON.stringify(dark))
+        } catch (error) {
+          console.error('Could not initialize the saved theme:', error)
         }
         const workspacePage = ['/', '/journal', '/trades', '/import', '/reports', '/weekly-review', '/notebook', '/playbooks', '/backtesting', '/risk-calculator', '/settings', '/help', '/contact', '/changelog'].includes(window.location.pathname)
         document.documentElement.classList.toggle('dark-theme', workspacePage && dark)
