@@ -1,0 +1,653 @@
+html.dark-theme {
+  color-scheme: dark;
+  --bg: #080711;
+  --card: #0F0D1E;
+  --card-soft: #14112B;
+  --text: #F3F4F6;
+  --text-strong: #F3F4F6;
+  --text-2: #B4B9C6;
+  --text-3: #A1A9B8;
+  --muted: #A1A9B8;
+  --subtle: #B4B9C6;
+  --line: rgba(139, 92, 246, .20);
+  --line-strong: rgba(139, 92, 246, .36);
+  --topbar-bg: #08070F;
+  --topbar-border: rgba(139, 92, 246, .18);
+  --topbar-title: #F3F4F6;
+  --topbar-subtitle: #B4B9C6;
+  --purple: #B7AFFF;
+  --purple-soft: rgba(139, 92, 246, .16);
+  --profit: #8FE3B8;
+  --loss: #FDA4AF;
+  --radius: 16px;
+  --shadow: 0 14px 30px rgba(6, 5, 16, .52), 0 0 22px rgba(117, 92, 255, .08);
+}
+
+html.dark-theme,
+html.dark-theme body {
+  color-scheme: dark;
+  scrollbar-width: thin;
+  scrollbar-color: #756b9a #0A0915;
+}
+
+html.dark-theme body {
+  background-color: #080711;
+  background-image:
+    radial-gradient(circle at 50% -12%, rgba(117, 92, 255, .19) 0, transparent 42%),
+    radial-gradient(rgba(175, 165, 255, .055) .7px, transparent .8px),
+    linear-gradient(180deg, #080711 0%, #0B0818 100%);
+  background-attachment: fixed;
+  color: #F3F4F6;
+}
+
+html.dark-theme body::-webkit-scrollbar,
+html.dark-theme *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html.dark-theme body::-webkit-scrollbar-track,
+html.dark-theme *::-webkit-scrollbar-track {
+  background: #0A0915;
+}
+
+html.dark-theme body::-webkit-scrollbar-thumb,
+html.dark-theme *::-webkit-scrollbar-thumb {
+  border: 2px solid #0A0915;
+  border-radius: 999px;
+  background: #756b9a;
+}
+
+html.dark-theme .app-shell {
+  background: transparent;
+  color: var(--text);
+}
+
+html.dark-theme .sidebar,
+html.dark-theme .topbar {
+  border-color: rgba(139, 92, 246, .18);
+  background: #08070F;
+}
+
+html.dark-theme .nav-link {
+  color: #B4B9C6;
+}
+
+html.dark-theme .nav-link:hover {
+  color: #F3F4F6;
+}
+
+html.dark-theme .nav-link.active {
+  border: 1px solid rgba(139, 92, 246, .24);
+  background: linear-gradient(100deg, rgba(139, 92, 246, .20), rgba(139, 92, 246, .08));
+  box-shadow: inset 0 0 16px rgba(139, 92, 246, .08), 0 0 16px rgba(139, 92, 246, .10);
+  color: #C4BFFF;
+}
+
+html.dark-theme .mq-bar {
+  border-block: 1px solid rgba(139, 92, 246, .18);
+  background: linear-gradient(100deg, #111027 0%, #201A3B 52%, #111027 100%);
+  color: #F3F4F6;
+}
+
+html.dark-theme .lp.resource-page {
+  background:
+    radial-gradient(circle at 50% -12%, rgba(117, 92, 255, .17) 0, transparent 40%),
+    linear-gradient(180deg, #080711 0%, #0B0818 100%);
+  color: #F3F4F6;
+}
+
+html.dark-theme .resource-main .resource-hero {
+  background:
+    radial-gradient(ellipse at 50% 0, rgba(117, 92, 255, .19), transparent 65%),
+    linear-gradient(180deg, #0B0818 0%, #0F0D1E 100%);
+}
+
+html.dark-theme .resource-hero h1,
+html.dark-theme .resource-category h2,
+html.dark-theme .resource-section-heading h2,
+html.dark-theme .resource-cta h2,
+html.dark-theme .resource-release-card h2,
+html.dark-theme .resource-feature-list h3,
+html.dark-theme .contact-kind h2,
+html.dark-theme .contact-form-card h2,
+html.dark-theme .contact-details h2 {
+  color: #F3F4F6;
+}
+
+html.dark-theme .resource-hero p,
+html.dark-theme .resource-article p,
+html.dark-theme .resource-faq-item p,
+html.dark-theme .resource-cta p,
+html.dark-theme .resource-release-card > p,
+html.dark-theme .resource-feature-list p,
+html.dark-theme .contact-kind p,
+html.dark-theme .contact-form-intro,
+html.dark-theme .contact-details > p {
+  color: #B4B9C6;
+}
+
+html.dark-theme .resource-search {
+  border-color: rgba(139, 92, 246, .28);
+  background: #12102A;
+  color: #B4B9C6;
+}
+
+html.dark-theme .resource-article,
+html.dark-theme .resource-feature-list > div,
+html.dark-theme .resource-planned-list > div,
+html.dark-theme .contact-details dl > div,
+html.dark-theme .contact-details .contact-email-note {
+  border-color: rgba(139, 92, 246, .18);
+}
+
+html.dark-theme .resource-article button,
+html.dark-theme .resource-faq-item button,
+html.dark-theme .resource-planned-list > div,
+html.dark-theme .contact-details dd {
+  color: #F3F4F6;
+}
+
+html.dark-theme .resource-release-marker {
+  background: #0F0D1E;
+}
+
+html.dark-theme .panel,
+html.dark-theme .stat-card,
+html.dark-theme .wr-card,
+html.dark-theme .dj-card,
+html.dark-theme .calendar-panel,
+html.dark-theme .playbook-card,
+html.dark-theme .settings-card,
+html.dark-theme .settings-tab-panel,
+html.dark-theme .settings-section,
+html.dark-theme .notebook-card,
+html.dark-theme .backtest-card,
+html.dark-theme .resource-card,
+html.dark-theme .resource-faq-item,
+html.dark-theme .resource-cta,
+html.dark-theme .onb-card,
+html.dark-theme .onboarding-card,
+html.dark-theme .rc-card,
+html.dark-theme .trade-modal,
+html.dark-theme .trade-drawer,
+html.dark-theme .data-dialog,
+html.dark-theme .command-dialog,
+html.dark-theme .shortcuts-dialog,
+html.dark-theme .tour-dialog,
+html.dark-theme .first-run-dialog,
+html.dark-theme .custom-range-popover,
+html.dark-theme .account-menu,
+html.dark-theme .notification-menu,
+html.dark-theme .sidebar-profile-menu,
+html.dark-theme .resource-empty {
+  border-color: rgba(139, 92, 246, .20);
+  border-radius: 16px;
+  background-color: #0F0D1E;
+  box-shadow: var(--shadow);
+}
+
+html.dark-theme .panel,
+html.dark-theme .stat-card,
+html.dark-theme .wr-card,
+html.dark-theme .dj-card,
+html.dark-theme .calendar-panel,
+html.dark-theme .playbook-card,
+html.dark-theme .settings-card,
+html.dark-theme .settings-tab-panel,
+html.dark-theme .settings-section,
+html.dark-theme .notebook-card,
+html.dark-theme .backtest-card,
+html.dark-theme .resource-card,
+html.dark-theme .resource-faq-item,
+html.dark-theme .resource-cta,
+html.dark-theme .onb-card,
+html.dark-theme .onboarding-card,
+html.dark-theme .rc-card {
+  background-image: linear-gradient(145deg, rgba(20, 17, 43, .74), rgba(15, 13, 30, .96));
+}
+
+html.dark-theme .panel,
+html.dark-theme .stat-card,
+html.dark-theme .wr-card,
+html.dark-theme .dj-card,
+html.dark-theme .playbook-card,
+html.dark-theme .settings-card,
+html.dark-theme .settings-tab-panel,
+html.dark-theme .settings-section,
+html.dark-theme .notebook-card,
+html.dark-theme .backtest-card,
+html.dark-theme .resource-card,
+html.dark-theme .resource-faq-item,
+html.dark-theme .onb-card,
+html.dark-theme .onboarding-card,
+html.dark-theme .rc-card {
+  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+html.dark-theme .panel:hover,
+html.dark-theme .stat-card:hover,
+html.dark-theme .wr-card:hover,
+html.dark-theme .dj-card:hover,
+html.dark-theme .playbook-card:hover,
+html.dark-theme .settings-card:hover,
+html.dark-theme .settings-section:hover,
+html.dark-theme .notebook-card:hover,
+html.dark-theme .backtest-card:hover,
+html.dark-theme .resource-card:hover,
+html.dark-theme .rc-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(167, 139, 250, .46);
+  box-shadow: 0 18px 34px rgba(6, 5, 16, .58), 0 0 24px rgba(117, 92, 255, .13);
+}
+
+html.dark-theme .stat-card.purple-stat,
+html.dark-theme .purple-stat {
+  background-color: rgba(139, 92, 246, .13);
+}
+
+html.dark-theme .stat-card.blue-stat,
+html.dark-theme .blue-stat {
+  background-color: rgba(59, 130, 246, .12);
+}
+
+html.dark-theme .stat-card.green-stat,
+html.dark-theme .green-stat {
+  background-color: rgba(34, 197, 94, .12);
+}
+
+html.dark-theme .stat-card.orange-stat,
+html.dark-theme .orange-stat {
+  background-color: rgba(245, 158, 11, .12);
+}
+
+html.dark-theme .stat-card:has(.stat-icon.purple-stat) {
+  background-image: linear-gradient(145deg, rgba(139, 92, 246, .15), rgba(15, 13, 30, .96));
+}
+
+html.dark-theme .stat-card:has(.gauge-svg) {
+  background-image: linear-gradient(145deg, rgba(34, 197, 94, .11), rgba(15, 13, 30, .96));
+}
+
+html.dark-theme .stat-card:has(.donut-svg) {
+  background-image: linear-gradient(145deg, rgba(59, 130, 246, .12), rgba(15, 13, 30, .96));
+}
+
+html.dark-theme .stat-card:has(.ratio-bar) {
+  background-image: linear-gradient(145deg, rgba(34, 197, 94, .10), rgba(248, 113, 113, .07), #0F0D1E);
+}
+
+html.dark-theme .purple-stat,
+html.dark-theme .stat-icon.purple-stat,
+html.dark-theme .position-icon,
+html.dark-theme .resource-cta-icon,
+html.dark-theme .resource-article button svg,
+html.dark-theme .resource-faq-item button svg {
+  color: #C4BFFF;
+}
+
+html.dark-theme .green-stat,
+html.dark-theme .profit,
+html.dark-theme .profit-bg {
+  color: #8FE3B8 !important;
+}
+
+html.dark-theme .loss,
+html.dark-theme .loss-bg {
+  color: #FDA4AF !important;
+}
+
+html.dark-theme .green-stat,
+html.dark-theme .blue-stat,
+html.dark-theme .orange-stat,
+html.dark-theme .profit-bg,
+html.dark-theme .loss-bg {
+  border-color: rgba(139, 92, 246, .20);
+}
+
+html.dark-theme .text-muted,
+html.dark-theme .muted-icon,
+html.dark-theme .topbar .topbar-heading p,
+html.dark-theme .stat-card-bottom,
+html.dark-theme .panel-heading p,
+html.dark-theme .resource-release-top,
+html.dark-theme .resource-category p,
+html.dark-theme .resource-release-card > p,
+html.dark-theme .resource-feature-list p,
+html.dark-theme .resource-article p,
+html.dark-theme .resource-faq-item p,
+html.dark-theme .contact-details > p,
+html.dark-theme .contact-form-intro,
+html.dark-theme .contact-details dt,
+html.dark-theme .contact-details dd,
+html.dark-theme .contact-kind p {
+  color: #B4B9C6;
+}
+
+html.dark-theme .stat-card,
+html.dark-theme .panel,
+html.dark-theme .wr-card,
+html.dark-theme .dj-card,
+html.dark-theme .playbook-card,
+html.dark-theme .resource-card,
+html.dark-theme .contact-details,
+html.dark-theme .resource-feature-list > div,
+html.dark-theme .calendar-cell,
+html.dark-theme .calendar-week-total,
+html.dark-theme .heatmap-cell,
+html.dark-theme .wr-discipline-item,
+html.dark-theme .wr-journal-stats > div,
+html.dark-theme .notebook-layout .folder-list button,
+html.dark-theme .note-list-item {
+  color: #F3F4F6;
+}
+
+html.dark-theme .welcome-strip,
+html.dark-theme .upgrade-card,
+html.dark-theme .calendar-week-total,
+html.dark-theme .wr-discipline-item,
+html.dark-theme .wr-journal-stats > div,
+html.dark-theme .heatmap-cell,
+html.dark-theme .backup-preview-grid > div,
+html.dark-theme .resource-feature-list > div,
+html.dark-theme .resource-planned-list > div,
+html.dark-theme .onb-done,
+html.dark-theme .onb-item:hover {
+  border-color: rgba(139, 92, 246, .18);
+  background: #14112B;
+  color: #F3F4F6;
+}
+
+html.dark-theme .welcome-avatar,
+html.dark-theme .resource-cta-icon {
+  background: rgba(139, 92, 246, .18);
+}
+
+html.dark-theme .button-primary,
+html.dark-theme .wr-primary-button,
+html.dark-theme .rc-copy-button {
+  border-color: transparent;
+  background: linear-gradient(135deg, #6D5EF7 0%, #4F46E5 100%);
+  box-shadow: 0 10px 22px rgba(79, 70, 229, .24);
+  color: #FFFFFF;
+}
+
+html.dark-theme .button-primary:hover,
+html.dark-theme .wr-primary-button:hover,
+html.dark-theme .rc-copy-button:hover {
+  background: linear-gradient(135deg, #7C6DFF 0%, #5B52ED 100%);
+  color: #FFFFFF;
+}
+
+html.dark-theme .button-secondary,
+html.dark-theme .wr-button,
+html.dark-theme .wr-icon-button,
+html.dark-theme .dj-header-actions button,
+html.dark-theme .dj-text-button,
+html.dark-theme .dj-today-button {
+  border-color: rgba(139, 92, 246, .28);
+  background: #12102A;
+  color: #E5E7EB;
+}
+
+html.dark-theme input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+html.dark-theme select,
+html.dark-theme textarea,
+html.dark-theme .table-search,
+html.dark-theme .reset-confirm-field input,
+html.dark-theme .resource-contact-form input,
+html.dark-theme .resource-contact-form textarea,
+html.dark-theme .account-quick-dialog input,
+html.dark-theme .account-quick-dialog select,
+html.dark-theme .wr-lesson textarea {
+  border-color: rgba(139, 92, 246, .34);
+  background-color: #12102A;
+  color: #F3F4F6;
+  color-scheme: dark;
+}
+
+html.dark-theme input::placeholder,
+html.dark-theme textarea::placeholder,
+html.dark-theme .resource-search input::placeholder {
+  color: #A1A9B8;
+  opacity: 1;
+}
+
+html.dark-theme input:focus-visible,
+html.dark-theme select:focus-visible,
+html.dark-theme textarea:focus-visible,
+html.dark-theme .resource-contact-form input:focus,
+html.dark-theme .resource-contact-form textarea:focus {
+  border-color: #AFA5FF;
+  outline: 3px solid rgba(139, 92, 246, .30);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, .18);
+}
+
+html.dark-theme .resource-search input {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html.dark-theme select option,
+html.dark-theme select optgroup {
+  background: #12102A;
+  color: #F3F4F6;
+}
+
+html.dark-theme input::-webkit-calendar-picker-indicator {
+  filter: invert(.82) sepia(.18) saturate(.65) hue-rotate(210deg);
+}
+
+html.dark-theme .trades-table,
+html.dark-theme .dj-table,
+html.dark-theme table {
+  color: #F3F4F6;
+}
+
+html.dark-theme .table-scroll,
+html.dark-theme .dj-table-wrap {
+  border: 1px solid rgba(139, 92, 246, .20);
+  border-radius: 16px;
+  background: #0F0D1E;
+}
+
+html.dark-theme .trades-table th,
+html.dark-theme .dj-table th,
+html.dark-theme table thead th {
+  border-color: rgba(139, 92, 246, .22);
+  background: #14112B;
+  color: #B4B9C6;
+}
+
+html.dark-theme .trades-table th:first-child,
+html.dark-theme .dj-table th:first-child,
+html.dark-theme table thead th:first-child {
+  border-top-left-radius: 15px;
+}
+
+html.dark-theme .trades-table th:last-child,
+html.dark-theme .dj-table th:last-child,
+html.dark-theme table thead th:last-child {
+  border-top-right-radius: 15px;
+}
+
+html.dark-theme .trades-table td,
+html.dark-theme .dj-table td,
+html.dark-theme table tbody td {
+  border-color: rgba(139, 92, 246, .16);
+  color: #B4B9C6;
+}
+
+html.dark-theme .trades-table td strong,
+html.dark-theme .dj-table td strong,
+html.dark-theme table td strong {
+  color: #F3F4F6;
+}
+
+html.dark-theme .trades-table tbody tr:hover td,
+html.dark-theme .dj-table tbody tr:hover td,
+html.dark-theme table tbody tr:hover td {
+  background: rgba(139, 92, 246, .08);
+}
+
+html.dark-theme .sidebar-profile-menu,
+html.dark-theme .account-menu,
+html.dark-theme .notification-menu,
+html.dark-theme .custom-range-popover,
+html.dark-theme .command-dialog,
+html.dark-theme .shortcuts-dialog,
+html.dark-theme .legacy-migration-dialog,
+html.dark-theme .trade-modal,
+html.dark-theme .trade-drawer,
+html.dark-theme .data-dialog,
+html.dark-theme .first-run-dialog,
+html.dark-theme .tour-dialog {
+  border-color: rgba(139, 92, 246, .28);
+  background: #0F0D1E;
+  color: #F3F4F6;
+  box-shadow: 0 24px 70px rgba(6, 5, 16, .72), 0 0 28px rgba(117, 92, 255, .12);
+}
+
+html.dark-theme .modal-backdrop,
+html.dark-theme .drawer-scrim,
+html.dark-theme .command-overlay,
+html.dark-theme .shortcuts-overlay,
+html.dark-theme .legacy-migration-overlay,
+html.dark-theme .first-run-overlay {
+  background-color: rgba(4, 3, 12, .78);
+}
+
+html.dark-theme .notification-menu-head,
+html.dark-theme .account-menu button:hover,
+html.dark-theme .sidebar-profile-menu button:hover,
+html.dark-theme .command-result:hover,
+html.dark-theme .command-result[aria-selected="true"] {
+  background: #14112B;
+  color: #F3F4F6;
+}
+
+html.dark-theme .chart-empty,
+html.dark-theme .empty-state {
+  color: #B4B9C6;
+}
+
+html.dark-theme .recharts-cartesian-grid line,
+html.dark-theme .recharts-cartesian-axis line,
+html.dark-theme .recharts-cartesian-axis-tick line {
+  stroke: rgba(180, 185, 198, .20);
+}
+
+html.dark-theme .recharts-text,
+html.dark-theme .recharts-cartesian-axis-tick-value {
+  fill: #B4B9C6;
+}
+
+html.dark-theme .recharts-default-tooltip {
+  border: 1px solid rgba(139, 92, 246, .28) !important;
+  border-radius: 12px !important;
+  background: #0F0D1E !important;
+  box-shadow: var(--shadow);
+  color: #F3F4F6 !important;
+}
+
+html.dark-theme .recharts-tooltip-label,
+html.dark-theme .recharts-tooltip-item {
+  color: #F3F4F6 !important;
+}
+
+html.dark-theme .recharts-line path[stroke="#6c5ce7"],
+html.dark-theme .recharts-line path[stroke="#6C5CE7"] {
+  filter: drop-shadow(0 0 4px rgba(167, 139, 250, .62));
+  stroke: #B7AFFF;
+}
+
+html.dark-theme .goal-track i,
+html.dark-theme .storage-meter span,
+html.dark-theme .dj-progress > span,
+html.dark-theme .onb-progress span,
+html.dark-theme .onboarding-progress i,
+html.dark-theme .first-run-progress i,
+html.dark-theme .onb-bar-progress > span {
+  background: linear-gradient(90deg, #6D5EF7 0%, #8B5CF6 52%, #AFA5FF 100%);
+}
+
+html.dark-theme .resource-empty {
+  color: #B4B9C6;
+}
+
+html.dark-theme .resource-badge.available {
+  background: rgba(139, 92, 246, .20);
+  color: #D1CCFF;
+}
+
+html.dark-theme .resource-badge.planned {
+  background: rgba(245, 158, 11, .16);
+  color: #FCD68A;
+}
+
+html.dark-theme .calendar-cell,
+html.dark-theme .calendar-week-total,
+html.dark-theme .heatmap-cell,
+html.dark-theme .wr-discipline-item,
+html.dark-theme .wr-journal-stats > div,
+html.dark-theme .backup-preview-grid > div {
+  border-color: rgba(139, 92, 246, .20);
+}
+
+html.dark-theme .calendar-profit,
+html.dark-theme .heat-profit {
+  border-color: rgba(52, 211, 153, .34);
+  background: rgba(52, 211, 153, .10);
+}
+
+html.dark-theme .calendar-loss,
+html.dark-theme .heat-loss {
+  border-color: rgba(248, 113, 113, .34);
+  background: rgba(248, 113, 113, .10);
+}
+
+html.dark-theme .warning-banner,
+html.dark-theme .dj-reminder {
+  color: #F3D37D;
+}
+
+html.dark-theme .onb-progress,
+html.dark-theme .onboarding-progress,
+html.dark-theme .first-run-progress,
+html.dark-theme .goal-track,
+html.dark-theme .storage-meter,
+html.dark-theme .dj-progress {
+  background-color: #24203B;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.dark-theme .panel,
+  html.dark-theme .stat-card,
+  html.dark-theme .wr-card,
+  html.dark-theme .dj-card,
+  html.dark-theme .playbook-card,
+  html.dark-theme .settings-card,
+  html.dark-theme .settings-section,
+  html.dark-theme .notebook-card,
+  html.dark-theme .backtest-card,
+  html.dark-theme .resource-card,
+  html.dark-theme .rc-card {
+    transition: none;
+  }
+
+  html.dark-theme .panel:hover,
+  html.dark-theme .stat-card:hover,
+  html.dark-theme .wr-card:hover,
+  html.dark-theme .dj-card:hover,
+  html.dark-theme .playbook-card:hover,
+  html.dark-theme .settings-card:hover,
+  html.dark-theme .settings-section:hover,
+  html.dark-theme .notebook-card:hover,
+  html.dark-theme .backtest-card:hover,
+  html.dark-theme .resource-card:hover,
+  html.dark-theme .rc-card:hover {
+    transform: none;
+  }
+}
