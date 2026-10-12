@@ -174,6 +174,73 @@ html.dark-theme .sidebar .side-nav .nav-link.active {
   color: #e3dcff;
 }
 
+html.dark-theme .sidebar-bottom > .nav-link {
+  border: 1px solid rgba(139, 92, 246, .2);
+  background:
+    radial-gradient(ellipse at 100% 0, rgba(139, 92, 246, .15), transparent 65%),
+    linear-gradient(110deg, #121020, #0d0c17);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .035);
+}
+
+html.dark-theme .sidebar-bottom > .nav-link.active {
+  border-color: rgba(167, 139, 250, .42);
+  background:
+    linear-gradient(105deg, rgba(139, 92, 246, .28), rgba(79, 70, 229, .14) 60%, rgba(217, 70, 239, .1)),
+    #151127;
+  box-shadow: inset 3px 0 0 #a78bfa, 0 0 16px rgba(109, 76, 190, .15);
+}
+
+html.dark-theme .sidebar .help-link {
+  min-height: 40px;
+  border: 1px solid rgba(96, 165, 250, .2);
+  border-radius: 9px;
+  background:
+    radial-gradient(ellipse at 100% 0, rgba(96, 165, 250, .13), transparent 68%),
+    linear-gradient(110deg, #101323, #0c0d16);
+  color: #b8c8e8;
+  transition: color 180ms ease, background 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+
+html.dark-theme .sidebar-profile-wrap {
+  overflow: hidden;
+  border: 1px solid rgba(217, 70, 239, .2);
+  border-radius: 12px;
+  background:
+    radial-gradient(ellipse at 100% 0, rgba(217, 70, 239, .13), transparent 68%),
+    linear-gradient(115deg, #151020, #0d0c17 72%);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .04), 0 8px 20px rgba(0, 0, 0, .14);
+}
+
+html.dark-theme .sidebar .profile-button {
+  border-top-color: rgba(217, 70, 239, .2);
+  background: transparent;
+}
+
+html.dark-theme .sidebar .profile-button .avatar {
+  border: 1px solid rgba(196, 181, 253, .35);
+  box-shadow: 0 0 14px rgba(139, 92, 246, .2);
+}
+
+@media (hover: hover) {
+  html.dark-theme .sidebar-bottom > .nav-link:hover:not(.active) {
+    border-color: rgba(167, 139, 250, .34);
+    background-color: rgba(139, 92, 246, .12);
+    box-shadow: inset 2px 0 rgba(167, 139, 250, .68), 0 0 14px rgba(109, 76, 190, .12);
+  }
+
+  html.dark-theme .sidebar .help-link:hover {
+    border-color: rgba(96, 165, 250, .38);
+    background-color: rgba(96, 165, 250, .1);
+    box-shadow: inset 2px 0 rgba(96, 165, 250, .65), 0 0 14px rgba(59, 130, 246, .12);
+    color: #e0eaff;
+  }
+
+  html.dark-theme .sidebar-profile-wrap:hover {
+    border-color: rgba(217, 70, 239, .32);
+    box-shadow: inset 0 1px rgba(255, 255, 255, .05), 0 0 16px rgba(168, 85, 247, .12);
+  }
+}
+
 @media (hover: hover) {
   html.dark-theme .sidebar .side-nav .nav-link:hover:not(.active) {
     transform: translateX(2px);
