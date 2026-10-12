@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Activity, BarChart3, BookOpen, Calculator, CalendarDays, CalendarRange, ChevronLeft, CircleHelp, LayoutDashboard, LogOut, NotebookPen, Settings, SlidersHorizontal, Sparkles, Swords, X } from 'lucide-react'
+import { Activity, BarChart3, BookOpen, Calculator, CalendarDays, CalendarRange, ChevronLeft, CircleHelp, Home as HomeIcon, LayoutDashboard, LogOut, NotebookPen, Settings, SlidersHorizontal, Sparkles, Swords, Target, X } from 'lucide-react'
 import { useJournal } from '../hooks/useJournal'
 import { useAuth } from '../context/AuthContext'
 import ProfileAvatar from './ProfileAvatar'
@@ -11,6 +11,7 @@ const links = [
   { to: '/trades', label: 'Trade Log', icon: Activity },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
   { to: '/weekly-review', label: 'Weekly review', icon: CalendarRange },
+  { to: '/progress-tracker', label: 'Progress tracker', icon: Target },
   { to: '/notebook', label: 'Notebook', icon: NotebookPen },
   { to: '/playbooks', label: 'Playbooks', icon: BookOpen },
   { to: '/backtesting', label: 'Backtesting', icon: Swords },
@@ -18,18 +19,31 @@ const links = [
 ]
 
 export default function Sidebar({ collapsed, onCollapse }) {
-  const { sidebarOpen, setSidebarOpen } = useJournal()
+  const { sidebarOpen, setSidebarOpen, notify } = useJournal()
   const { signOut, profile, user } = useAuth()
   const navigate = useNavigate()
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
   const displayName = profile?.display_name || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Trader'
   const initials = displayName.trim().split(/\s+/).filter(Boolean).map((part) => part[0]).join('').slice(0, 2).toUpperCase()
 
   async function handleSignOut() {
-    const { error } = await signOut()
-    if (error) return
-    setProfileMenuOpen(false)
-    navigate('/welcome', { replace: true })
+    setSigningOut(true)
+    try {
+      const { error } = await signOut()
+      if (error) {
+        notify(`Could not sign out: ${error.message || 'Please try again.'}`)
+        return
+      }
+      setProfileMenuOpen(false)
+      setSidebarOpen(false)
+      navigate('/welcome', { replace: true })
+    } catch (error) {
+      console.error('Unexpected sign-out failure:', error)
+      notify(`Could not sign out: ${error?.message || 'Please try again.'}`)
+    } finally {
+      setSigningOut(false)
+    }
   }
 
   return (
@@ -42,6 +56,10 @@ export default function Sidebar({ collapsed, onCollapse }) {
           <button className="icon-button collapse-button" onClick={onCollapse} aria-label="Collapse sidebar"><ChevronLeft size={17} /></button>
           <button className="icon-button mobile-close" onClick={() => setSidebarOpen(false)} aria-label="Close menu"><X size={18} /></button>
         </div>
+        {!collapsed && <div className="workspace-label">HOME</div>}
+        <nav className="side-nav" aria-label="Home">
+          <NavLink to="/home" title={collapsed ? 'Home' : undefined} onClick={() => setSidebarOpen(false)} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><HomeIcon size={18} strokeWidth={1.9} /><span>Home</span></NavLink>
+        </nav>
         {!collapsed && <div className="workspace-label">WORKSPACE</div>}
         <nav className="side-nav">
           {links.map(({ to, label, icon: Icon }) => (
@@ -63,7 +81,7 @@ export default function Sidebar({ collapsed, onCollapse }) {
             </button>
             {profileMenuOpen && (
               <div className="sidebar-profile-menu" role="menu">
-                <button type="button" role="menuitem" onClick={handleSignOut}><LogOut size={15} /> Sign out</button>
+                <button type="button" role="menuitem" disabled={signingOut} onClick={handleSignOut}><LogOut size={15} /> {signingOut ? 'Signing out…' : 'Sign out'}</button>
               </div>
             )}
           </div>
