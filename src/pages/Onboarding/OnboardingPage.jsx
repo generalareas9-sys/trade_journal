@@ -485,7 +485,7 @@ export default function OnboardingPage() {
       <section className={`obf-stage obf-stage-${transition} obf-stage-${direction}`} aria-live="polite" aria-atomic="true">
         {showLogo && <LogoMark />}
         {stepIndex === 3 && <BrokerIllustration />}
-        <header className="obf-heading">
+        <header className={`obf-heading ${stepIndex === 5 ? 'obf-heading-goals' : ''}`}>
           <h1>{currentStep.title}</h1>
           <p>{currentStep.subtitle}</p>
         </header>
