@@ -21,6 +21,7 @@ const ROUTE_SEO = {
   '/welcome': { title: 'TradeJournal | Trading Journal for Traders', description: LANDING_DESCRIPTION },
   '/login': { title: 'Sign In | TradeJournal', description: 'Sign in to TradeJournal to access your private trading journal, review your trades, and track your performance.' },
   '/signup': { title: 'Create Your Account | TradeJournal', description: 'Create a TradeJournal account to record trades, review decisions, and track your trading performance.' },
+  '/onboarding': { title: 'Welcome | TradeJournal', description: 'Set up your TradeJournal workspace.' },
   '/help': { title: 'Help Center | TradeJournal', description: 'Find answers and guidance for recording trades, managing your journal, and understanding TradeJournal features.' },
   '/changelog': { title: 'Changelog | TradeJournal', description: 'See product updates and improvements to the TradeJournal trading journal.' },
   '/contact': { title: 'Contact | TradeJournal', description: 'Contact the TradeJournal team with questions, feedback, or support requests.' },
@@ -100,13 +101,34 @@ const OnboardingPage = lazy(() => import('./pages/Onboarding/OnboardingPage'))
 class PageErrorBoundary extends Component {
   state = { hasError: false }
 
+  componentDidCatch(error, info) {
+    console.error('Page failed to load:', {
+      message: error?.message || String(error),
+      stack: error?.stack || '',
+      componentStack: info?.componentStack || '',
+    })
+
+    const message = error?.message || String(error)
+    if (/failed to fetch dynamically imported module|importing a module script failed|chunkloaderror|loading chunk \d+ failed/i.test(message)) {
+      const retryKey = `tradejournal:chunk-retry:${window.location.pathname}`
+      try {
+        if (window.sessionStorage.getItem(retryKey) !== '1') {
+          window.sessionStorage.setItem(retryKey, '1')
+          window.location.reload()
+        }
+      } catch (storageError) {
+        console.error('Could not check the lazy-chunk retry marker:', storageError)
+      }
+    }
+  }
+
   static getDerivedStateFromError() {
     return { hasError: true }
   }
 
   render() {
     if (this.state.hasError) {
-      return <section className="page-error-state" role="alert"><h2>We couldn’t load this page</h2><p>Your local journal data has not been changed. Try the page again.</p><button type="button" className="button-primary" onClick={() => this.setState({ hasError: false })}>Try again</button></section>
+      return <section className="page-error-state" role="alert"><h2>We couldn’t load this page</h2><p>Your local journal data has not been changed. Try the page again.</p><button type="button" className="button-primary" onClick={() => window.location.reload()}>Try again</button></section>
     }
     return this.props.children
   }
