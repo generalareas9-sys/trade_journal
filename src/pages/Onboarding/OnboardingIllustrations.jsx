@@ -53,7 +53,7 @@ export function CartoonAvatar({ type }) {
         <path d="m49 18 7 4-4 5" fill="#D3B069" />
       </>}
       {type === 'monk' && <>
-        <path d="M21 26c-2-10 4-18 15-18s17 7 15 18c-5-5-9-7-15-7s-10 2-15 7z" fill="#8A5A3C" />
+        <path d="M21 26c-2-10 4-18 15-18s17 7 15 18c-5-5-9-7-15-7s-10 2-15 7z" fill={skin} />
         <path d="M20 29c0-9 6-15 16-15s16 6 16 15v5c-5 6-11 9-16 9s-11-3-16-9z" fill={skin} />
         <path d="M28 31h.5m15-.5h.5" stroke="#422D29" strokeWidth="2.7" strokeLinecap="round" />
         <path d="M31 38c3 2 7 2 10 0" fill="none" stroke="#794333" strokeWidth="1.7" strokeLinecap="round" />
