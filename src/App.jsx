@@ -11,6 +11,8 @@ import Skeleton from './components/Skeleton'
 import { useJournal } from './hooks/useJournal'
 import useShortcuts from './hooks/useShortcuts'
 import WelcomeTour from './components/WelcomeTour'
+import OnboardingGate from './components/OnboardingGate'
+import './onboarding-flow.css'
 
 const LIVE_ORIGIN = 'https://trade-journal-livid-five.vercel.app'
 const LANDING_DESCRIPTION = 'TradeJournal is a trading journal to record trades, review your decisions, track win rate and profit, and build your edge. Created by Osman Seid Ebrahim.'
@@ -28,7 +30,7 @@ const ROUTE_SEO = {
 }
 const PRIVATE_ROUTES = new Set([
   '/settings', '/trades', '/journal', '/reports', '/import', '/risk-calculator',
-  '/weekly-review', '/notebook', '/playbooks', '/backtesting', '/forgot-password',
+  '/weekly-review', '/notebook', '/playbooks', '/backtesting', '/onboarding', '/forgot-password',
   '/reset-password',
 ])
 
@@ -93,6 +95,7 @@ const Playbooks = lazy(() => import('./pages/Playbooks'))
 const Backtesting = lazy(() => import('./pages/WorkspacePages').then((module) => ({ default: module.Backtesting })))
 const SettingsPage = lazy(() => import('./pages/WorkspacePages').then((module) => ({ default: module.SettingsPage })))
 const TradeImport = lazy(() => import('./pages/TradeImport'))
+const OnboardingPage = lazy(() => import('./pages/Onboarding/OnboardingPage'))
 
 class PageErrorBoundary extends Component {
   state = { hasError: false }
@@ -255,18 +258,21 @@ export default function App() {
       </Route>
 
       <Route element={<ProtectedRoute />}>
-        <Route element={<ProtectedLayout />}>
-          <Route path="/" element={<Suspense fallback={<Skeleton variant="dashboard" />}><Dashboard /></Suspense>} />
-          <Route path="/journal" element={<Suspense fallback={<Skeleton variant="journal" />}><DailyJournal /></Suspense>} />
-          <Route path="/trades" element={<Suspense fallback={<Skeleton variant="trade-log" />}><TradeLog /></Suspense>} />
-          <Route path="/import" element={<TradeImport />} />
-          <Route path="/reports" element={<Suspense fallback={<Skeleton variant="reports" />}><Reports /></Suspense>} />
-          <Route path="/weekly-review" element={<WeeklyReview />} />
-          <Route path="/notebook" element={<Suspense fallback={<Skeleton variant="notebook" />}><Notebook /></Suspense>} />
-          <Route path="/playbooks" element={<Suspense fallback={<Skeleton variant="playbooks" />}><Playbooks /></Suspense>} />
-          <Route path="/backtesting" element={<Backtesting />} />
-          <Route path="/risk-calculator" element={<RiskCalculator />} />
-          <Route path="/settings" element={<SettingsPage />} />
+        <Route element={<OnboardingGate />}>
+          <Route path="/onboarding" element={<Suspense fallback={<main className="obf-gate-message" role="status">Preparing onboarding…</main>}><OnboardingPage /></Suspense>} />
+          <Route element={<ProtectedLayout />}>
+            <Route path="/" element={<Suspense fallback={<Skeleton variant="dashboard" />}><Dashboard /></Suspense>} />
+            <Route path="/journal" element={<Suspense fallback={<Skeleton variant="journal" />}><DailyJournal /></Suspense>} />
+            <Route path="/trades" element={<Suspense fallback={<Skeleton variant="trade-log" />}><TradeLog /></Suspense>} />
+            <Route path="/import" element={<TradeImport />} />
+            <Route path="/reports" element={<Suspense fallback={<Skeleton variant="reports" />}><Reports /></Suspense>} />
+            <Route path="/weekly-review" element={<WeeklyReview />} />
+            <Route path="/notebook" element={<Suspense fallback={<Skeleton variant="notebook" />}><Notebook /></Suspense>} />
+            <Route path="/playbooks" element={<Suspense fallback={<Skeleton variant="playbooks" />}><Playbooks /></Suspense>} />
+            <Route path="/backtesting" element={<Backtesting />} />
+            <Route path="/risk-calculator" element={<RiskCalculator />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Route>
         </Route>
       </Route>
 
