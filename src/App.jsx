@@ -18,10 +18,12 @@ const LIVE_ORIGIN = 'https://trade-journal-livid-five.vercel.app'
 const LANDING_DESCRIPTION = 'TradeJournal is a trading journal to record trades, review your decisions, track win rate and profit, and build your edge. Created by Osman Seid Ebrahim.'
 const ROUTE_SEO = {
   '/': { title: 'TradeJournal | Trading Journal for Traders', description: LANDING_DESCRIPTION },
+  '/home': { title: 'Home | TradeJournal', description: 'Your trading workspace, recommended actions, and helpful resources.' },
   '/welcome': { title: 'TradeJournal | Trading Journal for Traders', description: LANDING_DESCRIPTION },
   '/login': { title: 'Sign In | TradeJournal', description: 'Sign in to TradeJournal to access your private trading journal, review your trades, and track your performance.' },
   '/signup': { title: 'Create Your Account | TradeJournal', description: 'Create a TradeJournal account to record trades, review decisions, and track your trading performance.' },
   '/onboarding': { title: 'Welcome | TradeJournal', description: 'Set up your TradeJournal workspace.' },
+  '/progress-tracker': { title: 'Progress Tracker | TradeJournal', description: 'Track your trading habits, daily consistency, and progress over time.' },
   '/help': { title: 'Help Center | TradeJournal', description: 'Find answers and guidance for recording trades, managing your journal, and understanding TradeJournal features.' },
   '/changelog': { title: 'Changelog | TradeJournal', description: 'See product updates and improvements to the TradeJournal trading journal.' },
   '/contact': { title: 'Contact | TradeJournal', description: 'Contact the TradeJournal team with questions, feedback, or support requests.' },
@@ -30,8 +32,8 @@ const ROUTE_SEO = {
   '/disclaimer': { title: 'Disclaimer | TradeJournal', description: 'Read important information about the limitations of TradeJournal and the risks of trading.' },
 }
 const PRIVATE_ROUTES = new Set([
-  '/settings', '/trades', '/journal', '/reports', '/import', '/risk-calculator',
-  '/weekly-review', '/notebook', '/playbooks', '/backtesting', '/onboarding', '/forgot-password',
+  '/home', '/settings', '/trades', '/journal', '/reports', '/import', '/risk-calculator',
+  '/weekly-review', '/notebook', '/playbooks', '/backtesting', '/progress-tracker', '/onboarding', '/forgot-password',
   '/reset-password',
 ])
 
@@ -86,10 +88,12 @@ const ChangelogPage = lazy(() => import('./pages/ResourcePages').then((module) =
 const ContactPage = lazy(() => import('./pages/ResourcePages').then((module) => ({ default: module.ContactPage })))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Home = lazy(() => import('./pages/Home'))
 const DailyJournal = lazy(() => import('./pages/DailyJournal'))
 const TradeLog = lazy(() => import('./pages/TradeLog'))
 const Reports = lazy(() => import('./pages/Reports'))
 const WeeklyReview = lazy(() => import('./pages/WeeklyReview'))
+const ProgressTracker = lazy(() => import('./pages/ProgressTracker'))
 const RiskCalculator = lazy(() => import('./pages/RiskCalculator'))
 const Notebook = lazy(() => import('./pages/Notebook'))
 const Playbooks = lazy(() => import('./pages/Playbooks'))
@@ -238,7 +242,7 @@ export default function App() {
   setDarkRef.current = setDark
 
   useLayoutEffect(() => {
-    const workspacePaths = ['/', '/journal', '/trades', '/import', '/reports', '/weekly-review', '/notebook', '/playbooks', '/backtesting', '/risk-calculator', '/settings', '/help', '/contact', '/changelog']
+    const workspacePaths = ['/', '/home', '/journal', '/trades', '/import', '/reports', '/weekly-review', '/progress-tracker', '/notebook', '/playbooks', '/backtesting', '/risk-calculator', '/settings', '/help', '/contact', '/changelog']
     const workspacePage = workspacePaths.includes(location.pathname)
     document.documentElement.classList.toggle('dark-theme', workspacePage && dark)
     document.documentElement.style.colorScheme = workspacePage && dark ? 'dark' : 'light'
@@ -283,12 +287,14 @@ export default function App() {
         <Route element={<OnboardingGate />}>
           <Route path="/onboarding" element={<Suspense fallback={<main className="obf-gate-message" role="status">Preparing onboarding…</main>}><OnboardingPage /></Suspense>} />
           <Route element={<ProtectedLayout />}>
+            <Route path="/home" element={<Home />} />
             <Route path="/" element={<Suspense fallback={<Skeleton variant="dashboard" />}><Dashboard /></Suspense>} />
             <Route path="/journal" element={<Suspense fallback={<Skeleton variant="journal" />}><DailyJournal /></Suspense>} />
             <Route path="/trades" element={<Suspense fallback={<Skeleton variant="trade-log" />}><TradeLog /></Suspense>} />
             <Route path="/import" element={<TradeImport />} />
             <Route path="/reports" element={<Suspense fallback={<Skeleton variant="reports" />}><Reports /></Suspense>} />
             <Route path="/weekly-review" element={<WeeklyReview />} />
+            <Route path="/progress-tracker" element={<ProgressTracker />} />
             <Route path="/notebook" element={<Suspense fallback={<Skeleton variant="notebook" />}><Notebook /></Suspense>} />
             <Route path="/playbooks" element={<Suspense fallback={<Skeleton variant="playbooks" />}><Playbooks /></Suspense>} />
             <Route path="/backtesting" element={<Backtesting />} />
