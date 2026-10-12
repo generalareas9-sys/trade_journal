@@ -73,7 +73,23 @@ export default function DailyJournal() {
   const dayTrades = useMemo(() => allTrades.filter((trade) => trade.date === selected).sort((a, b) => String(a.openedAt || '').localeCompare(String(b.openedAt || ''))), [allTrades, selected])
   const pnl = dayTrades.reduce((total, trade) => total + finitePnl(trade), 0)
   const winners = dayTrades.filter((trade) => finitePnl(trade) > 0).length
+  const losers = dayTrades.filter((trade) => finitePnl(trade) < 0).length
+  const breakevenTrades = dayTrades.length - winners - losers
   const winRate = dayTrades.length ? winners / dayTrades.length * 100 : 0
+  const averageWin = winners ? dayTrades.filter((trade) => finitePnl(trade) > 0).reduce((total, trade) => total + finitePnl(trade), 0) / winners : 0
+  const averageLoss = losers ? dayTrades.filter((trade) => finitePnl(trade) < 0).reduce((total, trade) => total + finitePnl(trade), 0) / losers : 0
+  const dayFees = dayTrades.reduce((total, trade) => total + (Number.isFinite(Number(trade.fees)) ? Number(trade.fees) : 0), 0)
+  const dayPnlCurve = useMemo(() => {
+    let runningPnl = 0
+    return [...dayTrades]
+      .sort((first, second) => String(first.closedAt || first.openedAt || '').localeCompare(String(second.closedAt || second.openedAt || '')))
+      .map((trade, index) => {
+        runningPnl += finitePnl(trade)
+        const timestamp = trade.closedAt || trade.openedAt
+        const time = timestamp && isValid(new Date(timestamp)) ? format(new Date(timestamp), 'h:mm a') : `Trade ${index + 1}`
+        return { trade: `${time} · ${trade.symbol || `Trade ${index + 1}`}`, pnl: runningPnl }
+      })
+  }, [dayTrades])
 
   useEffect(() => setImageStatus(''), [selected])
 
@@ -262,9 +278,26 @@ export default function DailyJournal() {
       <div className="dj-content">
         <section className="dj-card dj-day-card" id="daily-journal-entry">
           <div className="dj-day-heading"><button className="dj-nav-button" aria-label="Previous day" onClick={() => moveDay(-1)}><ArrowLeft size={17} /></button><div><span className="dj-eyebrow">TRADING SESSION</span><h2>{format(date, 'EEEE, MMMM d, yyyy')}</h2></div><button className="dj-nav-button" aria-label="Next day" onClick={() => moveDay(1)}><ArrowRight size={17} /></button><button className="dj-today-button" onClick={() => setSelected(today)}>Today</button></div>
-          <div className="dj-kpis"><div><span>Net P&amp;L</span><strong className={pnl > 0 ? 'profit' : pnl < 0 ? 'loss' : ''}>{dayTrades.length ? currency(pnl) : 'No data yet'}</strong></div><div><span>Trades</span><strong>{dayTrades.length}</strong></div><div><span>Wins</span><strong>{dayTrades.length ? winners : '—'}</strong></div><div><span>Win rate</span><strong>{dayTrades.length ? percent(winRate) : '—'}</strong></div></div>
+          <div className="dj-kpis">
+            <div><span>Net P&amp;L</span><strong className={pnl > 0 ? 'profit' : pnl < 0 ? 'loss' : ''}>{dayTrades.length ? currency(pnl) : 'No data yet'}</strong></div>
+            <div><span>Trades</span><strong>{dayTrades.length}</strong></div>
+            <div><span>Win rate</span><strong>{dayTrades.length ? percent(winRate) : '—'}</strong><small>{dayTrades.length ? `${winners} wins · ${losers} losses${breakevenTrades ? ` · ${breakevenTrades} breakeven` : ''}` : 'No trades yet'}</small></div>
+            <div><span>Avg. winner</span><strong className="profit">{winners ? currency(averageWin) : '—'}</strong></div>
+            <div><span>Avg. loser</span><strong className="loss">{losers ? currency(averageLoss) : '—'}</strong></div>
+            <div><span>Fees</span><strong>{dayTrades.length ? currency(dayFees) : '—'}</strong></div>
+          </div>
           {!dayTrades.length && <p className="dj-empty-trades">No trades logged for this day. Your plan and reflections still count.</p>}
-          {!!dayTrades.length && <div className="dj-trades"><div className="dj-section-heading"><div><h3>Trade list</h3><p>{dayTrades.length} trades · {dayTrades.filter((trade) => finitePnl(trade) < 0).length} losses</p></div></div><div className="dj-table-wrap"><table><thead><tr><th>Symbol</th><th>Side</th><th>Entry time</th><th>P&amp;L</th></tr></thead><tbody>{dayTrades.map((trade) => <tr key={trade.id}><td>{trade.symbol || '—'}</td><td>{trade.side || '—'}</td><td>{trade.openedAt && isValid(new Date(trade.openedAt)) ? format(new Date(trade.openedAt), 'h:mm a') : '—'}</td><td className={finitePnl(trade) > 0 ? 'profit' : finitePnl(trade) < 0 ? 'loss' : ''}>{currency(finitePnl(trade))}</td></tr>)}</tbody></table></div></div>}
+          {!!dayTrades.length && <>
+            <section className="dj-day-performance" aria-label="Selected day cumulative profit and loss">
+              <div className="dj-section-heading"><div><h3>Session P&amp;L curve</h3><p>Running realized P&amp;L by trade close time</p></div></div>
+              <div className="dj-day-chart"><ResponsiveContainer width="100%" height="100%"><AreaChart data={dayPnlCurve} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}><defs><linearGradient id="dj-day-pnl-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#6c5ce7" stopOpacity={0.25} /><stop offset="100%" stopColor="#6c5ce7" stopOpacity={0.02} /></linearGradient></defs><CartesianGrid stroke="var(--line)" strokeDasharray="3 5" vertical={false} /><XAxis dataKey="trade" tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={24} /><YAxis tickFormatter={axisCurrency} tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} /><Tooltip formatter={(value) => [currency(value), 'Running P&L']} labelFormatter={(label) => label} contentStyle={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 9, color: 'var(--text)' }} /><Area type="monotone" dataKey="pnl" stroke="#6c5ce7" fill="url(#dj-day-pnl-fill)" /></AreaChart></ResponsiveContainer></div>
+            </section>
+            <div className="dj-trades"><div className="dj-section-heading"><div><h3>Trade list</h3><p>Entry and exit details · sorted by entry time</p></div></div><div className="dj-table-wrap"><table><thead><tr><th>Symbol</th><th>Side</th><th>Entry time</th><th>Entry</th><th>Exit</th><th>Result</th><th>R-multiple</th><th>Net P&amp;L</th></tr></thead><tbody>{dayTrades.map((trade) => {
+              const tradePnl = finitePnl(trade)
+              const result = tradePnl > 0 ? 'Win' : tradePnl < 0 ? 'Loss' : 'Breakeven'
+              return <tr key={trade.id}><td>{trade.symbol || '—'}</td><td>{trade.side || '—'}</td><td>{trade.openedAt && isValid(new Date(trade.openedAt)) ? format(new Date(trade.openedAt), 'h:mm a') : '—'}</td><td>{trade.entry ?? '—'}</td><td>{trade.exit ?? '—'}</td><td><span className={`dj-result dj-result-${result.toLowerCase()}`}>{result}</span></td><td className={Number(trade.rMultiple) > 0 ? 'profit' : Number(trade.rMultiple) < 0 ? 'loss' : ''}>{trade.rMultiple !== undefined && trade.rMultiple !== null ? `${Number(trade.rMultiple) > 0 ? '+' : ''}${Number(trade.rMultiple).toFixed(2)}R` : '—'}</td><td className={tradePnl > 0 ? 'profit' : tradePnl < 0 ? 'loss' : ''}>{currency(tradePnl)}</td></tr>
+            })}</tbody></table></div></div>
+          </>}
           <div className="dj-fields-grid">
             <label className="dj-field"><span>Market bias</span><select value={entry.bias || ''} onChange={(event) => update('bias', event.target.value)}><option value="">Select bias</option><option>Long / bullish</option><option>Short / bearish</option><option>Neutral / wait</option></select></label>
             <label className="dj-field"><span>Key levels</span><input value={entry.levels || ''} onChange={(event) => update('levels', event.target.value)} placeholder="Support, resistance, invalidation…" /></label>
