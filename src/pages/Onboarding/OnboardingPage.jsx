@@ -11,6 +11,7 @@ import {
   FileText,
   GraduationCap,
   History,
+  LockKeyhole,
   LineChart,
   MoreHorizontal,
   Sparkles,
@@ -18,12 +19,14 @@ import {
   TrendingUp,
   UserRound,
   UsersRound,
+  ArrowRight,
   X,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { updateProfileSettings } from '../../data/repo'
 import { useJournal } from '../../hooks/useJournal'
+import { BitcoinBrand, BrokerBrand, CartoonAvatar, hasBrokerBrand, SimpleBrandIcon } from './OnboardingIllustrations'
 import { brokerOptions, onboardingSteps } from './onboardingSteps'
 
 const initialAnswers = {
@@ -56,8 +59,6 @@ const optionIcons = {
   community: UsersRound,
   friend: UserRound,
 }
-const brandIcons = new Set(['google', 'x', 'instagram', 'tiktok', 'youtube', 'reddit'])
-
 const savedAnswers = (value) => ({
   experience: typeof value?.experience === 'string' ? value.experience : '',
   capitalType: Array.isArray(value?.capitalType) ? value.capitalType : [],
@@ -104,19 +105,7 @@ function BrokerIllustration() {
   </svg>
 }
 
-function BrandIcon({ name }) {
-  const labels = {
-    google: 'G',
-    x: 'X',
-    instagram: '◎',
-    tiktok: '♪',
-    youtube: '▶',
-    reddit: '●',
-  }
-  return <span className={`obf-brand-icon obf-icon-${name}`} aria-hidden="true">{labels[name]}</span>
-}
-
-function SelectableOptions({ step, value, onChange, onLimit, shake }) {
+function SelectableOptions({ step, value, onChange, onLimit, onSelected, shake }) {
   const multiple = step.type !== 'single'
   const selected = multiple ? value : [value].filter(Boolean)
   const role = multiple ? 'checkbox' : 'radio'
@@ -132,6 +121,7 @@ function SelectableOptions({ step, value, onChange, onLimit, shake }) {
     }
     if (step.type === 'single') {
       onChange(label)
+      onSelected?.()
       return
     }
     if (step.type === 'limited' && !selected.includes(label) && selected.length >= 2) {
@@ -152,10 +142,11 @@ function SelectableOptions({ step, value, onChange, onLimit, shake }) {
     options[nextIndex].click()
   }
 
-  return <div className={`obf-options ${step.layout === 'grid' ? 'obf-options-grid' : ''} ${step.type === 'single' ? 'obf-options-experience' : ''} ${shake ? 'obf-is-shaking' : ''}`} role={multiple ? 'group' : 'radiogroup'} aria-label={step.title}>
+  return <div className={`obf-options obf-options-${step.key} ${step.layout === 'grid' ? 'obf-options-grid' : ''} ${step.type === 'single' ? 'obf-options-experience' : ''} ${shake ? 'obf-is-shaking' : ''}`} role={multiple ? 'group' : 'radiogroup'} aria-label={step.title}>
     {step.options.map((option, index) => {
       const isSelected = selected.includes(option.label)
       const Icon = option.icon ? optionIcons[option.icon] : null
+      const isExperience = step.key === 'experience'
       return <button
         className={`obf-option ${isSelected ? 'is-selected' : ''} ${step.layout === 'grid' ? 'obf-option-grid' : ''} ${step.type === 'single' ? 'obf-option-experience-card' : ''} ${step.type === 'capital' ? 'obf-option-text-only' : ''}`}
         key={option.label}
@@ -166,14 +157,17 @@ function SelectableOptions({ step, value, onChange, onLimit, shake }) {
         onClick={() => chooseOption(option.label)}
         onKeyDown={moveFocus}
       >
-        {option.icon && step.type !== 'single' && <span className={`obf-option-icon obf-color-${option.color}`}>
-          {brandIcons.has(option.icon)
-            ? <BrandIcon name={option.icon} />
-            : Icon && <Icon size={25} strokeWidth={2.2} />}
-          {['options', 'forex'].includes(option.icon) && <span className="obf-icon-decoration">$</span>}
+        {option.icon && step.type !== 'single' && <span className={`obf-option-icon obf-color-${option.color} obf-icon-${option.icon}`}>
+          {step.key === 'source' && ['google', 'x', 'instagram', 'tiktok', 'youtube', 'reddit'].includes(option.icon)
+            ? <SimpleBrandIcon name={option.label === 'Google search' ? 'Google' : option.label} />
+            : option.icon === 'crypto'
+              ? <BitcoinBrand />
+              : Icon && <Icon size={36} strokeWidth={2.15} />}
+          {option.icon === 'options' && <span className="obf-icon-decoration">$</span>}
+          {option.icon === 'forex' && <span className="obf-icon-decoration">$</span>}
           {option.icon === 'futures' && <span className="obf-icon-decoration">↗</span>}
         </span>}
-        {step.type === 'single' && <span className={`obf-experience-icon obf-color-${option.color}`}><Icon size={23} strokeWidth={2.2} /></span>}
+        {isExperience && <CartoonAvatar type={['newbie', 'climber', 'ninja', 'monk'][index]} />}
         <span className="obf-option-copy">
           <strong>{option.label}</strong>
           {option.detail && <small>{option.detail}</small>}
@@ -184,7 +178,7 @@ function SelectableOptions({ step, value, onChange, onLimit, shake }) {
   </div>
 }
 
-function BrokerSelect({ value, onChange }) {
+function BrokerSelect({ value, onChange, onSelected }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState(value && !brokerOptions.includes(value) ? '' : value)
   const [customBroker, setCustomBroker] = useState(value && !brokerOptions.includes(value) ? value : '')
@@ -192,7 +186,7 @@ function BrokerSelect({ value, onChange }) {
   const inputRef = useRef(null)
   const otherInputRef = useRef(null)
   const skipOpenOnFocusRef = useRef(false)
-  const filteredBrokers = useMemo(() => brokerOptions.filter((broker) => broker.toLowerCase().includes(query.toLowerCase())), [query])
+  const filteredBrokers = useMemo(() => brokerOptions.filter((broker) => broker !== 'Other (type your own)' && broker.toLowerCase().includes(query.toLowerCase())), [query])
   const otherInitials = (name) => name === 'Interactive Brokers'
     ? 'IB'
     : name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()
@@ -216,6 +210,7 @@ function BrokerSelect({ value, onChange }) {
       return
     }
     onChange(broker)
+    onSelected?.()
     setQuery(broker)
     setCustomBroker('')
     setIsOther(false)
@@ -279,7 +274,7 @@ function BrokerSelect({ value, onChange }) {
       </div>
       {open && <div id="obf-broker-list" className="obf-broker-list" role="listbox" aria-label="Broker options">
         {filteredBrokers.map((broker) => <button type="button" role="option" aria-selected={broker === value} key={broker} onClick={() => selectBroker(broker)} onKeyDown={moveBrokerFocus}>
-          <span className="obf-broker-initials">{otherInitials(broker)}</span><span>{broker}</span>
+          <span className="obf-broker-logo-wrap"><BrokerBrand name={broker} />{!hasBrokerBrand(broker) && <span className="obf-broker-initials">{otherInitials(broker)}</span>}</span><span>{broker}</span>
         </button>)}
         <button type="button" role="option" aria-selected={false} onClick={() => selectBroker('Other (type your own)')} onKeyDown={moveBrokerFocus}>
           <span className="obf-broker-initials obf-broker-other">+</span><span>Other (type your own)</span>
@@ -295,6 +290,7 @@ function BrokerSelect({ value, onChange }) {
       value={customBroker}
       onFocus={() => setOpen(false)}
       onChange={(event) => { setCustomBroker(event.target.value); onChange(event.target.value.trim()) }}
+      onBlur={() => { if (customBroker.trim()) onSelected?.() }}
     />}
   </div>
 }
@@ -327,6 +323,8 @@ export default function OnboardingPage() {
   const [error, setError] = useState('')
   const transitionTimer = useRef(null)
   const hintTimer = useRef(null)
+  const autoContinueTimer = useRef(null)
+  const continueStepRef = useRef(null)
   const currentStep = onboardingSteps[stepIndex]
   const currentValue = answers[currentStep.key]
   const canContinue = currentStep.type === 'single'
@@ -338,6 +336,12 @@ export default function OnboardingPage() {
   useEffect(() => () => {
     window.clearTimeout(transitionTimer.current)
     window.clearTimeout(hintTimer.current)
+    window.clearTimeout(autoContinueTimer.current)
+  }, [])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { document.title = 'Welcome | TradeJournal' }, 0)
+    return () => window.clearTimeout(timer)
   }, [])
 
   useEffect(() => {
@@ -427,6 +431,13 @@ export default function OnboardingPage() {
           setFinished(false)
           throw new Error('Onboarding status could not be refreshed.')
         }
+        continueStepRef.current = continueStep
+
+        const autoContinue = () => {
+          if (currentStep.key !== 'experience' && currentStep.key !== 'broker') return
+          window.clearTimeout(autoContinueTimer.current)
+          autoContinueTimer.current = window.setTimeout(() => continueStepRef.current?.(), 600)
+        }
         transitionTimer.current = window.setTimeout(() => navigate('/', { replace: true }), 1500)
       } else {
         const nextStep = stepIndex + 1
@@ -443,6 +454,7 @@ export default function OnboardingPage() {
 
   const goBack = async () => {
     if (stepIndex === 0 || saving) return
+    window.clearTimeout(autoContinueTimer.current)
     setSaving(true)
     setError('')
     try {
@@ -471,7 +483,7 @@ export default function OnboardingPage() {
   const canSkip = !saving
   const showLogo = stepIndex < 3
 
-  return <main className="obf-page" style={{ colorScheme: 'light' }}>
+  return <main className={`obf-page ${stepIndex === 5 ? 'obf-dark-step' : ''}`} style={{ colorScheme: stepIndex === 5 ? 'dark' : 'light' }}>
     <PolyPattern />
     <div className="obf-progress-wrap">
       <div className="obf-progress-track" role="progressbar" aria-label="Onboarding progress" aria-valuenow={stepIndex + 1} aria-valuemin="1" aria-valuemax={onboardingSteps.length}>
@@ -490,12 +502,13 @@ export default function OnboardingPage() {
           <p>{currentStep.subtitle}</p>
         </header>
         {currentStep.type === 'broker'
-            ? <BrokerSelect key={stepIndex} value={answers.broker} onChange={(value) => updateAnswer('broker', value)} />
+            ? <BrokerSelect key={stepIndex} value={answers.broker} onChange={(value) => updateAnswer('broker', value)} onSelected={autoContinue} />
           : <SelectableOptions
                 key={stepIndex}
                 step={currentStep}
               value={currentValue}
               onChange={(value) => updateAnswer(currentStep.key, value)}
+              onSelected={autoContinue}
               onLimit={showLimitHint}
               shake={shake}
             />}
@@ -504,8 +517,9 @@ export default function OnboardingPage() {
       <footer className="obf-footer">
         {error && <p className="obf-error" role="alert">{error}</p>}
         <button className="obf-continue" type="button" disabled={!canContinue || saving} onClick={continueStep}>
-          {saving ? 'Saving…' : stepIndex === onboardingSteps.length - 1 ? 'Finish' : 'Continue'}
+          {saving ? 'Saving…' : <>{stepIndex === onboardingSteps.length - 1 ? 'Finish' : 'Continue'}<ArrowRight className="obf-continue-arrow" size={20} aria-hidden="true" /></>}
         </button>
+        {!canContinue && <p className="obf-disabled-hint"><LockKeyhole size={13} aria-hidden="true" />Choose an option to continue</p>}
         <button className="obf-skip" type="button" disabled={!canSkip} onClick={() => finishOnboarding({ skip: true })}>Skip for now</button>
       </footer>
     </div>
