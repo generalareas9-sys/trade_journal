@@ -94,6 +94,8 @@ export const onboardingSteps = [
 
 export const brokerOptions = [
   'Exness',
+  'MetaTrader 5 (MT5)',
+  'MetaTrader 4 (MT4)',
   'IC Markets',
   'Pepperstone',
   'XM',
@@ -116,4 +118,7 @@ export const brokerOptions = [
   'Bybit',
   'Topstep',
   'Apex',
+  'TradingView',
+  'cTrader',
+  'Other (type your own)',
 ]
