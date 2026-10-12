@@ -252,8 +252,9 @@
   height: 14px;
   place-items: center;
   border-radius: 999px;
-  background: currentColor;
-  color: white;
+  border: 1px solid currentColor;
+  background: rgba(255, 255, 255, .94);
+  color: inherit;
   font-size: 10px;
   font-weight: 800;
   line-height: 1;
@@ -693,9 +694,10 @@
 @media (max-width: 380px) {
   .obf-stage { padding-right: 14px; padding-left: 14px; }
   .obf-option { gap: 10px; padding-right: 13px; padding-left: 13px; }
-  .obf-option-copy strong { font-size: 15px; }
+  .obf-option-copy strong { font-size: 18px; }
   .obf-option-grid { min-height: 82px; padding-right: 6px; padding-left: 6px; }
   .obf-option-grid .obf-option-copy strong { font-size: 13px; }
+  .obf-heading-goals h1 { font-size: 29px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
