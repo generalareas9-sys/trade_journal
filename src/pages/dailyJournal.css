@@ -64,12 +64,16 @@
 .dj-day-heading h2 { margin: 3px 0 0; font-size: clamp(17px, 2vw, 21px); letter-spacing: -.35px; }
 .dj-nav-button { width: 34px; height: 34px; flex-shrink: 0; }
 .dj-today-button { min-height: 32px; padding: 0 9px; }
-.dj-kpis { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); border: 1px solid var(--dj-border); background: var(--dj-soft); border-radius: 10px; margin-top: 18px; }
+.dj-kpis { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); border: 1px solid var(--dj-border); background: var(--dj-soft); border-radius: 10px; margin-top: 18px; }
 .dj-kpis > div, .dj-week-stats > div { padding: 12px; min-width: 0; border-right: 1px solid var(--dj-border); }
 .dj-kpis > div:last-child, .dj-week-stats > div:last-child { border-right: 0; }
 .dj-kpis span, .dj-week-stats span { display: block; color: var(--dj-muted); font-size: 10px; }
 .dj-kpis strong, .dj-week-stats strong { display: block; margin-top: 4px; color: var(--text-strong); font-size: 17px; font-variant-numeric: tabular-nums; }
+.dj-kpis small { display: block; margin-top: 4px; color: var(--dj-muted); font-size: 9px; line-height: 1.35; }
 .dj-empty-trades { color: var(--dj-muted); margin: 10px 0 0; font-size: 11px; }
+.dj-day-performance { padding: 14px 0 0; margin-top: 14px; border-top: 1px solid var(--dj-border); }
+.dj-day-performance .dj-section-heading { margin-bottom: 4px; }
+.dj-day-chart { width: 100%; height: 190px; }
 .dj-trades { margin: 16px 0; }
 .dj-trades .dj-section-heading { margin-bottom: 8px; }
 .dj-table-wrap { overflow-x: auto; }
@@ -77,6 +81,13 @@
 .dj-table-wrap th { padding: 8px; color: var(--dj-muted); border-bottom: 1px solid var(--dj-border); font-size: 10px; text-align: left; }
 .dj-table-wrap td { padding: 9px 8px; border-bottom: 1px solid var(--dj-border); color: var(--text-2); }
 .dj-table-wrap td:last-child { font-weight: 700; text-align: right; }
+.dj-result { display: inline-flex; align-items: center; border-radius: 20px; padding: 3px 8px; font-size: 9px; font-weight: 750; }
+.dj-result-win { color: #176d3b; background: #e4f6eb; }
+.dj-result-loss { color: #a43d30; background: #ffebe7; }
+.dj-result-breakeven { color: #655f79; background: #efedf5; }
+.dark-theme .dj-result-win { color: #8fe0ae; background: #153523; }
+.dark-theme .dj-result-loss { color: #ffab98; background: #3a211e; }
+.dark-theme .dj-result-breakeven { color: #c1bbd4; background: #292638; }
 .dj-fields-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; margin-top: 17px; }
 .dj-field { display: grid; align-content: start; gap: 6px; min-width: 0; color: var(--text-2); font-size: 11px; font-weight: 650; }
 .dj-field textarea { resize: vertical; line-height: 1.5; }
