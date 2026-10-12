@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Download, LoaderCircle, Shield, UserRound, SlidersHorizontal, Database, Trash2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Building2, Check, Download, FileUp, LoaderCircle, Plus, RefreshCw, Search, Shield, SlidersHorizontal, Database, Trash2, UserRound, X } from 'lucide-react'
 import { useJournal } from '../hooks/useJournal'
 import { useAuth } from '../context/AuthContext'
 import { migrateBackup } from '../context/DataContext'
@@ -8,16 +8,32 @@ import { supabase } from '../lib/supabase'
 import { deleteAllUserRows } from '../data/repo'
 import { deleteScreenshot, deleteUserScreenshots, uploadAvatar } from '../data/storage'
 import ProfileAvatar from '../components/ProfileAvatar'
+import { brokerOptions } from './Onboarding/onboardingSteps'
+import { currency } from '../utils/trading'
 import './SettingsPage.css'
 import '../settings-extra.css'
 
 const TABS = [
   ['Profile', UserRound],
   ['Security', Shield],
+  ['Accounts', Building2],
   ['Preferences', SlidersHorizontal],
   ['Data', Database],
   ['Danger zone', Trash2],
 ]
+const ACCOUNT_TYPES = ['Broker', 'Prop firm', 'Trading platform']
+const PROP_FIRMS = new Set(['Topstep', 'Apex'])
+const TRADING_PLATFORMS = new Set(['MetaTrader 5 (MT5)', 'MetaTrader 4 (MT4)', 'NinjaTrader', 'Rithmic', 'TradingView', 'cTrader'])
+const ACCOUNT_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD']
+
+function providersForType(type) {
+  return brokerOptions.filter((provider) => {
+    if (provider === 'Other (type your own)') return true
+    if (type === 'Prop firm') return PROP_FIRMS.has(provider)
+    if (type === 'Trading platform') return TRADING_PLATFORMS.has(provider)
+    return !PROP_FIRMS.has(provider) && !TRADING_PLATFORMS.has(provider)
+  })
+}
 
 function initials(name, email) {
   const words = (name || email || '?').trim().split(/[\s@._-]+/).filter(Boolean)
@@ -43,7 +59,7 @@ function downloadFile(name, content, type) {
 
 export function SettingsPage() {
   const {
-    accounts = [], account, setAccount, dark, setThemeChoice, profile = {}, setProfile,
+    accounts = [], account, setAccount, addAccount, updateAccount, deleteAccount, dark, setThemeChoice, profile = {}, setProfile,
     settings = {}, setSettings, importSettings, playbookChecklists, trades = [],
     journal = {}, notes = [], playbooks = [], clearAllTrades, replaceData, exportBackup,
   } = useJournal()
@@ -68,6 +84,13 @@ export function SettingsPage() {
   const avatarPreviewRef = useRef('')
   const [avatarPreview, setAvatarPreview] = useState('')
   const [avatarBusy, setAvatarBusy] = useState(false)
+  const [accountWizardStep, setAccountWizardStep] = useState('')
+  const [accountType, setAccountType] = useState('Broker')
+  const [accountSearch, setAccountSearch] = useState('')
+  const [selectedProvider, setSelectedProvider] = useState('')
+  const [customProvider, setCustomProvider] = useState('')
+  const [accountDraft, setAccountDraft] = useState({ name: '', currency: 'USD' })
+  const [editingAccountId, setEditingAccountId] = useState('')
   const displayName = profile.name || authProfile?.display_name || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || ''
   const avatarPath = authProfile?.settings?.avatarPath || authProfile?.settings?.appSettings?.avatarPath || ''
   const avatarInitials = initials(displayName, user?.email)
@@ -88,6 +111,70 @@ export function SettingsPage() {
   const notifySuccess = (value) => { setError(''); setMessage(value) }
   const changeThemePreference = (preference) => {
     setThemeChoice(preference)
+  }
+  const openAccountWizard = () => {
+    setAccountType('Broker')
+    setAccountSearch('')
+    setSelectedProvider('')
+    setCustomProvider('')
+    setAccountDraft({ name: '', currency: 'USD' })
+    setEditingAccountId('')
+    setAccountWizardStep('provider')
+    setError('')
+    setMessage('')
+  }
+  const closeAccountWizard = () => setAccountWizardStep('')
+  const chooseProvider = (provider) => {
+    setSelectedProvider(provider)
+    setCustomProvider('')
+    setAccountSearch('')
+    setAccountWizardStep('method')
+  }
+  const saveManagedAccount = (event) => {
+    event.preventDefault()
+    const provider = selectedProvider === 'Other (type your own)' ? customProvider.trim() : selectedProvider
+    const name = accountDraft.name.trim()
+    if (!provider) {
+      notifyError('Choose or enter a broker, prop firm, or trading platform.')
+      return
+    }
+    if (!name) {
+      notifyError('Enter a name for this account.')
+      return
+    }
+    const patch = { name, broker: provider, currency: accountDraft.currency }
+    if (editingAccountId) updateAccount(editingAccountId, patch)
+    else addAccount(patch)
+    closeAccountWizard()
+    notifySuccess(editingAccountId ? 'Account details updated.' : 'Account added.')
+  }
+  const startAccountEdit = (item) => {
+    setSelectedProvider(item.broker || 'Other (type your own)')
+    setCustomProvider(item.broker || '')
+    setAccountDraft({ name: item.name || '', currency: ACCOUNT_CURRENCIES.includes(item.currency) ? item.currency : 'USD' })
+    setEditingAccountId(item.id)
+    setAccountWizardStep('manual')
+    setError('')
+    setMessage('')
+  }
+  const continueToFileImport = () => {
+    const provider = selectedProvider === 'Other (type your own)' ? customProvider.trim() : selectedProvider
+    if (!provider) {
+      notifyError('Choose or enter a broker, prop firm, or trading platform first.')
+      return
+    }
+    addAccount({
+      name: accountDraft.name.trim() || `${provider} account`,
+      broker: provider,
+      currency: accountDraft.currency,
+    })
+    closeAccountWizard()
+    navigate('/import')
+  }
+  const removeManagedAccount = (item) => {
+    if (!window.confirm(`Delete “${item.name}”? Trades assigned to this account will remain in your journal.`)) return
+    deleteAccount(item.id)
+    notifySuccess(`“${item.name}” was deleted.`)
   }
   const authErrorMessage = (authError, action) => {
     const rawMessage = authError?.message || ''
@@ -348,6 +435,45 @@ export function SettingsPage() {
       <form onSubmit={changePassword} className="settings-security-form"><h3>Change password</h3><label className="settings-field"><span>New password</span><input type="password" required autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} aria-invalid={Boolean(newPassword) && newPassword.length < 8} aria-describedby="settings-password-hint" /></label><span className={`auth-password-strength strength-${passwordLevel(newPassword)}`}><span className="auth-strength-meter">{[1, 2, 3, 4].map((part) => <i key={part} />)}</span><span>{newPassword ? passwordLevel(newPassword) : ' '}</span></span><small id="settings-password-hint">{newPassword.length < 8 ? 'At least 8 characters' : 'Use a mix of characters for more strength.'}</small><label className="settings-field"><span>Confirm password</span><input type="password" required autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} aria-invalid={Boolean(confirmPassword) && confirmPassword !== newPassword} /></label><button className="button-secondary" disabled={busy || newPassword.length < 8 || newPassword !== confirmPassword}>{busy ? 'Updating...' : 'Update password'}</button></form>
       <button className="settings-signout" disabled={busy} onClick={async () => { setBusy(true); const result = await signOut(); setBusy(false); if (result?.error) notifyError(`Could not sign out: ${result.error.message}`); else navigate('/welcome', { replace: true }) }}>Sign out of this device</button>
     </div>
+    if (tab === 'Accounts') return <div className="settings-account-content">
+      <div className="settings-account-heading"><p>You can create and manage your trading accounts here. Broker connections are not available yet.</p><button className="button-primary" type="button" onClick={openAccountWizard}><Plus size={16} />Add account</button></div>
+      {accounts.length ? <div className="settings-accounts-table-wrap"><table className="settings-accounts-table"><thead><tr><th>Account name</th><th>Broker / firm</th><th>Currency</th><th>Trades</th><th>Realized P&amp;L</th><th>Actions</th></tr></thead><tbody>{accounts.map((item) => {
+        const accountTrades = trades.filter((trade) => trade.account === item.id)
+        const realizedPnl = accountTrades.reduce((total, trade) => total + (Number.isFinite(Number(trade.pnl)) ? Number(trade.pnl) : 0), 0)
+        return <tr key={item.id}><td><strong>{item.name || 'Untitled account'}</strong></td><td>{item.broker || '—'}</td><td>{item.currency || 'USD'}</td><td>{accountTrades.length}</td><td className={realizedPnl > 0 ? 'profit' : realizedPnl < 0 ? 'loss' : ''}>{currency(realizedPnl)}</td><td><div className="settings-account-actions"><button type="button" className="button-secondary" onClick={() => startAccountEdit(item)}>Edit</button><button type="button" className="settings-account-delete" onClick={() => removeManagedAccount(item)} aria-label={`Delete ${item.name || 'account'}`}><Trash2 size={15} /></button></div></td></tr>
+      })}</tbody></table></div> : <div className="settings-accounts-empty"><Building2 size={25} /><strong>No trading accounts yet</strong><span>Add a broker, prop firm, or trading platform to organize your trades.</span><button type="button" className="button-primary" onClick={openAccountWizard}><Plus size={15} />Add your first account</button></div>}
+      {accountWizardStep && <div className="settings-account-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) closeAccountWizard() }}>
+        <section className="settings-account-wizard" role="dialog" aria-modal="true" aria-labelledby="settings-account-title">
+          <button type="button" className="settings-account-close" aria-label="Close account setup" onClick={closeAccountWizard}><X size={19} /></button>
+          {accountWizardStep === 'provider' && <>
+            <span className="eyebrow">ADD ACCOUNT · STEP 1</span><h2 id="settings-account-title">Choose a broker, prop firm or trading platform</h2><p>Select the provider you use. You can search the list or enter a custom name.</p>
+            <div className="settings-account-types" role="group" aria-label="Provider type">{ACCOUNT_TYPES.map((type) => <button type="button" key={type} className={accountType === type ? 'active' : ''} aria-pressed={accountType === type} onClick={() => { setAccountType(type); setAccountSearch('') }}>{type}</button>)}</div>
+            <label className="settings-account-search"><Search size={16} /><input aria-label="Search providers" autoFocus value={accountSearch} onChange={(event) => setAccountSearch(event.target.value)} placeholder={`Search ${accountType.toLowerCase()}s…`} /></label>
+            <div className="settings-provider-grid">{providersForType(accountType).filter((provider) => provider.toLowerCase().includes(accountSearch.toLowerCase())).map((provider) => <button type="button" key={provider} onClick={() => provider === 'Other (type your own)' ? setSelectedProvider(provider) : chooseProvider(provider)}><span className="settings-provider-mark">{provider === 'Other (type your own)' ? '+' : provider.slice(0, 1)}</span><span>{provider === 'Other (type your own)' ? 'Other' : provider}</span><ArrowRight size={14} /></button>)}</div>
+            {selectedProvider === 'Other (type your own)' && <label className="settings-account-custom"><span>Provider name</span><input value={customProvider} onChange={(event) => setCustomProvider(event.target.value)} placeholder="Enter provider name" /><button type="button" className="button-primary" disabled={!customProvider.trim()} onClick={() => { setSelectedProvider(customProvider.trim()); setAccountWizardStep('method') }}>Continue</button></label>}
+          </>}
+          {accountWizardStep === 'method' && <>
+            <button type="button" className="settings-account-back" onClick={() => setAccountWizardStep('provider')}><ArrowLeft size={15} />Change provider</button>
+            <span className="eyebrow">ADD ACCOUNT · STEP 2</span><h2 id="settings-account-title">Choose how to add trades</h2><p className="settings-account-selected"><span className="settings-provider-mark">{selectedProvider.slice(0, 1)}</span>You’re adding <strong>{selectedProvider}</strong></p>
+            <div className="settings-account-methods">
+              <button type="button" className="settings-account-method is-disabled" disabled aria-describedby="sync-coming-soon"><span><RefreshCw size={21} /></span><strong>Auto-sync</strong><small>Connect your provider automatically</small><em id="sync-coming-soon">Coming soon</em></button>
+              <button type="button" className="settings-account-method" onClick={continueToFileImport}><span><FileUp size={21} /></span><strong>File upload</strong><small>Import a CSV or text file from your provider</small></button>
+              <button type="button" className="settings-account-method" onClick={() => { setAccountDraft({ name: `${selectedProvider} account`, currency: 'USD' }); setAccountWizardStep('manual') }}><span><Building2 size={21} /></span><strong>Add manually</strong><small>Create the account and log trades yourself</small></button>
+            </div>
+          </>}
+          {accountWizardStep === 'manual' && <>
+            <button type="button" className="settings-account-back" onClick={() => editingAccountId ? closeAccountWizard() : setAccountWizardStep('method')}><ArrowLeft size={15} />{editingAccountId ? 'Cancel edit' : 'Back'}</button>
+            <span className="eyebrow">{editingAccountId ? 'EDIT ACCOUNT' : 'ADD ACCOUNT · STEP 3'}</span><h2 id="settings-account-title">{editingAccountId ? 'Update account details' : 'Add account manually'}</h2><p>Give this account a name you’ll recognize in your journal.</p>
+            <form className="settings-account-form" onSubmit={saveManagedAccount}>
+              <label><span>Account name</span><input autoFocus required maxLength={80} value={accountDraft.name} onChange={(event) => setAccountDraft((current) => ({ ...current, name: event.target.value }))} placeholder="e.g. Personal futures account" /></label>
+              {selectedProvider === 'Other (type your own)' && <label><span>Broker, firm or platform</span><input required value={customProvider} onChange={(event) => setCustomProvider(event.target.value)} placeholder="Provider name" /></label>}
+              <label><span>Currency</span><select value={accountDraft.currency} onChange={(event) => setAccountDraft((current) => ({ ...current, currency: event.target.value }))}>{ACCOUNT_CURRENCIES.map((currencyCode) => <option key={currencyCode}>{currencyCode}</option>)}</select></label>
+              <div className="settings-account-form-actions"><button type="button" className="button-secondary" onClick={closeAccountWizard}>Cancel</button><button type="submit" className="button-primary"><Check size={15} />{editingAccountId ? 'Save changes' : 'Add account'}</button></div>
+            </form>
+          </>}
+        </section>
+      </div>}
+    </div>
     if (tab === 'Preferences') return <div className="settings-tab-content">
       <label className="settings-preference-row"><span><strong>Theme</strong><small>Choose your workspace appearance.</small></span><select value={themePreference} onChange={(event) => changeThemePreference(event.target.value)}><option value="light">Light</option><option value="dark">Dark</option><option value="system">Match my device</option></select></label>
       <label className="settings-preference-row"><span><strong>Default account</strong><small>Choose the account shown when you open your journal.</small></span><select value={settings.defaultAccount || 'all'} onChange={(event) => { setSettings((current) => ({ ...current, defaultAccount: event.target.value })); setAccount(event.target.value) }}><option value="all">All accounts</option>{accounts.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
@@ -378,7 +504,7 @@ export function SettingsPage() {
     <div className="page-intro-row"><div><span className="eyebrow">YOUR ACCOUNT</span><h2>Settings</h2><p>Manage your profile, security, preferences, and data.</p></div></div>
     <section className="panel settings-management">
       <nav className="settings-tab-nav" aria-label="Settings sections">{TABS.map(([label, Icon]) => <button key={label} type="button" className={tab === label ? 'active' : ''} aria-current={tab === label ? 'page' : undefined} onClick={() => { setTab(label); setError(''); setMessage('') }}><Icon size={16} />{label}</button>)}</nav>
-      <div className="settings-tab-panel"><header><h3>{tab}</h3><p>{tab === 'Profile' ? 'Your display name and profile details.' : tab === 'Security' ? 'Manage your sign-in credentials.' : tab === 'Preferences' ? 'Set defaults for your trading workspace.' : tab === 'Data' ? 'Export or restore your journal data.' : 'These actions cannot be undone.'}</p></header>{tabContent()}{error && <p className="settings-feedback error" role="alert">{error}</p>}{message && <p className="settings-feedback success" role="status">{message}</p>}</div>
+      <div className="settings-tab-panel"><header><h3>{tab}</h3><p>{tab === 'Profile' ? 'Your display name and profile details.' : tab === 'Security' ? 'Manage your sign-in credentials.' : tab === 'Accounts' ? 'Manage your brokers, prop firms, and trading accounts.' : tab === 'Preferences' ? 'Set defaults for your trading workspace.' : tab === 'Data' ? 'Export or restore your journal data.' : 'These actions cannot be undone.'}</p></header>{tabContent()}{error && <p className="settings-feedback error" role="alert">{error}</p>}{message && <p className="settings-feedback success" role="status">{message}</p>}</div>
     </section>
     {backup && tab !== 'Data' && null}
   </div>
