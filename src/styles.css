@@ -81,6 +81,7 @@ select option:checked, select option:hover { background-color: var(--purple); co
 .sidebar-collapsed .brand-row { justify-content: center; padding: 0; }
 .workspace-label, .eyebrow { display: block; color: #a0a3b1; font-size: 12px; font-weight: 700; letter-spacing: 1.25px; }
 .workspace-label { margin: 0 11px 9px; }
+.side-nav + .workspace-label { margin-top: 14px; }
 .side-nav { display: grid; flex: 0 0 auto; gap: 4px; min-height: 0; overflow: visible; }
 .nav-link { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 0 11px; color: #777c8c; font-size: 12px; font-weight: 600; text-decoration: none; border-radius: 9px; transition: all .15s ease; }
 .nav-link:hover { background: var(--card-soft); color: var(--text); }
@@ -96,11 +97,12 @@ select option:checked, select option:hover { background-color: var(--purple); co
 .upgrade-card strong { display: block; font-size: 12px; }
 .upgrade-card p { margin: 5px 0 12px; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .upgrade-card button, .help-link { padding: 0; color: var(--purple); font-size: 12px; font-weight: 700; border: 0; background: none; }
-.sidebar-profile-wrap { position: relative; }
+.sidebar-profile-wrap { position: relative; overflow: visible; }
 .profile-button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 6px; border: 0; border-top: 1px solid var(--line); background: transparent; text-align: left; cursor: pointer; }
-.sidebar-profile-menu { position: absolute; z-index: 20; right: 0; bottom: calc(100% + 6px); left: 0; padding: 5px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); box-shadow: 0 10px 30px rgba(20,24,35,.16); }
+.sidebar-profile-menu { position: absolute; z-index: 80; right: 0; bottom: calc(100% + 6px); left: 0; padding: 5px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); box-shadow: 0 10px 30px rgba(20,24,35,.16); }
 .sidebar-profile-menu button { display: flex; width: 100%; align-items: center; gap: 9px; padding: 9px 10px; border: 0; border-radius: 7px; background: transparent; color: var(--text); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
 .sidebar-profile-menu button:hover { background: var(--card-soft); color: var(--loss); }
+.sidebar-profile-menu button:disabled { opacity: .65; cursor: wait; }
 .avatar { display: grid; place-items: center; flex: 0 0 33px; height: 33px; color: #6a55d5; background: #eeeaff; border-radius: 50%; font-size: 12px; font-weight: 700; }
 .profile-copy { display: grid; gap: 3px; }
 .profile-copy strong { color: var(--text); font-size: 12px; }
@@ -258,6 +260,29 @@ select option:checked, select option:hover { background-color: var(--purple); co
 .calendar-week-total strong, .calendar-month-total strong { font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .calendar-week-total small { color: var(--muted); font-size: 12px; }
 .calendar-month-total { display: flex; justify-content: flex-end; align-items: center; gap: 12px; padding: 10px 12px; border-top: 1px solid var(--line); }
+.calendar-performance-summary { display: grid; grid-template-columns: repeat(3, minmax(100px, 1fr)) auto; align-items: stretch; gap: 8px; margin: -4px 0 16px; }
+.calendar-performance-summary > div:not(.calendar-performance-legend) { display: grid; gap: 4px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card-soft); }
+.calendar-performance-summary > div > span:first-child { color: var(--muted); font-size: 11px; font-weight: 600; }
+.calendar-performance-summary strong { color: var(--text-strong); font-size: 15px; font-variant-numeric: tabular-nums; }
+.calendar-performance-summary strong i { color: var(--muted); font-style: normal; font-weight: 400; }
+.calendar-performance-legend { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px 12px; padding: 6px; }
+.calendar-performance-legend span { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; white-space: nowrap; }
+.calendar-legend-dot { width: 9px; height: 9px; border-radius: 50%; }
+.calendar-legend-dot.is-profit { background: var(--profit); box-shadow: 0 0 9px color-mix(in srgb, var(--profit) 45%, transparent); }
+.calendar-legend-dot.is-loss { background: var(--loss); box-shadow: 0 0 9px color-mix(in srgb, var(--loss) 45%, transparent); }
+.calendar-day { min-height: 78px; }
+.calendar-day-win-loss { display: flex; align-items: center; gap: 3px; width: 100%; font-size: 10px !important; font-variant-numeric: tabular-nums; }
+.calendar-day-win-loss span:first-child { color: var(--profit); }
+.calendar-day-win-loss span:nth-of-type(2) { color: var(--loss); }
+.calendar-day-win-loss i { color: var(--muted); font-style: normal; }
+.calendar-day-win-loss b { margin-left: auto; color: var(--text-2); font-size: 10px; font-weight: 650; }
+.calendar-week-detail { line-height: 1.35; }
+.calendar-month-total { flex-wrap: wrap; }
+.calendar-month-total small { color: var(--muted); font-size: 11px; }
+@media (max-width: 650px) {
+  .calendar-performance-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .calendar-performance-legend { justify-content: flex-start; }
+}
 @keyframes calendar-slide-next { from { opacity: .45; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes calendar-slide-previous { from { opacity: .45; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes calendar-day-pop { from { opacity: .35; transform: scale(.97) translateY(3px); } to { opacity: 1; transform: scale(1) translateY(0); } }
