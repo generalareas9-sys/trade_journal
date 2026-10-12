@@ -85,6 +85,29 @@ function PolyPattern() {
   </svg>
 }
 
+function CandlestickBackdrop() {
+  return <svg className="obf-candles" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <g fill="none" stroke="#f0d9ff" strokeOpacity=".36" strokeWidth="2">
+      <path d="M970 95v72m0-47h18v20h-18m56-81v110m0-72h18v34h-18m56-24v89m0-60h18v25h-18m56-115v99m0-65h18v22h-18m57 4v93m0-68h18v34h-18m55-144v91m0-58h18v19h-18m56 31v81m0-59h18v25h-18" />
+      <path d="M870 226v64m0-49h16v23h-16m57-76v94m0-61h16v34h-16m57-34v83m0-56h16v23h-16m56-100v88m0-61h16v22h-16m57 1v72m0-53h16v25h-16" />
+    </g>
+    <g fill="#b996ff" fillOpacity=".18">
+      <rect x="982" y="120" width="14" height="20" rx="2" />
+      <rect x="1038" y="106" width="14" height="34" rx="2" />
+      <rect x="1094" y="116" width="14" height="25" rx="2" />
+      <rect x="1150" y="105" width="14" height="22" rx="2" />
+      <rect x="1207" y="115" width="14" height="34" rx="2" />
+      <rect x="1263" y="123" width="14" height="19" rx="2" />
+      <rect x="1319" y="153" width="14" height="25" rx="2" />
+      <rect x="878" y="241" width="12" height="23" rx="2" />
+      <rect x="935" y="234" width="12" height="34" rx="2" />
+      <rect x="992" y="250" width="12" height="23" rx="2" />
+      <rect x="1048" y="253" width="12" height="22" rx="2" />
+      <rect x="1105" y="247" width="12" height="25" rx="2" />
+    </g>
+  </svg>
+}
+
 function BrokerIllustration() {
   return <svg className="obf-broker-art" viewBox="0 0 250 150" role="img" aria-label="Pastel isometric bar chart illustration">
     <g className="obf-art-float">
@@ -385,6 +408,7 @@ export default function OnboardingPage() {
   const updateAnswer = (key, value) => setAnswers((current) => ({ ...current, [key]: value }))
 
   const changeStep = (nextIndex, nextDirection) => {
+    window.clearTimeout(autoContinueTimer.current)
     setDirection(nextDirection)
     setTransition('out')
     window.clearTimeout(transitionTimer.current)
@@ -418,6 +442,7 @@ export default function OnboardingPage() {
   }
 
   const continueStep = async () => {
+    window.clearTimeout(autoContinueTimer.current)
     if (!canContinue || saving) return
     setSaving(true)
     setError('')
@@ -485,6 +510,7 @@ export default function OnboardingPage() {
 
   return <main className={`obf-page ${stepIndex === 5 ? 'obf-dark-step' : ''}`} style={{ colorScheme: stepIndex === 5 ? 'dark' : 'light' }}>
     <PolyPattern />
+    <CandlestickBackdrop />
     <div className="obf-progress-wrap">
       <div className="obf-progress-track" role="progressbar" aria-label="Onboarding progress" aria-valuenow={stepIndex + 1} aria-valuemin="1" aria-valuemax={onboardingSteps.length}>
         <span style={{ width: `${((stepIndex + 1) / onboardingSteps.length) * 100}%` }} />
