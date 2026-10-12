@@ -456,13 +456,6 @@ export default function OnboardingPage() {
           setFinished(false)
           throw new Error('Onboarding status could not be refreshed.')
         }
-        continueStepRef.current = continueStep
-
-        const autoContinue = () => {
-          if (currentStep.key !== 'experience' && currentStep.key !== 'broker') return
-          window.clearTimeout(autoContinueTimer.current)
-          autoContinueTimer.current = window.setTimeout(() => continueStepRef.current?.(), 600)
-        }
         transitionTimer.current = window.setTimeout(() => navigate('/', { replace: true }), 1500)
       } else {
         const nextStep = stepIndex + 1
@@ -475,6 +468,13 @@ export default function OnboardingPage() {
     } finally {
       setSaving(false)
     }
+  }
+  continueStepRef.current = continueStep
+
+  const autoContinue = () => {
+    if (currentStep.key !== 'experience' && currentStep.key !== 'broker') return
+    window.clearTimeout(autoContinueTimer.current)
+    autoContinueTimer.current = window.setTimeout(() => continueStepRef.current?.(), 600)
   }
 
   const goBack = async () => {
