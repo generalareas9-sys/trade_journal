@@ -100,6 +100,42 @@ function MessageText({ children }) {
   return <div className="aic-message-text">{children}</div>
 }
 
+async function requestErrorMessage(error) {
+  const response = error?.context instanceof Response ? error.context : null
+  if (response) {
+    try {
+      const body = await response.clone().json()
+      const categoryMessages = {
+        configuration_missing: 'TradeJournal AI needs server configuration. Ask the site administrator to set the required Supabase secrets.',
+        authentication_required: 'Your sign-in could not be verified. Sign in again, then retry.',
+        authentication_unavailable: 'Sign-in verification is temporarily unavailable. Please retry shortly.',
+        daily_limit: 'You’ve reached today’s AI request limit. Please come back tomorrow.',
+        invalid_request: 'TradeJournal AI could not process that request. Please try a shorter question.',
+        provider_credentials: 'TradeJournal AI server credentials need attention. Please contact the site administrator.',
+        provider_model: 'The configured AI model is unavailable. Please contact the site administrator.',
+        provider_rate_limit: 'The AI service is busy. Please wait a minute and try again.',
+        provider_request: 'TradeJournal AI could not process that request. Please try a shorter question.',
+        provider_timeout: 'TradeJournal AI took too long to respond. Please retry in a moment.',
+        provider_unavailable: 'TradeJournal AI is temporarily unavailable. Please try again shortly.',
+      }
+      if (typeof body?.category === 'string' && categoryMessages[body.category]) {
+        return categoryMessages[body.category]
+      }
+    } catch {
+      // Use the status-based message below when the response has no readable JSON body.
+    }
+    if (response.status === 401 || response.status === 403) return 'Your sign-in could not be verified. Sign in again, then retry.'
+    if (response.status === 429) return 'TradeJournal AI has reached its request limit. Please wait and try again.'
+    if (response.status === 503) return 'TradeJournal AI needs server configuration. Please contact the site administrator.'
+    if (response.status === 504) return 'TradeJournal AI took too long to respond. Please retry.'
+  }
+
+  if (error?.name === 'FunctionsFetchError') {
+    return 'TradeJournal AI could not connect. Check that journal-ai is deployed and AI_ALLOWED_ORIGINS includes this site, then retry.'
+  }
+  return 'TradeJournal AI is temporarily unavailable. Please retry in a moment.'
+}
+
 export default function AIChat({ onAvailabilityChange }) {
   const { trades = [], journal = [] } = useJournal()
   const { user, profile, refreshProfile } = useAuth()
@@ -112,7 +148,7 @@ export default function AIChat({ onAvailabilityChange }) {
   const [consentError, setConsentError] = useState('')
   const [consent, setConsent] = useState(profile?.settings?.aiConsent ?? null)
   const [pendingQuestion, setPendingQuestion] = useState('')
-  const [availabilityMessage, setAvailabilityMessage] = useState('')
+  const [requestError, setRequestError] = useState(null)
   const controllerRef = useRef(null)
   const dialogRef = useRef(null)
   const context = useMemo(() => buildContext(trades, journal, profile), [trades, journal, profile])
@@ -172,7 +208,7 @@ export default function AIChat({ onAvailabilityChange }) {
     }
   }
 
-  const requestQuestion = async (question, previousMessages = messages, consentGranted = false) => {
+  const requestQuestion = async (question, previousMessages = messages, consentGranted = false, appendUserMessage = true) => {
     const text = question.trim()
     if (!text || loading) return
     if (consent !== 'allowed' && !consentGranted) {
@@ -180,17 +216,19 @@ export default function AIChat({ onAvailabilityChange }) {
       setConsentDialog(true)
       return
     }
-    setAvailabilityMessage('')
+    setRequestError(null)
     if (!context.metrics.totalTrades) {
-      setMessages((current) => [...current, { role: 'user', content: text }, {
-        role: 'assistant',
-        content: 'Add or import a few trades first, then I can review them.',
-      }])
+      if (appendUserMessage) {
+        setMessages((current) => [...current, { role: 'user', content: text }, {
+          role: 'assistant',
+          content: 'Add or import a few trades first, then I can review them.',
+        }])
+      }
       return
     }
 
     const nextMessages = [...previousMessages, { role: 'user', content: text }]
-    setMessages(nextMessages)
+    if (appendUserMessage) setMessages(nextMessages)
     setLoading(true)
     const requestMessages = nextMessages.slice(-10)
     if (requestMessages[0]?.role === 'assistant') requestMessages.shift()
@@ -207,14 +245,10 @@ export default function AIChat({ onAvailabilityChange }) {
       setMessages((current) => [...current, { role: 'assistant', content: data.reply.trim() }])
     } catch (error) {
       if (controller.signal.aborted) return
-      console.error('TradeJournal AI request failed:', error)
       onAvailabilityChange?.(false)
-      setAvailabilityMessage('TradeJournal AI is not available right now. Your chat is still here; retry when the service is ready.')
-      setMessages((current) => [...current, {
-        role: 'assistant',
-        content: 'I couldn’t reach TradeJournal AI just now. Please try again.',
-        retryQuestion: text,
-      }])
+      const message = await requestErrorMessage(error)
+      setRequestError({ message, question: text, history: previousMessages })
+      console.warn('TradeJournal AI request failed.', { category: error?.name || 'request_error' })
     } finally {
       if (controllerRef.current === controller) controllerRef.current = null
       setLoading(false)
@@ -222,7 +256,7 @@ export default function AIChat({ onAvailabilityChange }) {
   }
 
   const startPrompt = (question) => {
-    setAvailabilityMessage('')
+    setRequestError(null)
     if (consent === 'declined') {
       setConsentDialog(true)
       return
@@ -257,7 +291,7 @@ export default function AIChat({ onAvailabilityChange }) {
     stopRequest()
     setMessages([])
     setLoading(false)
-    setAvailabilityMessage('')
+    setRequestError(null)
   }
 
   return <div className="aic">
@@ -270,7 +304,6 @@ export default function AIChat({ onAvailabilityChange }) {
       <span>AI sharing is turned off.</span>
       <button type="button" onClick={() => { setConsentError(''); setConsentDialog(true) }}>Change choice</button>
     </div>}
-    {availabilityMessage && <p className="aic-availability" role="status">{availabilityMessage}</p>}
     {messages.length > 0 && <section className="aic-chat" aria-label="TradeJournal AI conversation">
       <div className="aic-chat-toolbar">
         <span>Conversation · kept only in this session</span>
@@ -280,7 +313,6 @@ export default function AIChat({ onAvailabilityChange }) {
         {messages.map((message, index) => <div className={`aic-message aic-message-${message.role}`} key={`${index}-${message.role}`}>
           <span className="aic-message-author">{message.role === 'assistant' ? 'TradeJournal AI' : 'You'}</span>
           <MessageText>{message.content}</MessageText>
-          {message.retryQuestion && <button className="aic-retry" type="button" onClick={() => requestQuestion(message.retryQuestion, messages.slice(0, Math.max(0, index - 1)))} disabled={loading}>Retry</button>}
         </div>)}
         {loading && <div className="aic-message aic-message-assistant aic-typing" role="status" aria-label="TradeJournal AI is typing">
           <span className="aic-message-author">TradeJournal AI</span>
@@ -288,6 +320,10 @@ export default function AIChat({ onAvailabilityChange }) {
           <button type="button" onClick={stopRequest}>Stop</button>
         </div>}
       </div>
+      {requestError && <div className="aic-request-error" role="status" aria-live="polite">
+        <span>{requestError.message}</span>
+        <button type="button" className="aic-retry" onClick={() => requestQuestion(requestError.question, requestError.history, true, false)} disabled={loading}>Retry</button>
+      </div>}
     </section>}
     {consent === 'allowed' && <form className="aic-compose" onSubmit={handleSubmit}>
       <label className="aic-visually-hidden" htmlFor="aic-question">Ask TradeJournal AI</label>
