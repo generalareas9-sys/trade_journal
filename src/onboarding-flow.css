@@ -404,6 +404,13 @@
   color: #78728d;
 }
 
+.obf-broker-input-wrap.has-selection input {
+  width: 0;
+  flex: 1 1 0;
+  padding-right: 4px;
+  padding-left: 4px;
+}
+
 .obf-broker-chevron,
 .obf-broker-clear {
   display: grid;
@@ -908,12 +915,29 @@
 .obf-broker-select { margin-bottom: 20px; }
 .obf-broker-logo-wrap {
   display: grid;
-  width: 31px;
-  height: 31px;
-  flex: 0 0 31px;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
   place-items: center;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 4px;
+  border-radius: 8px;
+  background: #fff;
+}
+.obf-broker-logo-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .obf-broker-logo { width: 23px; height: 23px; }
+.obf-broker-logo-wrap .obf-broker-initials {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border-radius: 6px;
+}
 .obf-broker-input-wrap { border-color: #3b2a78; }
 .obf-broker-list button:focus-visible { outline: 2px solid #6a50b4; outline-offset: -2px; }
 
