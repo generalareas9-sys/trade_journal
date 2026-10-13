@@ -26,7 +26,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { updateProfileSettings } from '../../data/repo'
 import { useJournal } from '../../hooks/useJournal'
-import { BitcoinBrand, BrokerBrand, CartoonAvatar, hasBrokerBrand, SimpleBrandIcon } from './OnboardingIllustrations'
+import { BitcoinBrand, CartoonAvatar, SimpleBrandIcon } from './OnboardingIllustrations'
+import BrokerLogo from './BrokerLogo'
 import { brokerOptions, onboardingSteps } from './onboardingSteps'
 
 const initialAnswers = {
@@ -245,7 +246,8 @@ function BrokerSelect({ value, onChange, onSelected }) {
   return <div className="obf-broker-select">
     <label className="obf-visually-hidden" htmlFor="obf-broker-search">Select broker</label>
     <div className="obf-broker-control">
-      <div className={`obf-broker-input-wrap ${open ? 'is-open' : ''}`}>
+      <div className={`obf-broker-input-wrap ${open ? 'is-open' : ''} ${!open && (value || customBroker) ? 'has-selection' : ''}`}>
+        {!open && (value || customBroker) && <BrokerLogo broker={value || customBroker} />}
         <input
           ref={inputRef}
           id="obf-broker-search"
@@ -297,7 +299,7 @@ function BrokerSelect({ value, onChange, onSelected }) {
       </div>
       {open && <div id="obf-broker-list" className="obf-broker-list" role="listbox" aria-label="Broker options">
         {filteredBrokers.map((broker) => <button type="button" role="option" aria-selected={broker === value} key={broker} onClick={() => selectBroker(broker)} onKeyDown={moveBrokerFocus}>
-          <span className="obf-broker-logo-wrap"><BrokerBrand name={broker} />{!hasBrokerBrand(broker) && <span className="obf-broker-initials">{otherInitials(broker)}</span>}</span><span>{broker}</span>
+          <BrokerLogo broker={broker} /><span>{broker}</span>
         </button>)}
         <button type="button" role="option" aria-selected={false} onClick={() => selectBroker('Other (type your own)')} onKeyDown={moveBrokerFocus}>
           <span className="obf-broker-initials obf-broker-other">+</span><span>Other (type your own)</span>
