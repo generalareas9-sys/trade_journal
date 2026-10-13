@@ -35,7 +35,7 @@ export default function Home() {
       <div className="home-ai-card panel">
         <span className="eyebrow">YOUR TRADING WORKSPACE</span>
         <h2>Welcome back, {displayName}</h2>
-        <div className="home-ai-status"><span><Sparkles size={17} /></span><div><strong>TradeJournal AI <i>{aiAvailable ? 'Beta' : 'Coming soon'}</i></strong><p>{aiAvailable ? 'Ask practical questions about your journal and trading process.' : 'Ask about your journal with concise, practical AI insights.'}</p></div></div>
+        <div className="home-ai-status"><span><Sparkles size={17} /></span><div><strong>TradeJournal AI <i>{aiAvailable ? 'Beta' : 'Coming soon'}</i></strong><p>{aiAvailable ? 'Ask practical questions about your journal and trading process.' : 'AI service is not yet available or is temporarily offline. Configure and deploy the service to enable journal insights.'}</p></div></div>
         <AIChat onAvailabilityChange={setAiAvailable} />
       </div>
       <div className="home-hub-grid">
