@@ -2,6 +2,19 @@ import { supabase } from '../lib/supabase'
 
 const profileRequests = new Map()
 
+export class StaleAuthSessionError extends Error {
+  constructor() {
+    super('The signed-in account no longer exists in Supabase Auth.')
+    this.name = 'StaleAuthSessionError'
+  }
+}
+
+function isMissingAuthUserError(error) {
+  return error?.code === '23503'
+    && error?.message?.includes('profiles_user_id_fkey')
+    && error?.details?.includes('table "users"')
+}
+
 async function loadOrCreateProfile(user) {
   try {
     const { data: existingProfile, error: selectError } = await supabase
@@ -39,12 +52,14 @@ async function loadOrCreateProfile(user) {
       .single()
 
     if (insertError) {
+      if (isMissingAuthUserError(insertError)) throw new StaleAuthSessionError()
       console.error('Failed to create user profile:', insertError)
       return null
     }
 
     return createdProfile
   } catch (error) {
+    if (error instanceof StaleAuthSessionError) throw error
     console.error('Failed to get or create user profile:', error)
     return null
   }
