@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { getOrCreateProfile } from '../data/profile'
+import { getOrCreateProfile, StaleAuthSessionError } from '../data/profile'
 
 const AuthContext = createContext(null)
 
@@ -19,9 +19,23 @@ export function AuthProvider({ children }) {
     }
 
     const request = ++profileRequest.current
-    const nextProfile = await getOrCreateProfile(user)
-    if (request === profileRequest.current) setProfile(nextProfile)
-    return nextProfile
+    try {
+      const nextProfile = await getOrCreateProfile(user)
+      if (request === profileRequest.current) setProfile(nextProfile)
+      return nextProfile
+    } catch (error) {
+      if (!(error instanceof StaleAuthSessionError)) throw error
+      if (request !== profileRequest.current) return null
+
+      console.error('The signed-in account no longer exists in Supabase Auth. Clearing the stale local session.')
+      profileRequest.current += 1
+      setProfile(null)
+      const recoveryRequest = profileRequest.current
+      const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' })
+      if (signOutError) console.error('Could not clear the stale authentication session:', signOutError)
+      if (recoveryRequest === profileRequest.current) setSession(null)
+      return null
+    }
   }, [user])
 
   useEffect(() => {
