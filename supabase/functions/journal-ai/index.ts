@@ -41,6 +41,29 @@ function numberValue(value: unknown) {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
+function contextStrings(value: unknown): string[] {
+  if (typeof value === 'string') return value.length >= 4 ? [value] : []
+  if (Array.isArray(value)) return value.flatMap(contextStrings)
+  if (value && typeof value === 'object') return Object.values(value).flatMap(contextStrings)
+  return []
+}
+
+function sanitizeProviderError(value: unknown, sensitiveValues: string[]) {
+  let message = typeof value === 'string' ? value : ''
+  for (const sensitiveValue of sensitiveValues.filter(Boolean).sort((left, right) => right.length - left.length)) {
+    message = message.replaceAll(sensitiveValue, '[redacted]')
+  }
+  return message
+    .replace(/sk-ant-[A-Za-z0-9_-]+/gi, '[redacted]')
+    .replace(/Bearer\s+[A-Za-z0-9._~+/-]+=*/gi, 'Bearer [redacted]')
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[redacted]')
+    .replace(/\b[A-F0-9]{32,}\b/gi, '[redacted]')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    .slice(0, 240)
+}
+
 function sanitizeContext(value: unknown) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
   const context = value as Record<string, unknown>
@@ -138,6 +161,27 @@ async function callAnthropic(messages: Array<{ role: string; content: string }>,
     })
     if (!providerResponse.ok) {
       const status = providerResponse.status
+      let providerError: { type: string; message: string } = { type: 'unknown_error', message: '' }
+      if (status === 400) {
+        try {
+          const body = await providerResponse.json()
+          const bodyError = body && typeof body === 'object' && 'error' in body
+            ? (body as { error?: { type?: unknown; message?: unknown } }).error
+            : undefined
+          const rawType = typeof bodyError?.type === 'string' ? bodyError.type : 'unknown_error'
+          const sensitiveValues = [
+            apiKey,
+            ...messages.map((message) => message.content),
+            ...contextStrings(context),
+          ]
+          providerError = {
+            type: /^[a-z0-9_]{1,64}$/i.test(rawType) ? rawType : 'unknown_error',
+            message: sanitizeProviderError(bodyError?.message, sensitiveValues),
+          }
+        } catch {
+          providerError = { type: 'unreadable_error_body', message: '' }
+        }
+      }
       const category = status === 401 || status === 403
         ? 'provider_credentials'
         : status === 404
@@ -147,7 +191,12 @@ async function callAnthropic(messages: Array<{ role: string; content: string }>,
             : status >= 500
               ? 'provider_unavailable'
               : 'provider_request'
-      console.error(JSON.stringify({ event: 'journal_ai_provider_error', status, category }))
+      console.error(JSON.stringify({
+        event: 'journal_ai_provider_error',
+        status,
+        category,
+        ...(status === 400 ? { providerErrorType: providerError.type, providerMessage: providerError.message } : {}),
+      }))
       if (category === 'provider_credentials') {
         return { error: 'TradeJournal AI server credentials need attention. Please contact the site administrator.', category, status: 503 }
       }
