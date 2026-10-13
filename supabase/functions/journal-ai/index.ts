@@ -1,0 +1,211 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const systemPrompt = 'You are TradeJournal AI. You help traders review their own journal data: patterns, mistakes, discipline and process. You are not a financial advisor: never tell the user what to buy or sell, never predict markets, and say when the data is too small to conclude. Be concise and practical. Use only the data provided.'
+const requestsPerDay = new Map<string, { day: string; count: number }>()
+
+function corsHeaders(request: Request) {
+  const origin = request.headers.get('Origin')
+  const configuredOrigins = (Deno.env.get('AI_ALLOWED_ORIGINS') || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+  const isLocalOrigin = origin === 'http://localhost:5173' || origin === 'http://127.0.0.1:5173'
+  const allowedOrigin = origin && (configuredOrigins.includes(origin) || isLocalOrigin) ? origin : ''
+
+  return {
+    ...(allowedOrigin ? { 'Access-Control-Allow-Origin': allowedOrigin, Vary: 'Origin' } : {}),
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Cache-Control': 'no-store',
+  }
+}
+
+function response(request: Request, status: number, body: Record<string, unknown>) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders(request), 'Content-Type': 'application/json' },
+  })
+}
+
+function stringValue(value: unknown, maxLength = 160) {
+  return typeof value === 'string' ? value.slice(0, maxLength) : ''
+}
+
+function stringList(value: unknown, maxItems = 20, maxLength = 100) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string').slice(0, maxItems).map((item) => item.slice(0, maxLength))
+    : []
+}
+
+function numberValue(value: unknown) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function sanitizeContext(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const context = value as Record<string, unknown>
+  const metrics = context.metrics && typeof context.metrics === 'object' && !Array.isArray(context.metrics)
+    ? context.metrics as Record<string, unknown>
+    : {}
+  const day = (item: unknown) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return null
+    const value = item as Record<string, unknown>
+    return { date: stringValue(value.date, 10), netPnl: numberValue(value.netPnl) }
+  }
+
+  return {
+    metrics: {
+      totalTrades: numberValue(metrics.totalTrades),
+      winRate: numberValue(metrics.winRate),
+      profitFactor: numberValue(metrics.profitFactor),
+      averageWin: numberValue(metrics.averageWin),
+      averageLoss: numberValue(metrics.averageLoss),
+      netPnl: numberValue(metrics.netPnl),
+      bestDay: day(metrics.bestDay),
+      worstDay: day(metrics.worstDay),
+    },
+    recentTrades: (Array.isArray(context.recentTrades) ? context.recentTrades : []).slice(0, 20).map((item) => {
+      const trade = item && typeof item === 'object' && !Array.isArray(item) ? item as Record<string, unknown> : {}
+      return {
+        date: stringValue(trade.date, 10),
+        symbol: stringValue(trade.symbol, 32),
+        side: stringValue(trade.side, 16),
+        result: stringValue(trade.result, 16),
+        netPnl: numberValue(trade.netPnl),
+        session: stringValue(trade.session, 40),
+        followedRules: typeof trade.followedRules === 'boolean' ? trade.followedRules : null,
+        mistakes: stringList(trade.mistakes, 10, 80),
+      }
+    }),
+    journalEntries: (Array.isArray(context.journalEntries) ? context.journalEntries : []).slice(0, 7).map((item) => {
+      const entry = item && typeof item === 'object' && !Array.isArray(item) ? item as Record<string, unknown> : {}
+      return {
+        date: stringValue(entry.date, 10),
+        mood: stringValue(entry.mood, 40),
+        followedPlan: typeof entry.followedPlan === 'boolean' ? entry.followedPlan : null,
+        lesson: stringValue(entry.lesson, 300),
+      }
+    }),
+    onboarding: (() => {
+      const onboarding = context.onboarding && typeof context.onboarding === 'object' && !Array.isArray(context.onboarding)
+        ? context.onboarding as Record<string, unknown>
+        : {}
+      return {
+        experience: stringValue(onboarding.experience, 100),
+        struggles: stringList(onboarding.struggles, 10, 100),
+        markets: stringList(onboarding.markets, 10, 100),
+      }
+    })(),
+  }
+}
+
+function consumeDailyRequest(userId: string) {
+  const today = new Date().toISOString().slice(0, 10)
+  for (const [id, entry] of requestsPerDay) {
+    if (entry.day !== today) requestsPerDay.delete(id)
+  }
+  const current = requestsPerDay.get(userId)
+  if (current?.day === today && current.count >= 20) return false
+  requestsPerDay.set(userId, { day: today, count: current?.day === today ? current.count + 1 : 1 })
+  return true
+}
+
+async function callAnthropic(messages: Array<{ role: string; content: string }>, context: unknown) {
+  const apiKey = Deno.env.get('AI_API_KEY')
+  if (!apiKey) return { error: 'TradeJournal AI is not configured yet. Please try again later.', status: 503 }
+
+  const model = Deno.env.get('AI_MODEL') || 'claude-haiku-4-5-20251001'
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 20_000)
+  try {
+    const providerResponse = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 600,
+        system: `${systemPrompt}\n\nUser-provided journal summaries (JSON):\n${JSON.stringify(context)}`,
+        messages,
+      }),
+      signal: controller.signal,
+    })
+    if (!providerResponse.ok) return { error: 'TradeJournal AI could not answer right now. Please try again.', status: 502 }
+    const result = await providerResponse.json()
+    const reply = Array.isArray(result?.content)
+      ? result.content.filter((item: { type?: string }) => item?.type === 'text').map((item: { text?: string }) => item.text || '').join('\n').trim()
+      : ''
+    if (!reply) return { error: 'TradeJournal AI returned an empty answer. Please try again.', status: 502 }
+    return { reply, status: 200 }
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return { error: 'TradeJournal AI took too long to respond. Please try again.', status: 504 }
+    }
+    return { error: 'TradeJournal AI is temporarily unavailable. Please try again.', status: 502 }
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+Deno.serve(async (request: Request) => {
+  if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(request) })
+  if (request.method !== 'POST') return response(request, 405, { error: 'Method not allowed.' })
+
+  const authorization = request.headers.get('Authorization')
+  const url = Deno.env.get('SUPABASE_URL')
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
+  if (!authorization?.startsWith('Bearer ') || !url || !anonKey) {
+    return response(request, 401, { error: 'A valid signed-in session is required.' })
+  }
+
+  const verifier = createClient(url, anonKey, { auth: { persistSession: false } })
+  let userId: string
+  try {
+    const { data: authData, error: authError } = await verifier.auth.getUser(authorization.slice('Bearer '.length))
+    if (authError || !authData.user || authData.user.is_anonymous) {
+      return response(request, 401, { error: 'A valid signed-in session is required.' })
+    }
+    userId = authData.user.id
+  } catch {
+    return response(request, 503, { error: 'Sign-in could not be verified right now. Please try again.' })
+  }
+
+  let body: Record<string, unknown>
+  try {
+    const parsed = await request.json()
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return response(request, 400, { error: 'Please send a valid chat message.' })
+    body = parsed as Record<string, unknown>
+  } catch {
+    return response(request, 400, { error: 'Please send a valid chat message.' })
+  }
+
+  if (!Array.isArray(body.messages) || body.messages.length === 0) {
+    return response(request, 400, { error: 'Please enter a message to continue.' })
+  }
+  const messages = body.messages.slice(-10).filter((item) => (
+    item && typeof item === 'object' && !Array.isArray(item)
+    && ['user', 'assistant'].includes((item as Record<string, unknown>).role as string)
+    && typeof (item as Record<string, unknown>).content === 'string'
+    && ((item as Record<string, unknown>).content as string).trim().length > 0
+    && ((item as Record<string, unknown>).content as string).length <= 2000
+  )).map((item) => {
+    const message = item as Record<string, string>
+    return { role: message.role, content: message.content.trim() }
+  })
+  if (messages.length !== body.messages.slice(-10).length) {
+    return response(request, 400, { error: 'Messages must be non-empty user or assistant text up to 2,000 characters.' })
+  }
+
+  const context = sanitizeContext(body.context)
+  if (JSON.stringify(context).length > 20_000) return response(request, 413, { error: 'The journal summary is too large. Please try again.' })
+  if (!consumeDailyRequest(userId)) {
+    return response(request, 429, { error: 'You’ve reached today’s AI limit of 20 requests. Please come back tomorrow.' })
+  }
+
+  const result = await callAnthropic(messages, context)
+  if ('error' in result) return response(request, result.status, { error: result.error })
+  return response(request, 200, { reply: result.reply })
+})
