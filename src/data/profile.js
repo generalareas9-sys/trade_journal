@@ -1,11 +1,8 @@
 import { supabase } from '../lib/supabase'
 
-export async function getOrCreateProfile(user) {
-  if (!user?.id) {
-    console.error('Cannot load profile without an authenticated user.')
-    return null
-  }
+const profileRequests = new Map()
 
+async function loadOrCreateProfile(user) {
   try {
     const { data: existingProfile, error: selectError } = await supabase
       .from('profiles')
@@ -50,5 +47,24 @@ export async function getOrCreateProfile(user) {
   } catch (error) {
     console.error('Failed to get or create user profile:', error)
     return null
+  }
+}
+
+export async function getOrCreateProfile(user) {
+  if (!user?.id) {
+    console.error('Cannot load profile without an authenticated user.')
+    return null
+  }
+
+  const existingRequest = profileRequests.get(user.id)
+  if (existingRequest) return existingRequest
+
+  const request = loadOrCreateProfile(user)
+  profileRequests.set(user.id, request)
+
+  try {
+    return await request
+  } finally {
+    if (profileRequests.get(user.id) === request) profileRequests.delete(user.id)
   }
 }
