@@ -1,14 +1,16 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, BookOpen, Building2, CalendarDays, CalendarRange, ChevronRight, FileText, FlaskConical, Sparkles, Target } from 'lucide-react'
 import { format } from 'date-fns'
 import { useJournal } from '../hooks/useJournal'
 import { useAuth } from '../context/AuthContext'
+import AIChat from '../components/AIChat'
 import './dashboard-home.css'
 
 export default function Home() {
   const { trades = [], journal = {}, accounts = [], settings = {} } = useJournal()
   const { user, profile } = useAuth()
+  const [aiAvailable, setAiAvailable] = useState(false)
   const today = format(new Date(), 'yyyy-MM-dd')
   const todayJournal = journal[today]
   const hasTodayJournal = Boolean(todayJournal && Object.entries(todayJournal).some(([key, value]) => key !== 'date' && (Array.isArray(value) ? value.length > 0 : Boolean(value))))
@@ -28,19 +30,13 @@ export default function Home() {
     { title: 'Backtesting', text: 'Review how your strategies performed historically.', route: '/backtesting', icon: FlaskConical, color: 'amber' },
     { title: 'Accounts', text: 'Manage accounts and keep your trades organized.', route: '/settings?tab=Accounts', icon: Building2, color: 'green' },
   ]
-  const quickLinks = [
-    { label: 'Review recent trades', route: '/trades' },
-    { label: 'Plan my trading day', route: '/journal' },
-    { label: 'Show my patterns', route: '/reports' },
-  ]
-
   return <main className="page-content home-page">
     <section className="home-hub" aria-label="Home workspace">
       <div className="home-ai-card panel">
         <span className="eyebrow">YOUR TRADING WORKSPACE</span>
         <h2>Welcome back, {displayName}</h2>
-        <div className="home-ai-status"><span><Sparkles size={17} /></span><div><strong>TradeJournal AI <i>Coming soon</i></strong><p>Personalized insights from your own journal are on the way. Until then, jump straight into a review:</p></div></div>
-        <div className="home-quick-prompts" aria-label="Quick links">{quickLinks.map((item) => <Link key={item.label} to={item.route}>{item.label}<ArrowRight size={13} /></Link>)}</div>
+        <div className="home-ai-status"><span><Sparkles size={17} /></span><div><strong>TradeJournal AI <i>{aiAvailable ? 'Beta' : 'Coming soon'}</i></strong><p>{aiAvailable ? 'Ask practical questions about your journal and trading process.' : 'Ask about your journal with concise, practical AI insights.'}</p></div></div>
+        <AIChat onAvailabilityChange={setAiAvailable} />
       </div>
       <div className="home-hub-grid">
         <section className="home-products" aria-labelledby="home-products-title">
