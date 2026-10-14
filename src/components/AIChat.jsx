@@ -106,6 +106,12 @@ async function requestErrorMessage(error) {
     try {
       const body = await response.clone().json()
       const categoryMessages = {
+        model_not_found: 'The configured AI model could not be found. Please contact the site administrator.',
+        billing: 'The AI provider account needs billing attention. Please contact the site administrator.',
+        bad_request: 'TradeJournal AI could not process that request. Please try again with a shorter question.',
+        rate_limited: 'The AI service is busy. Please wait a minute and try again.',
+        provider_down: 'The AI provider is temporarily unavailable. Please try again shortly.',
+        unknown: 'TradeJournal AI is temporarily unavailable. Please retry in a moment.',
         configuration_missing: 'TradeJournal AI needs server configuration. Ask the site administrator to set the required Supabase secrets.',
         authentication_required: 'Your sign-in could not be verified. Sign in again, then retry.',
         authentication_unavailable: 'Sign-in verification is temporarily unavailable. Please retry shortly.',
@@ -117,6 +123,9 @@ async function requestErrorMessage(error) {
         provider_request: 'TradeJournal AI could not process that request. Please try a shorter question.',
         provider_timeout: 'TradeJournal AI took too long to respond. Please retry in a moment.',
         provider_unavailable: 'TradeJournal AI is temporarily unavailable. Please try again shortly.',
+      }
+      if (typeof body?.error === 'string' && categoryMessages[body.error]) {
+        return categoryMessages[body.error]
       }
       if (typeof body?.category === 'string' && categoryMessages[body.category]) {
         return categoryMessages[body.category]
