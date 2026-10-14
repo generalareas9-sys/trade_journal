@@ -1,0 +1,107 @@
+/* ==========================================================================
+   light-theme.css - Light-mode styling for the sidebar and top bar only.
+   All rules are scoped to the light-mode app shell.
+   ========================================================================== */
+
+/* ========================== SIDEBAR ===================================== */
+.app-shell:not(.dark-theme) aside.sidebar {
+  background:
+    radial-gradient(260px 220px at 0% 0%, rgba(139, 124, 255, .42), transparent 70%),
+    radial-gradient(240px 260px at 100% 100%, rgba(56, 189, 248, .22), transparent 70%),
+    linear-gradient(180deg, #2b2080 0%, #1f1859 52%, #151041 100%);
+  border-right: 1px solid rgba(255, 255, 255, .08);
+  box-shadow: 8px 0 34px rgba(31, 24, 89, .28);
+  color: #e6e3ff;
+}
+
+.app-shell:not(.dark-theme) aside.sidebar .brand-name { color: #ffffff; }
+.app-shell:not(.dark-theme) aside.sidebar .brand-name span { color: #b9b0ff; }
+.app-shell:not(.dark-theme) aside.sidebar .icon-button { color: #cfcaff; }
+.app-shell:not(.dark-theme) aside.sidebar .icon-button:hover { background: rgba(255, 255, 255, .12); color: #ffffff; }
+.app-shell:not(.dark-theme) aside.sidebar .workspace-label { color: #9d95ee; }
+
+.app-shell:not(.dark-theme) aside.sidebar .nav-link {
+  color: #d9d6f7;
+  transition: transform .2s ease, background-color .2s ease, color .2s ease, box-shadow .2s ease;
+}
+.app-shell:not(.dark-theme) aside.sidebar .nav-link:hover { color: #ffffff; background: rgba(255, 255, 255, .09); transform: translateX(3px); }
+.app-shell:not(.dark-theme) aside.sidebar .nav-link.active {
+  color: #ffffff;
+  background: linear-gradient(90deg, rgba(150, 134, 255, .50), rgba(99, 102, 241, .16));
+  box-shadow: inset 3px 0 0 #b9b0ff, 0 6px 18px rgba(10, 6, 60, .30);
+}
+
+.app-shell:not(.dark-theme) aside.sidebar .nav-link svg { color: #a79eff; }
+.app-shell:not(.dark-theme) aside.sidebar a.nav-link[href="/home"] svg { color: #b9b0ff; }
+.app-shell:not(.dark-theme) aside.sidebar a.nav-link[href="/"] svg { color: #7db4ff; }
+.app-shell:not(.dark-theme) aside.sidebar a.nav-link[href="/journal"] svg { color: #5cc8ff; }
+.app-shell:not(.dark-theme) aside.sidebar a.nav-link[href="/trades"] svg { color: #4fe0cc; }
+.app-shell:not(.dark-theme) aside.sidebar a.nav-link[href="/reports"] svg { color: #ffc85a; }
+.app-shell:not(.dark-theme) aside.sidebar a.nav-link[href="/weekly-review"] svg { color: #ff8fc4; }
+.app-shell:not(.dark-theme) aside.sidebar a.nav-link[href="/progress-tracker"] svg { color: #c2a8ff; }
+.app-shell:not(.dark-theme) aside.sidebar a.nav-link[href="/notebook"] svg { color: #ffa066; }
+.app-shell:not(.dark-theme) aside.sidebar a.nav-link[href="/playbooks"] svg { color: #5be58e; }
+.app-shell:not(.dark-theme) aside.sidebar a.nav-link[href="/backtesting"] svg { color: #ff7b7b; }
+.app-shell:not(.dark-theme) aside.sidebar a.nav-link[href="/risk-calculator"] svg { color: #4fdcf0; }
+.app-shell:not(.dark-theme) aside.sidebar a.nav-link[href="/settings"] svg { color: #b4bdd2; }
+.app-shell:not(.dark-theme) aside.sidebar .nav-link.active svg { color: #ffffff; }
+
+.app-shell:not(.dark-theme) aside.sidebar .sidebar-divider { background: rgba(255, 255, 255, .12); }
+.app-shell:not(.dark-theme) aside.sidebar .profile-button { border-top-color: rgba(255, 255, 255, .12); }
+.app-shell:not(.dark-theme) aside.sidebar .profile-button:hover { background: rgba(255, 255, 255, .06); }
+.app-shell:not(.dark-theme) aside.sidebar .profile-copy strong { color: #ffffff; }
+.app-shell:not(.dark-theme) aside.sidebar .profile-copy small,
+.app-shell:not(.dark-theme) aside.sidebar .profile-more { color: #b8b3ec; }
+
+.app-shell:not(.dark-theme) aside.sidebar .sidebar-profile-menu { background: #ffffff; border-color: #d9dde7; color: #111827; }
+.app-shell:not(.dark-theme) aside.sidebar .sidebar-profile-menu button { color: #111827; }
+.app-shell:not(.dark-theme) aside.sidebar .sidebar-profile-menu button:hover { background: #fbfbfd; color: #dc2626; }
+
+/* ========================== TOP BAR ===================================== */
+.app-shell:not(.dark-theme) .topbar {
+  background:
+    radial-gradient(420px 160px at 0% 0%, rgba(167, 139, 250, .38), transparent 70%),
+    linear-gradient(100deg, #261b78 0%, #3a2cb4 52%, #3b6fe6 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, .14);
+  box-shadow: 0 10px 30px rgba(38, 27, 120, .26);
+}
+.app-shell:not(.dark-theme) .topbar h1 { color: #ffffff; }
+.app-shell:not(.dark-theme) .topbar .topbar-heading p { color: #d3d6ff; }
+.app-shell:not(.dark-theme) .topbar .icon-button { color: #e4e1ff; transition: background-color .2s ease, color .2s ease; }
+.app-shell:not(.dark-theme) .topbar .icon-button:hover { background: rgba(255, 255, 255, .16); color: #ffffff; }
+.app-shell:not(.dark-theme) .topbar .save-indicator { color: #7ef0b3; }
+.app-shell:not(.dark-theme) .topbar :is(.range-select, .account-select) {
+  background: rgba(255, 255, 255, .96);
+  border-color: rgba(255, 255, 255, .55);
+  box-shadow: 0 4px 14px rgba(20, 12, 80, .22);
+}
+.app-shell:not(.dark-theme) .topbar .add-trade-button {
+  background: linear-gradient(135deg, #8b7cff 0%, #c084fc 100%);
+  border: 1px solid rgba(255, 255, 255, .45);
+  color: #ffffff;
+  box-shadow: 0 6px 20px rgba(192, 132, 252, .55), 0 0 0 1px rgba(255, 255, 255, .08) inset;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.app-shell:not(.dark-theme) .topbar .add-trade-button:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(192, 132, 252, .75); }
+.app-shell:not(.dark-theme) .topbar .add-trade-button:active { transform: translateY(0) scale(.98); }
+
+/* Top-bar icon buttons */
+.app-shell:not(.dark-theme) .topbar :is(.notification-button, .search-button, .theme-button) {
+  background: rgba(255, 255, 255, .12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22);
+  transition: background-color .2s ease, box-shadow .2s ease, transform .2s ease, color .2s ease;
+}
+.app-shell:not(.dark-theme) .topbar .notification-button { color: #ffc94d; }
+.app-shell:not(.dark-theme) .topbar .search-button { color: #67e8f9; }
+.app-shell:not(.dark-theme) .topbar .theme-button { color: #f0abfc; }
+.app-shell:not(.dark-theme) .topbar .notification-button:hover { background: rgba(255, 201, 77, .22); box-shadow: inset 0 0 0 1px rgba(255, 201, 77, .6), 0 6px 16px rgba(255, 201, 77, .25); color: #ffd978; transform: translateY(-2px); }
+.app-shell:not(.dark-theme) .topbar .search-button:hover { background: rgba(103, 232, 249, .22); box-shadow: inset 0 0 0 1px rgba(103, 232, 249, .6), 0 6px 16px rgba(103, 232, 249, .25); color: #9af0fb; transform: translateY(-2px); }
+.app-shell:not(.dark-theme) .topbar .theme-button:hover { background: rgba(240, 171, 252, .22); box-shadow: inset 0 0 0 1px rgba(240, 171, 252, .6), 0 6px 16px rgba(240, 171, 252, .25); color: #f5c6fd; transform: translateY(-2px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell:not(.dark-theme) aside.sidebar *,
+  .app-shell:not(.dark-theme) .topbar * {
+    transition: none !important;
+    transform: none !important;
+  }
+}
