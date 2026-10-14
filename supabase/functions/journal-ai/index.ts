@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const DEFAULT_AI_MODEL = 'gemini-2.5-flash' // Confirm this against the provider's current model list.
+const DEFAULT_AI_MODEL = 'gemini-3.8-flash' // Confirm this against the provider's current model list.
 const systemPrompt = 'You are TradeJournal AI. You help traders review their own journal data: patterns, mistakes, discipline and process. You are not a financial advisor: never tell the user what to buy or sell, never predict markets, and say when the data is too small to conclude. Be concise and practical. Use only the data provided.'
 const requestsPerDay = new Map<string, { day: string; count: number }>()
 
