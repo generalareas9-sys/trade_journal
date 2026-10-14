@@ -1,20 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, BookOpen, Building2, CalendarDays, CalendarRange, ChevronRight, FileText, FlaskConical, Sparkles, Target } from 'lucide-react'
+import { ArrowRight, BookOpen, Building2, CalendarDays, CalendarRange, ChevronRight, FileText, FlaskConical, Target } from 'lucide-react'
 import { format } from 'date-fns'
 import { useJournal } from '../hooks/useJournal'
-import { useAuth } from '../context/AuthContext'
-import AIChat from '../components/AIChat'
 import './dashboard-home.css'
 
 export default function Home() {
   const { trades = [], journal = {}, accounts = [], settings = {} } = useJournal()
-  const { user, profile } = useAuth()
-  const [aiAvailable, setAiAvailable] = useState(false)
   const today = format(new Date(), 'yyyy-MM-dd')
   const todayJournal = journal[today]
   const hasTodayJournal = Boolean(todayJournal && Object.entries(todayJournal).some(([key, value]) => key !== 'date' && (Array.isArray(value) ? value.length > 0 : Boolean(value))))
-  const displayName = profile?.display_name || profile?.name || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Trader'
   const focusItems = useMemo(() => [
     ...(!trades.some((trade) => !trade.isDemo) ? [{ title: 'Bring in your trade history', detail: 'Import a CSV or add a trade to start seeing your patterns.', route: '/import', icon: FileText }] : []),
     ...(!hasTodayJournal ? [{ title: 'Plan your trading day', detail: 'Set your market bias, key levels, and risk before your next session.', route: '/journal', icon: CalendarDays }] : []),
@@ -32,12 +27,6 @@ export default function Home() {
   ]
   return <main className="page-content home-page">
     <section className="home-hub" aria-label="Home workspace">
-      <div className="home-ai-card panel">
-        <span className="eyebrow">YOUR TRADING WORKSPACE</span>
-        <h2>Welcome back, {displayName}</h2>
-        <div className="home-ai-status"><span><Sparkles size={17} /></span><div><strong>TradeJournal AI <i>{aiAvailable ? 'Beta' : 'Coming soon'}</i></strong><p>{aiAvailable ? 'Ask practical questions about your journal and trading process.' : 'AI service is not yet available or is temporarily offline. Configure and deploy the service to enable journal insights.'}</p></div></div>
-        <AIChat onAvailabilityChange={setAiAvailable} />
-      </div>
       <div className="home-hub-grid">
         <section className="home-products" aria-labelledby="home-products-title">
           <div className="home-section-title"><h3 id="home-products-title">Explore your workspace</h3><p>Pick up where you want to focus.</p></div>
