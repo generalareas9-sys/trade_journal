@@ -1,17 +1,5 @@
 .home-page { max-width: 1320px; margin: 0 auto; }
 .home-hub { display: grid; gap: 15px; margin-bottom: 16px; }
-.home-ai-card { display: grid; justify-items: center; gap: 12px; padding: clamp(18px, 2.5vw, 28px); text-align: center; background: radial-gradient(ellipse at 50% 0%, rgba(108, 92, 231, .12), transparent 64%), var(--card); }
-.home-ai-card > .eyebrow { margin: 0; }
-.home-ai-card h2 { margin: 0; color: var(--text-strong); font-size: clamp(21px, 2.5vw, 27px); letter-spacing: -.5px; }
-.home-ai-status { display: flex; width: min(100%, 560px); align-items: flex-start; gap: 11px; padding: 13px 15px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); box-shadow: 0 5px 16px rgba(25, 20, 50, .06); text-align: left; }
-.home-ai-status > span { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; border-radius: 10px; background: linear-gradient(145deg, #7867ea, #a24ce5); color: white; }
-.home-ai-status > div { min-width: 0; }
-.home-ai-status strong { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; color: var(--text-strong); font-size: 12px; }
-.home-ai-status strong i { padding: 3px 7px; border-radius: 20px; background: rgba(108, 92, 231, .1); color: #6c5ce7; font-size: 9px; font-style: normal; }
-.home-ai-status p { margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
-.home-quick-prompts { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; }
-.home-quick-prompts button, .home-quick-prompts a { display: inline-flex; min-height: 34px; align-items: center; gap: 6px; padding: 0 11px; border: 1px solid var(--line); border-radius: 20px; background: var(--card); color: var(--text); font: inherit; font-size: 10px; font-weight: 600; text-decoration: none; cursor: pointer; transition: border-color .15s ease, color .15s ease, transform .15s ease; }
-.home-quick-prompts button:hover, .home-quick-prompts a:hover { transform: translateY(-1px); border-color: #8b5cf6; color: #6c5ce7; }
 .home-hub-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, .9fr); align-items: start; gap: 14px; }
 .home-products, .home-side-panels { display: grid; min-width: 0; gap: 12px; }
 .home-section-title { margin-bottom: 2px; }
@@ -41,21 +29,18 @@
 .home-focus-list > a:hover strong, .home-resource-list > a:hover strong { color: var(--purple); }
 .home-resource-list > a { position: relative; display: grid; gap: 3px; padding: 9px 20px 9px 2px; border-top: 1px solid var(--line); color: var(--text); text-decoration: none; }
 .home-resource-list > a > svg { position: absolute; top: 50%; right: 0; transform: translateY(-50%); }
-.dark-theme .home-ai-card { background: radial-gradient(ellipse at 50% 0%, rgba(139, 92, 246, .17), transparent 64%), linear-gradient(145deg, rgba(20, 17, 43, .97), rgba(15, 13, 30, .98)); border-color: rgba(139, 92, 246, .2); }
-.dark-theme .home-ai-status, .dark-theme .home-product-card { border-color: rgba(139, 92, 246, .2); background: rgba(12, 10, 24, .76); }
+.dark-theme .home-product-card { border-color: rgba(139, 92, 246, .2); background: rgba(12, 10, 24, .76); }
 .dark-theme .home-product-card:hover { border-color: rgba(139, 92, 246, .55); box-shadow: 0 10px 24px rgba(0, 0, 0, .25), 0 0 18px rgba(139, 92, 246, .1); }
 .dark-theme .home-side-panels > .panel { border-color: rgba(139, 92, 246, .2); }
-.dark-theme .home-ai-status p, .dark-theme .home-section-title p, .dark-theme .home-product-card small, .dark-theme .home-focus-list small, .dark-theme .home-resource-list small { color: #b4b9c6; }
+.dark-theme .home-section-title p, .dark-theme .home-product-card small, .dark-theme .home-focus-list small, .dark-theme .home-resource-list small { color: #b4b9c6; }
 @media (max-width: 760px) {
   .home-hub-grid { grid-template-columns: minmax(0, 1fr); }
   .home-side-panels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 520px) {
-  .home-ai-card { padding: 17px 12px; }
   .home-product-grid, .home-side-panels { grid-template-columns: minmax(0, 1fr); }
   .home-product-card { min-height: 66px; }
-  .home-quick-prompts { justify-content: flex-start; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .home-quick-prompts button, .home-quick-prompts a, .home-product-card { transition: none; }
+  .home-product-card { transition: none; }
 }
