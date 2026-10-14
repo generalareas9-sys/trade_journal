@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const DEFAULT_AI_MODEL = 'claude-haiku-5-5' // Confirm this against the provider's current model list.
+const DEFAULT_AI_MODEL = 'gemini-2.5-flash' // Confirm this against the provider's current model list.
 const systemPrompt = 'You are TradeJournal AI. You help traders review their own journal data: patterns, mistakes, discipline and process. You are not a financial advisor: never tell the user what to buy or sell, never predict markets, and say when the data is too small to conclude. Be concise and practical. Use only the data provided.'
 const requestsPerDay = new Map<string, { day: string; count: number }>()
 
@@ -156,29 +156,33 @@ function consumeDailyRequest(userId: string) {
   return true
 }
 
-async function callAnthropic(messages: Array<{ role: string; content: string }>, context: unknown) {
+// Provider adapter: Google Gemini generateContent API.
+async function callGemini(messages: Array<{ role: string; content: string }>, context: unknown) {
   const apiKey = Deno.env.get('AI_API_KEY')
   if (!apiKey) {
     console.error(JSON.stringify({ event: 'journal_ai_configuration_error', category: 'missing_api_key' }))
     return { error: 'TradeJournal AI is not configured yet. Please contact the site administrator.', category: 'configuration_missing', status: 503 }
   }
 
-  const model = Deno.env.get('AI_MODEL') || DEFAULT_AI_MODEL
+  const model = (Deno.env.get('AI_MODEL') || DEFAULT_AI_MODEL).trim().replace(/^models\//, '')
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 20_000)
   try {
-    const providerResponse = await fetch('https://api.anthropic.com/v1/messages', {
+    const providerResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
+        'x-goog-api-key': apiKey,
       },
       body: JSON.stringify({
-        model,
-        max_tokens: 600,
-        system: `${systemPrompt}\n\nUser-provided journal summaries (JSON):\n${JSON.stringify(context)}`,
-        messages,
+        systemInstruction: {
+          parts: [{ text: `${systemPrompt}\n\nUser-provided journal summaries (JSON):\n${JSON.stringify(context)}` }],
+        },
+        contents: messages.map((message) => ({
+          role: message.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: message.content }],
+        })),
+        generationConfig: { maxOutputTokens: 600 },
       }),
       signal: controller.signal,
     })
@@ -195,7 +199,11 @@ async function callAnthropic(messages: Array<{ role: string; content: string }>,
       const providerBodyError = body.error && typeof body.error === 'object' && !Array.isArray(body.error)
         ? body.error as Record<string, unknown>
         : {}
-      const rawType = typeof providerBodyError.type === 'string' ? providerBodyError.type : 'unknown_error'
+      const rawType = typeof providerBodyError.status === 'string'
+        ? providerBodyError.status
+        : typeof providerBodyError.type === 'string'
+          ? providerBodyError.type
+          : 'unknown_error'
       const providerErrorType = /^[a-z0-9_]{1,64}$/i.test(rawType) ? rawType : 'unknown_error'
       const providerMessage = sanitizeProviderError(providerBodyError.message, [
         apiKey,
@@ -206,6 +214,8 @@ async function callAnthropic(messages: Array<{ role: string; content: string }>,
         ? 'billing'
         : status === 404 || /model.*(not found|does not exist|unavailable)/i.test(providerMessage)
           ? 'model_not_found'
+          : status === 401 || status === 403
+            ? 'billing'
           : status === 429 || /rate_limit/i.test(providerErrorType)
             ? 'rate_limited'
             : status === 400
@@ -230,12 +240,16 @@ async function callAnthropic(messages: Array<{ role: string; content: string }>,
       console.error(JSON.stringify({ event: 'journal_ai_provider_error', status: providerResponse.status, category: 'invalid_provider_response' }))
       return { error: 'TradeJournal AI received an invalid response. Please try again.', category: 'provider_unavailable', status: 502 }
     }
-    const reply = Array.isArray(result?.content)
-      ? result.content.filter((item: { type?: string }) => item?.type === 'text').map((item: { text?: string }) => item.text || '').join('\n').trim()
+    const reply = Array.isArray(result?.candidates?.[0]?.content?.parts)
+      ? result.candidates[0].content.parts
+        .filter((part: { text?: string }) => typeof part?.text === 'string')
+        .map((part: { text?: string }) => part.text || '')
+        .join('\n')
+        .trim()
       : ''
     if (!reply) {
-      console.error(JSON.stringify({ event: 'journal_ai_provider_error', status: providerResponse.status, category: 'empty_provider_response' }))
-      return { error: 'TradeJournal AI returned an empty answer. Please try again.', category: 'provider_unavailable', status: 502 }
+      console.warn(JSON.stringify({ event: 'journal_ai_provider_empty_response', category: result?.promptFeedback?.blockReason ? 'blocked' : 'empty' }))
+      return { error: 'bad_request', status: 502 }
     }
     return { reply, status: 200 }
   } catch (error) {
@@ -301,7 +315,7 @@ Deno.serve(async (request: Request) => {
     return response(request, 429, { error: 'You’ve reached today’s AI limit of 20 requests. Please come back tomorrow.', category: 'daily_limit' })
   }
 
-  const result = await callAnthropic(messages, context)
+  const result = await callGemini(messages, context)
   if ('error' in result) return response(request, result.status, { error: result.error })
   return response(request, 200, { reply: result.reply })
 })
