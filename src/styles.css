@@ -91,12 +91,7 @@ select option:checked, select option:hover { background-color: var(--purple); co
 .sidebar-collapsed .nav-link span { display: none; }
 .sidebar-divider { height: 1px; background: var(--line); margin: 13px 8px; }
 .sidebar-bottom { margin-top: auto; width: 100%; padding-top: 0; }
-.upgrade-card { padding: 14px 12px 12px; margin-bottom: 17px; border-radius: 12px; border: 1px solid #eeeaff; background: linear-gradient(140deg, #f8f7ff, #fcfbff); }
-.dark-theme .upgrade-card { border-color: #35304e; background: #201d2e; }
-.upgrade-icon { display: grid; place-items: center; width: 28px; height: 28px; margin-bottom: 10px; color: var(--purple); background: var(--purple-soft); border-radius: 8px; }
-.upgrade-card strong { display: block; font-size: 12px; }
-.upgrade-card p { margin: 5px 0 12px; color: var(--muted); font-size: 12px; line-height: 1.5; }
-.upgrade-card button, .help-link { padding: 0; color: var(--purple); font-size: 12px; font-weight: 700; border: 0; background: none; }
+.help-link { padding: 0; color: var(--purple); font-size: 12px; font-weight: 700; border: 0; background: none; }
 .sidebar-profile-wrap { position: relative; overflow: visible; }
 .profile-button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 6px; border: 0; border-top: 1px solid var(--line); background: transparent; text-align: left; cursor: pointer; }
 .sidebar-profile-menu { position: absolute; z-index: 80; right: 0; bottom: calc(100% + 6px); left: 0; padding: 5px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); box-shadow: 0 10px 30px rgba(20,24,35,.16); }
@@ -450,7 +445,7 @@ select option:checked, select option:hover { background-color: var(--purple); co
   :root { --sidebar-width: 76px; }
   .sidebar { align-items: center; padding-left: 10px; padding-right: 10px; }
   .sidebar .brand-row { justify-content: center; padding: 0; }
-  .sidebar .brand-name, .sidebar .collapse-button, .sidebar .workspace-label, .sidebar .nav-link span, .sidebar .upgrade-card, .sidebar .profile-copy, .sidebar .profile-more, .sidebar .help-link { display: none; }
+  .sidebar .brand-name, .sidebar .collapse-button, .sidebar .workspace-label, .sidebar .nav-link span, .sidebar .profile-copy, .sidebar .profile-more, .sidebar .help-link { display: none; }
   .sidebar .nav-link { width: 44px; justify-content: center; padding: 0; }
   .main-shell { margin-left: 76px; }
   .sidebar .sidebar-bottom { display: flex; flex-direction: column; align-items: center; }
@@ -476,7 +471,7 @@ select option:checked, select option:hover { background-color: var(--purple); co
   body { min-width: 360px;   }
   .sidebar { width: 244px; align-items: stretch; padding: 20px 14px 13px; transform: translateX(-105%); box-shadow: none; }
   .sidebar.sidebar-mobile-open { transform: translateX(0); box-shadow: 12px 0 30px #0002; }
-  .sidebar .brand-row { justify-content: flex-start; padding: 0 6px; }.sidebar .brand-name { display: inline; }.sidebar .workspace-label { display: block; }.sidebar .nav-link { width: 100%; justify-content: flex-start; padding: 0 11px; }.sidebar .nav-link span { display: inline; }.sidebar .upgrade-card { display: block; }.sidebar .profile-copy, .sidebar .profile-more, .sidebar .help-link { display: flex; }.sidebar .sidebar-bottom { display: block; }.sidebar .profile-button { justify-content: flex-start; }.sidebar .mobile-close { display: inline-grid; margin-left: auto; }.sidebar .collapse-button { display: none; }
+  .sidebar .brand-row { justify-content: flex-start; padding: 0 6px; }.sidebar .brand-name { display: inline; }.sidebar .workspace-label { display: block; }.sidebar .nav-link { width: 100%; justify-content: flex-start; padding: 0 11px; }.sidebar .nav-link span { display: inline; }.sidebar .profile-copy, .sidebar .profile-more, .sidebar .help-link { display: flex; }.sidebar .sidebar-bottom { display: block; }.sidebar .profile-button { justify-content: flex-start; }.sidebar .mobile-close { display: inline-grid; margin-left: auto; }.sidebar .collapse-button { display: none; }
   .mobile-scrim { position: fixed; z-index: 29; inset: 0; display: block; width: 100%; height: 100%; border: 0; background: #10121b75; }
   .main-shell, .main-shell.main-collapsed { margin-left: 0; }
   .topbar { min-height: 67px; gap: 7px; padding: 10px 12px; }.menu-button { display: inline-grid; }.topbar-heading { gap: 5px; }.topbar h1 { font-size: 14px; }.topbar-actions { gap: 4px; }.range-select { height: 31px; padding: 0 8px; }.range-select select { width: 73px; font-size: 12px; }.account-wrap { display: none; }.notification-button { display: none; }.theme-button { width: 29px; }.add-trade-button { min-height: 31px; padding: 0 8px; font-size: 12px; }.add-trade-button svg { width: 15px; }
@@ -2485,12 +2480,10 @@ html:has(.lp) { scroll-behavior: smooth; }
 .sidebar-bottom { flex: 0 0 auto; }
 .sidebar-bottom > .nav-link { margin-bottom: 16px; }
 .sidebar-bottom .sidebar-divider { margin: 8px 8px; }
-.sidebar-bottom .upgrade-card { margin-bottom: 16px; }
 .sidebar-bottom .help-link { margin-bottom: 6px; }
 .sidebar-profile-wrap { margin-top: 0; }
 .sidebar .nav-link { min-height: 44px; }
 @media (max-height: 800px) {
-  .sidebar .upgrade-card { display: none !important; }
 }
 .calendar-weekend:not(.calendar-profit):not(.calendar-loss) { background: color-mix(in srgb, var(--card-soft) 76%, var(--line) 24%); }
 .calendar-today { box-shadow: inset 0 0 0 2px var(--purple); }
@@ -2506,7 +2499,6 @@ html:has(.lp) { scroll-behavior: smooth; }
   .sidebar .brand-row { justify-content: flex-start; padding: 0 6px; }
   .sidebar .brand-name { display: inline; }
   .sidebar .workspace-label { display: block; }
-  .sidebar .upgrade-card { display: block; }
   .sidebar .profile-copy { display: grid; }
   .sidebar .profile-more { display: block; }
   .sidebar .help-link { display: flex; }
@@ -2524,8 +2516,6 @@ html:has(.lp) { scroll-behavior: smooth; }
 @media (max-height: 760px) {
   .sidebar { padding-top: 12px; }
   .brand-row { margin-bottom: 16px; }
-  .sidebar .upgrade-card { padding: 10px; margin-bottom: 8px; }
-  .sidebar .upgrade-card p { margin-bottom: 7px; }
 }
 
 .notification-wrap { position: relative; }
