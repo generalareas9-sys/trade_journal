@@ -164,7 +164,14 @@ async function callGemini(messages: Array<{ role: string; content: string }>, co
     return { error: 'TradeJournal AI is not configured yet. Please contact the site administrator.', category: 'configuration_missing', status: 503 }
   }
 
-  const model = (Deno.env.get('AI_MODEL') || DEFAULT_AI_MODEL).trim().replace(/^models\//, '')
+  const configuredModel = (Deno.env.get('AI_MODEL') || DEFAULT_AI_MODEL).trim()
+  const model = configuredModel
+    .replace(/:generateContent$/i, '')
+    .replace(/\/+$/, '')
+    .split('/')
+    .pop()
+    ?.trim()
+    || DEFAULT_AI_MODEL
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 20_000)
   try {
@@ -228,7 +235,7 @@ async function callGemini(messages: Array<{ role: string; content: string }>, co
         status,
         providerErrorType,
         providerMessage,
-        model: sanitizeProviderError(model, [apiKey, ...messages.map((message) => message.content), ...contextStrings(context)]),
+        model: /^[A-Za-z0-9._-]{1,120}$/.test(model) ? model : '[invalid_model_format]',
       }))
       const responseStatus = safeError === 'billing' || safeError === 'model_not_found' ? 503 : safeError === 'rate_limited' ? 429 : 502
       return { error: safeError, status: responseStatus }
