@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Activity, BarChart3, BookOpen, Calculator, CalendarDays, CalendarRange, ChevronLeft, CircleHelp, Home as HomeIcon, LayoutDashboard, LogOut, NotebookPen, Settings, SlidersHorizontal, Sparkles, Swords, Target, X } from 'lucide-react'
+import { Activity, BarChart3, BookOpen, Calculator, CalendarDays, CalendarRange, ChevronLeft, CircleHelp, Home as HomeIcon, LayoutDashboard, LogOut, NotebookPen, Settings, SlidersHorizontal, Swords, Target, X } from 'lucide-react'
 import { useJournal } from '../hooks/useJournal'
 import { useAuth } from '../context/AuthContext'
 import ProfileAvatar from './ProfileAvatar'
@@ -71,7 +71,6 @@ export default function Sidebar({ collapsed, onCollapse }) {
         <div className="sidebar-bottom">
           {!collapsed && <div className="sidebar-divider" />}
           <NavLink to="/settings" title={collapsed ? 'Settings' : undefined} onClick={() => setSidebarOpen(false)} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><Settings size={18} /><span>Settings</span></NavLink>
-          {!collapsed && <div className="upgrade-card"><div className="upgrade-icon"><Sparkles size={16} /></div><strong>Journal AI coming soon</strong><p>Personalized insights for your trading journal.</p><button>Coming soon</button></div>}
           {!collapsed && <button className="help-link" type="button" onClick={() => { setSidebarOpen(false); navigate('/help') }}><CircleHelp size={15} /> Help center</button>}
           <div className="sidebar-profile-wrap">
             <button className="profile-button" type="button" aria-haspopup="menu" aria-expanded={profileMenuOpen} onClick={() => setProfileMenuOpen((open) => !open)}>
