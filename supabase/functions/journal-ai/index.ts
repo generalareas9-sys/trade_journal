@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+const DEFAULT_AI_MODEL = 'claude-haiku-5-5' // Confirm this against the provider's current model list.
 const systemPrompt = 'You are TradeJournal AI. You help traders review their own journal data: patterns, mistakes, discipline and process. You are not a financial advisor: never tell the user what to buy or sell, never predict markets, and say when the data is too small to conclude. Be concise and practical. Use only the data provided.'
 const requestsPerDay = new Map<string, { day: string; count: number }>()
 
@@ -61,7 +62,29 @@ function sanitizeProviderError(value: unknown, sensitiveValues: string[]) {
     .replace(/[\r\n\t]+/g, ' ')
     .replace(/\s{2,}/g, ' ')
     .trim()
-    .slice(0, 240)
+    .slice(0, 300)
+}
+
+function normalizeMessages(value: unknown) {
+  if (!Array.isArray(value)) return []
+  const normalized: Array<{ role: 'user' | 'assistant'; content: string }> = []
+  for (const item of value) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) continue
+    const message = item as Record<string, unknown>
+    if (message.role !== 'user' && message.role !== 'assistant') continue
+    if (typeof message.content !== 'string' || !message.content.trim()) continue
+    const content = message.content.trim().slice(0, 2000)
+    const previous = normalized[normalized.length - 1]
+    if (previous?.role === message.role) {
+      previous.content = `${previous.content}\n${content}`.slice(0, 2000)
+    } else {
+      normalized.push({ role: message.role, content })
+    }
+  }
+
+  const lastMessages = normalized.slice(-10)
+  while (lastMessages[0]?.role === 'assistant') lastMessages.shift()
+  return lastMessages
 }
 
 function sanitizeContext(value: unknown) {
@@ -140,7 +163,7 @@ async function callAnthropic(messages: Array<{ role: string; content: string }>,
     return { error: 'TradeJournal AI is not configured yet. Please contact the site administrator.', category: 'configuration_missing', status: 503 }
   }
 
-  const model = Deno.env.get('AI_MODEL') || 'claude-haiku-5-5'
+  const model = Deno.env.get('AI_MODEL') || DEFAULT_AI_MODEL
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 20_000)
   try {
@@ -161,55 +184,44 @@ async function callAnthropic(messages: Array<{ role: string; content: string }>,
     })
     if (!providerResponse.ok) {
       const status = providerResponse.status
-      let providerError: { type: string; message: string } = { type: 'unknown_error', message: '' }
-      if (status === 400) {
-        try {
-          const body = await providerResponse.json()
-          const bodyError = body && typeof body === 'object' && 'error' in body
-            ? (body as { error?: { type?: unknown; message?: unknown } }).error
-            : undefined
-          const rawType = typeof bodyError?.type === 'string' ? bodyError.type : 'unknown_error'
-          const sensitiveValues = [
-            apiKey,
-            ...messages.map((message) => message.content),
-            ...contextStrings(context),
-          ]
-          providerError = {
-            type: /^[a-z0-9_]{1,64}$/i.test(rawType) ? rawType : 'unknown_error',
-            message: sanitizeProviderError(bodyError?.message, sensitiveValues),
-          }
-        } catch {
-          providerError = { type: 'unreadable_error_body', message: '' }
-        }
+      let body: Record<string, unknown> = {}
+      try {
+        const bodyText = await providerResponse.text()
+        const parsed = JSON.parse(bodyText)
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) body = parsed
+      } catch {
+        body = {}
       }
-      const category = status === 401 || status === 403
-        ? 'provider_credentials'
-        : status === 404
-          ? 'provider_model'
-          : status === 429
-            ? 'provider_rate_limit'
-            : status >= 500
-              ? 'provider_unavailable'
-              : 'provider_request'
+      const providerBodyError = body.error && typeof body.error === 'object' && !Array.isArray(body.error)
+        ? body.error as Record<string, unknown>
+        : {}
+      const rawType = typeof providerBodyError.type === 'string' ? providerBodyError.type : 'unknown_error'
+      const providerErrorType = /^[a-z0-9_]{1,64}$/i.test(rawType) ? rawType : 'unknown_error'
+      const providerMessage = sanitizeProviderError(providerBodyError.message, [
+        apiKey,
+        ...messages.map((message) => message.content),
+        ...contextStrings(context),
+      ])
+      const safeError = /billing|credit.balance|payment|insufficient.quota/i.test(`${providerErrorType} ${providerMessage}`)
+        ? 'billing'
+        : status === 404 || /model.*(not found|does not exist|unavailable)/i.test(providerMessage)
+          ? 'model_not_found'
+          : status === 429 || /rate_limit/i.test(providerErrorType)
+            ? 'rate_limited'
+            : status === 400
+              ? 'bad_request'
+              : status >= 500
+                ? 'provider_down'
+                : 'unknown'
       console.error(JSON.stringify({
         event: 'journal_ai_provider_error',
         status,
-        category,
-        ...(status === 400 ? { providerErrorType: providerError.type, providerMessage: providerError.message } : {}),
+        providerErrorType,
+        providerMessage,
+        model: sanitizeProviderError(model, [apiKey, ...messages.map((message) => message.content), ...contextStrings(context)]),
       }))
-      if (category === 'provider_credentials') {
-        return { error: 'TradeJournal AI server credentials need attention. Please contact the site administrator.', category, status: 503 }
-      }
-      if (category === 'provider_model') {
-        return { error: 'The configured AI model is unavailable. Please contact the site administrator.', category, status: 503 }
-      }
-      if (category === 'provider_rate_limit') {
-        return { error: 'The AI service is busy. Please wait a minute and try again.', category, status: 429 }
-      }
-      if (category === 'provider_request') {
-        return { error: 'TradeJournal AI could not process that request. Please try a shorter question.', category, status: 502 }
-      }
-      return { error: 'TradeJournal AI is temporarily unavailable. Please try again shortly.', category, status: 502 }
+      const responseStatus = safeError === 'billing' || safeError === 'model_not_found' ? 503 : safeError === 'rate_limited' ? 429 : 502
+      return { error: safeError, status: responseStatus }
     }
     let result
     try {
@@ -278,18 +290,9 @@ Deno.serve(async (request: Request) => {
   if (!Array.isArray(body.messages) || body.messages.length === 0) {
     return response(request, 400, { error: 'Please enter a message to continue.', category: 'invalid_request' })
   }
-  const messages = body.messages.slice(-10).filter((item) => (
-    item && typeof item === 'object' && !Array.isArray(item)
-    && ['user', 'assistant'].includes((item as Record<string, unknown>).role as string)
-    && typeof (item as Record<string, unknown>).content === 'string'
-    && ((item as Record<string, unknown>).content as string).trim().length > 0
-    && ((item as Record<string, unknown>).content as string).length <= 2000
-  )).map((item) => {
-    const message = item as Record<string, string>
-    return { role: message.role, content: message.content.trim() }
-  })
-  if (messages.length !== body.messages.slice(-10).length) {
-    return response(request, 400, { error: 'Messages must be non-empty user or assistant text up to 2,000 characters.', category: 'invalid_request' })
+  const messages = normalizeMessages(body.messages)
+  if (!messages.length || messages[0].role !== 'user') {
+    return response(request, 400, { error: 'Please enter a valid user message to continue.', category: 'invalid_request' })
   }
 
   const context = sanitizeContext(body.context)
