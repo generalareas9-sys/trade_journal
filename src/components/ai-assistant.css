@@ -11,6 +11,7 @@
 
 .ai-assistant {
   display: flex; flex-direction: column;
+  scroll-margin-top: 24px;
   background: linear-gradient(180deg, #f0fdfa 0%, #eef6ff 100%);
   border: 1px solid #8fe3d6;
   border-radius: 18px;
