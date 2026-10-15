@@ -170,8 +170,10 @@
   .dj-streak { grid-column: auto; }
   .dj-card { padding: 14px; }
   .dj-kpis { grid-template-columns: 1fr 1fr; }
-  .dj-kpis > div:nth-child(2) { border-right: 0; }
-  .dj-kpis > div:nth-child(-n+2) { border-bottom: 1px solid var(--dj-border); }
+  .dj-kpis > div:nth-child(2n) { border-right: 0; }
+  .dj-kpis > div:nth-child(2n + 1) { border-right: 1px solid var(--dj-border); }
+  .dj-kpis > div:nth-child(-n+4) { border-bottom: 1px solid var(--dj-border); }
+  .dj-kpis > div:nth-child(n+5) { border-bottom: 0; }
   .dj-wellbeing-grid { grid-template-columns: 1fr 1fr; }
   .dj-wellbeing-grid > div { grid-column: span 2; }
   .dj-moods button small { font-size: 7px; }
