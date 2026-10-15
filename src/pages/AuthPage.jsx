@@ -150,7 +150,7 @@ export default function AuthPage({ mode }) {
         }
         return
       }
-      navigate('/', { replace: true })
+      navigate(location.state?.from || '/', { replace: true })
     } catch (verifyError) {
       setError(friendlyOtpError(verifyError))
     } finally {
