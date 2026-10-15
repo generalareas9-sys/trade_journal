@@ -20,6 +20,7 @@ import {
   Shield,
   ShieldCheck,
   Smartphone,
+  Sparkles,
   Target,
   TrendingUp,
   Upload,
@@ -74,6 +75,16 @@ const MORE_TOOLS = [
   { icon: ShieldCheck, title: 'Daily limit warnings', text: 'See a dashboard warning when your daily limits are exceeded.', accent: 'pink' },
   { icon: CalendarDays, title: 'Weekly review report', text: 'Get a focused weekly summary of trades and reflections.', status: 'Available now', accent: 'emerald' },
   { icon: Smartphone, title: 'Mobile-friendly journal', text: 'Use the journal and review your trades on a smaller screen.', accent: 'amber' },
+  {
+    icon: Sparkles,
+    title: 'AI Assistant',
+    text: 'Get personalized insights from your trading journal, understand your performance, and find the right tools faster.',
+    status: 'Sign in to try',
+    accent: 'violet',
+    href: '/login',
+    returnTo: { pathname: '/home', hash: '#ai-assistant' },
+    action: 'Try AI Assistant',
+  },
 ]
 
 const FAQ = [
@@ -433,18 +444,21 @@ export default function LandingPage() {
               <p>See what is available now and what we are still building.</p>
             </Reveal>
             <div className="lp-more-grid">
-              {MORE_TOOLS.map(({ icon: Icon, title, text, status, accent }, index) => (
-                <Reveal key={title} className={`lp-more-card lp-more-${accent} ${status === 'Coming soon' ? 'is-coming-soon' : 'is-available'}`} style={{ '--lp-delay': `${index * 60}ms` }}>
+              {MORE_TOOLS.map(({ icon: Icon, title, text, status, accent, href, returnTo, action }, index) => (
+                <Reveal key={title} className={`lp-more-card lp-more-${accent} ${title === 'AI Assistant' ? 'lp-more-ai-assistant' : ''} ${status === 'Coming soon' ? 'is-coming-soon' : 'is-available'}`} style={{ '--lp-delay': `${index * 60}ms` }}>
                   <div className="lp-more-card-top">
                     <span className="lp-more-icon"><Icon size={20} /></span>
                     {status
                       ? status === 'Coming soon'
                         ? <span className="lp-coming-soon"><Clock3 size={12} />Coming soon</span>
-                        : <span className="lp-available"><i />{status}</span>
+                        : status === 'Available now'
+                          ? <span className="lp-available"><i />{status}</span>
+                          : <span className="lp-more-status">{status}</span>
                       : <span className="lp-available"><i />Available now</span>}
                   </div>
                   <h3>{title}</h3>
                   <p>{text}</p>
+                  {href && <Link className="lp-more-action" to={href} state={returnTo ? { from: returnTo } : undefined}>{action}<ArrowRight size={15} /></Link>}
                 </Reveal>
               ))}
             </div>
