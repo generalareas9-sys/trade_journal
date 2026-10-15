@@ -2307,6 +2307,34 @@ html:has(.lp) { scroll-behavior: smooth; }
   .lp .lp-more-card:hover .lp-more-icon { transform: none; }
 }
 
+.lp .lp-more-ai-assistant { grid-template-rows: auto auto 1fr auto; }
+.lp .lp-more-ai-assistant .lp-more-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  padding: 4px 8px;
+  border: 1px solid rgba(196, 181, 253, .28);
+  border-radius: 999px;
+  background: rgba(124, 58, 237, .2);
+  color: #e9ddff;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.lp .lp-more-action {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 7px;
+  color: #e0d5ff;
+  font-size: 13px;
+  font-weight: 750;
+  text-decoration: none;
+  transition: color .18s ease, gap .18s ease;
+}
+.lp .lp-more-action:hover { gap: 10px; color: #ffffff; }
+.lp .lp-more-action:focus-visible { outline: 2px solid #e0d5ff; outline-offset: 4px; border-radius: 3px; }
+
 /* Final landing-page layout refinements */
 .lp .lp-hero::after {
   top: 0;
