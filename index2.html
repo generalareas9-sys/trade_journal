@@ -1,0 +1,99 @@
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#6C5CE7" />
+
+    <!-- Google Search Console verification -->
+    <meta name="google-site-verification" content="bYH7NVywDPaXwY-gcF3YMxvtF7L70O86udjLqd9nxiw" />
+
+    <!-- SEO -->
+    <title>TradeJournal by Osman Seid Ebrahim | Trading Journal</title>
+    <meta name="description" content="TradeJournal by Osman Seid Ebrahim helps traders record trades, track performance, analyze mistakes, and manage risk." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://trade-journal-livid-five.vercel.app/" />
+
+    <!-- Social sharing -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="TradeJournal by Osman Seid Ebrahim" />
+    <meta property="og:description" content="Record trades, analyze performance, review mistakes, and manage trading risk with TradeJournal." />
+    <meta property="og:url" content="https://trade-journal-livid-five.vercel.app/" />
+    <meta property="og:image" content="https://trade-journal-livid-five.vercel.app/og-image.png" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="TradeJournal by Osman Seid Ebrahim" />
+    <meta name="twitter:description" content="Your trading journal for tracking performance and improving your trading." />
+    <meta name="twitter:image" content="https://trade-journal-livid-five.vercel.app/og-image.png" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+    <!-- Icons -->
+    <link rel="icon" href="/favicon-v4.ico?v=4" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-v4-32x32.png?v=4" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon-v4.png?v=4" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <script>
+      (() => {
+        let dark = true;
+        let themeChosen = false;
+        let preference = null;
+        let savedDark = null;
+
+        try {
+          themeChosen = localStorage.getItem('trade-journal-theme-chosen') === 'true';
+          preference = localStorage.getItem('trade-journal-theme-preference');
+          savedDark = localStorage.getItem('trade-journal-dark');
+        } catch (error) {
+          console.error('Could not read the saved theme:', error);
+        }
+
+        if (!themeChosen) {
+          dark = true;
+        } else if (preference === 'dark' || preference === 'system') {
+          dark = preference === 'dark' ||
+            window.matchMedia('(prefers-color-scheme: dark)').matches;
+        } else if (preference === 'light') {
+          dark = false;
+        } else if (savedDark !== null) {
+          try {
+            dark = JSON.parse(savedDark) === true;
+          } catch (error) {
+            console.error('Could not parse the saved theme:', error);
+          }
+        }
+
+        try {
+          localStorage.setItem('trade-journal-dark', JSON.stringify(dark));
+        } catch (error) {
+          console.error('Could not initialize the saved theme:', error);
+        }
+
+        const workspacePage = [
+          '/', '/journal', '/trades', '/import', '/reports',
+          '/weekly-review', '/notebook', '/playbooks',
+          '/backtesting', '/risk-calculator', '/settings',
+          '/help', '/contact', '/changelog'
+        ].includes(window.location.pathname);
+
+        document.documentElement.classList.toggle(
+          'dark-theme',
+          workspacePage && dark
+        );
+        document.documentElement.style.colorScheme =
+          workspacePage && dark ? 'dark' : 'light';
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+```
