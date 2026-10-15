@@ -22,7 +22,7 @@
 .pt-heatmap-card { min-height: 300px; padding: 22px; }
 .pt-heatmap-card .pt-card-heading h3 { font-family: Inter, "DM Sans", sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -.3px; }
 .pt-heatmap-card .pt-card-heading p { font-family: Inter, "DM Sans", sans-serif; font-size: 15px; }
-.pt-today-button, .pt-edit-button { min-height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: var(--fs-xs); font-weight: 600; cursor: pointer; }
+.pt-today-button, .pt-edit-button { min-height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: var(--fs-xs); font-weight: 600; cursor: pointer; transition: border-color 180ms ease-out, color 180ms ease-out, background-color 180ms ease-out; }
 .pt-edit-button { color: var(--purple); }
 .pt-today-button:hover, .pt-edit-button:hover { border-color: #8b5cf6; }
 .pt-heatmap-scroll { overflow-x: auto; padding: 2px 0 6px; }
