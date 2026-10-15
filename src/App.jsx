@@ -174,6 +174,7 @@ function ProtectedLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { dark, settings = {}, setSettings, setAddTradeOpen, setEditingTrade, toast, demoTradeCount, removeDemoTrades } = useJournal()
+  const showDemoBanner = demoTradeCount > 0 && location.pathname === '/'
   const onAddTrade = useCallback(() => {
     setEditingTrade(null)
     setAddTradeOpen(true)
@@ -204,7 +205,7 @@ function ProtectedLayout() {
       <a className="skip-to-content" href="#main-content">Skip to content</a>
       <main id="main-content" tabIndex="-1" className={`main-shell ${collapsed ? 'main-collapsed' : ''}`}>
         <Topbar />
-        {demoTradeCount > 0 && (
+        {showDemoBanner && (
           <div className="demo-data-banner" role="status">
             <span><strong>You are viewing demo data.</strong> Import your trades to replace the sample history.</span>
             <div>
