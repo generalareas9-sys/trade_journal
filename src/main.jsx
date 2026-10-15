@@ -7,7 +7,6 @@ import { DataProvider } from './context/DataContext'
 import './styles.css'
 import './dark-theme.css'
 import './light-theme.css'
-import './light-redesign.css'
 
 class ErrorBoundary extends Component {
   state = { hasError: false }
