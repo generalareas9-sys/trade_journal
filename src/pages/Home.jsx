@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, BookOpen, Building2, CalendarDays, CalendarRange, ChevronRight, FileText, FlaskConical, Target } from 'lucide-react'
 import { format } from 'date-fns'
 import { useJournal } from '../hooks/useJournal'
+import AiAssistant from '../components/AiAssistant'
 import './dashboard-home.css'
 
 export default function Home() {
@@ -27,6 +28,7 @@ export default function Home() {
   ]
   return <main className="page-content home-page">
     <section className="home-hub" aria-label="Home workspace">
+      <AiAssistant />
       <div className="home-hub-grid">
         <section className="home-products" aria-labelledby="home-products-title">
           <div className="home-section-title"><h3 id="home-products-title">Explore your workspace</h3><p>Pick up where you want to focus.</p></div>
