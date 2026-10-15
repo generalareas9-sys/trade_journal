@@ -42,7 +42,7 @@
 }
 * { box-sizing: border-box; }
 html { font-size: 16px; }
-body { margin: 0; min-width: 360px; min-height: 100vh; background: var(--bg); color: var(--text); font-size: var(--fs-base); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--bg); color: var(--text); font-size: var(--fs-base); line-height: 1.5; -webkit-font-smoothing: antialiased; }
 button, input, select, textarea { font: inherit; }
 button { color: inherit; cursor: pointer; }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.18); }
@@ -468,7 +468,7 @@ select option:checked, select option:hover { background-color: var(--purple); co
   .playbook-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 640px) {
-  body { min-width: 360px;   }
+  body { min-width: 320px; }
   .sidebar { width: 244px; align-items: stretch; padding: 20px 14px 13px; transform: translateX(-105%); box-shadow: none; }
   .sidebar.sidebar-mobile-open { transform: translateX(0); box-shadow: 12px 0 30px #0002; }
   .sidebar .brand-row { justify-content: flex-start; padding: 0 6px; }.sidebar .brand-name { display: inline; }.sidebar .workspace-label { display: block; }.sidebar .nav-link { width: 100%; justify-content: flex-start; padding: 0 11px; }.sidebar .nav-link span { display: inline; }.sidebar .profile-copy, .sidebar .profile-more, .sidebar .help-link { display: flex; }.sidebar .sidebar-bottom { display: block; }.sidebar .profile-button { justify-content: flex-start; }.sidebar .mobile-close { display: inline-grid; margin-left: auto; }.sidebar .collapse-button { display: none; }
@@ -487,6 +487,59 @@ select option:checked, select option:hover { background-color: var(--purple); co
   .notebook-layout { grid-template-columns: 1fr; }.notebook-sidebar { padding: 13px; }.folder-list { grid-template-columns: 1fr 1fr; }.note-list { grid-template-columns: 1fr 1fr; }.note-list-item { padding: 8px 5px; }.note-editor { min-height: 450px; padding: 14px; }.note-body-input { min-height: 300px; }
   .page-intro-row { align-items: flex-start; }.page-intro-row .button-primary { min-height: 32px; padding: 0 8px; font-size: 12px; }.page-intro-row h2 { font-size: 16px; }.playbook-grid { grid-template-columns: 1fr; }.playbook-card, .new-playbook-card { min-height: 215px; }.playbook-detail { padding: 15px 12px; }.playbook-detail-head { flex-wrap: wrap; }.playbook-detail-head .button-secondary { margin-left: 0; }.playbook-performance { grid-template-columns: repeat(2, 1fr); gap: 13px; }.playbook-rules-grid { grid-template-columns: 1fr; }
   .backtest-filter { align-items: stretch; flex-direction: column; }.backtest-filter label { min-width: 0; }.backtest-metrics { gap: 7px; }.backtest-metrics .panel { padding: 11px 8px; }.backtest-metrics strong { font-size: 14px; }.settings-layout { grid-template-columns: 1fr; }.settings-nav { grid-template-columns: repeat(2, 1fr); }.settings-nav>.eyebrow { grid-column: 1 / -1; }.settings-tip { grid-column: auto; }
+}
+
+@keyframes tj-page-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes tj-overlay-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes tj-dialog-enter {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes tj-popover-enter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes tj-feedback-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.page-content { animation: tj-page-enter 220ms ease-out both; }
+.modal-backdrop { animation: tj-overlay-enter 180ms ease-out both; }
+.trade-modal { animation: tj-dialog-enter 220ms ease-out both; }
+.trade-drawer { animation: slideIn 220ms ease-out both; }
+.custom-range-popover, .account-menu, .sidebar-profile-menu { animation: tj-popover-enter 180ms ease-out both; }
+.toast-message { animation: tj-feedback-enter 200ms ease-out both; }
+.page-error-state, .form-error { animation: tj-feedback-enter 200ms ease-out both; }
+.button-primary, .button-secondary, .icon-button, .subtle-icon, .table-pagination button {
+  transition-timing-function: ease-out;
+  transition-duration: 180ms;
+}
+.report-tabs button, .notes-tabs button, .settings-nav button, .day-row {
+  transition: color 180ms ease-out, background-color 180ms ease-out, border-color 180ms ease-out, box-shadow 180ms ease-out;
+}
+button:not([class]), a:not([class]), input:not([class]), select:not([class]), textarea:not([class]) {
+  transition: color 180ms ease-out, background-color 180ms ease-out, border-color 180ms ease-out, box-shadow 180ms ease-out;
+}
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  transition: outline-color 180ms ease-out, box-shadow 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
 }
 
 h1 { font-size: var(--fs-2xl); font-weight: 700; letter-spacing: -.02em; }
@@ -2826,4 +2879,75 @@ button:focus-visible, a:focus-visible, [tabindex="0"]:focus-visible { outline: 3
   .legal-section h2 { font-size: 17px; }
   .legal-section p { font-size: 15px; }
   .legal-footer { align-items: flex-start; flex-direction: column; padding: 18px 16px; }
+}
+
+.page-content .panel-heading h2 {
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.page-content .panel-heading p {
+  line-height: 1.5;
+}
+
+.page-content .page-intro-row {
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.page-content .page-intro-row h2 {
+  font-size: clamp(24px, 2.5vw, 30px);
+  line-height: 1.2;
+}
+
+.page-content .page-intro-row p {
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.page-content .report-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.page-content .report-stat {
+  min-width: 0;
+}
+
+.page-content .report-stat > strong {
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+
+.page-content .report-tabs button {
+  min-height: 36px;
+  transition: color 180ms ease-out, background-color 180ms ease-out;
+}
+
+.page-content .playbook-card-title h3 {
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.page-content .playbook-card-title p {
+  font-size: 13px;
+}
+
+.page-content .note-body-input {
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+@media (max-width: 640px) {
+  .page-content .page-intro-row h2 {
+    font-size: 21px;
+  }
+
+  .page-content .report-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .page-content .report-tabs button {
+    min-height: 40px;
+  }
 }
