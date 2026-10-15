@@ -297,7 +297,7 @@ const recent = [...trades]
   }
 
   return (
-    <section className="ai-assistant" aria-labelledby="ai-assistant-title">
+    <section id="ai-assistant" className="ai-assistant" aria-labelledby="ai-assistant-title">
       <header className="ai-head">
         <span className="ai-badge"><Bot size={18} /></span>
         <div className="ai-head-copy">
