@@ -22,7 +22,7 @@ import {
   ArrowRight,
   X,
 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { updateProfileSettings } from '../../data/repo'
 import { useJournal } from '../../hooks/useJournal'
@@ -332,7 +332,9 @@ function BackgroundConfetti() {
 }
 
 export default function OnboardingPage() {
+  const location = useLocation()
   const navigate = useNavigate()
+  const returnTo = location.state?.from || '/'
   const { user, profile, refreshProfile } = useAuth()
   const { accounts = [], addAccount, setSettings } = useJournal()
   const profileSettings = profile?.settings || {}
@@ -370,8 +372,8 @@ export default function OnboardingPage() {
   }, [])
 
   useEffect(() => {
-    if ((saved.onboardingCompleted === true || saved.appSettings?.onboardingCompleted === true) && !finished) navigate('/', { replace: true })
-  }, [saved.onboardingCompleted, saved.appSettings?.onboardingCompleted, finished, navigate])
+    if ((saved.onboardingCompleted === true || saved.appSettings?.onboardingCompleted === true) && !finished) navigate(returnTo, { replace: true })
+  }, [saved.onboardingCompleted, saved.appSettings?.onboardingCompleted, finished, navigate, returnTo])
 
   const saveAnswers = async (nextAnswers, nextStep, completed) => {
     if (!user?.id || !profile) throw new Error('Your account profile is not available. Please reload and try again.')
@@ -430,11 +432,11 @@ export default function OnboardingPage() {
       const refreshed = await refreshProfile()
       if (!refreshed?.settings?.onboardingCompleted && !refreshed?.settings?.appSettings?.onboardingCompleted) throw new Error('Onboarding status could not be refreshed.')
       if (skip) {
-        navigate('/', { replace: true })
+        navigate(returnTo, { replace: true })
         return
       }
       setFinished(true)
-      transitionTimer.current = window.setTimeout(() => navigate('/', { replace: true }), 1500)
+      transitionTimer.current = window.setTimeout(() => navigate(returnTo, { replace: true }), 1500)
     } catch (saveError) {
       console.error('Could not save onboarding answers:', saveError)
       setError(saveError?.message || 'Your answers could not be saved. Please try again.')
@@ -458,7 +460,7 @@ export default function OnboardingPage() {
           setFinished(false)
           throw new Error('Onboarding status could not be refreshed.')
         }
-        transitionTimer.current = window.setTimeout(() => navigate('/', { replace: true }), 1500)
+        transitionTimer.current = window.setTimeout(() => navigate(returnTo, { replace: true }), 1500)
       } else {
         const nextStep = stepIndex + 1
         await saveAnswers(answers, nextStep, false)
