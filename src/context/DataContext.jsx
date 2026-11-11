@@ -207,6 +207,7 @@ export function DataProvider({ children }) {
   const [dataError, setDataError] = useState('')
   const [dataUserId, setDataUserId] = useState('')
   const [saveStatus, setSaveStatus] = useState('saved')
+  const [journalSaveStatus, setJournalSaveStatus] = useState('saved')
   const [retryCount, setRetryCount] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [addTradeOpen, setAddTradeOpen] = useState(false)
@@ -785,10 +786,12 @@ export function DataProvider({ children }) {
       if (pending?.inFlight) return after
       journalSaveRef.current = { timer: null, ownerId, before: null, after: null }
       updateSaveStatus('saved')
+      setJournalSaveStatus('saved')
       return after
     }
 
     updateSaveStatus('saving')
+    setJournalSaveStatus('saving')
     const scheduled = { timer: null, ownerId, before: original, after, inFlight: false }
     scheduled.timer = window.setTimeout(async () => {
       if (userRef.current?.id !== ownerId) return
@@ -812,9 +815,11 @@ export function DataProvider({ children }) {
           return { ...current, journal }
         })
         updateSaveStatus('error')
+        setJournalSaveStatus('error')
         notify(`Could not save journal entry: ${failures[0].result.error.message || 'Unknown error'}`)
       } else if (journalSaveRef.current === scheduled) {
         updateSaveStatus('saved')
+        setJournalSaveStatus('saved')
       }
       if (journalSaveRef.current === scheduled) {
         journalSaveRef.current = { timer: null, ownerId: null, before: null, after: null }
@@ -1045,6 +1050,7 @@ export function DataProvider({ children }) {
     storageUsage,
     storageLimit: 5 * 1024 * 1024,
     saveStatus,
+    journalSaveStatus,
     dataLoading,
     dataError,
     retryLoad,
@@ -1070,7 +1076,7 @@ export function DataProvider({ children }) {
     exportBackup,
     replaceData,
     resetAllData,
-  }), [data, setTrades, clearAllTrades, setLocalValue, setThemeChoice, setProfile, updateSettingsSlot, setPlaybooks, setJournal, setNotes, setAccounts, accountTrades, filteredTrades, stats, storageUsage, saveStatus, dataLoading, dataError, retryLoad, sidebarOpen, addTradeOpen, editingTrade, toast, notify, addTrade, updateTrade, deleteTrade, importTrades, undoImport, removeDemoTrades, loadDemoData, addAccount, updateAccount, deleteAccount, exportBackup, replaceData, resetAllData])
+  }), [data, setTrades, clearAllTrades, setLocalValue, setThemeChoice, setProfile, updateSettingsSlot, setPlaybooks, setJournal, setNotes, setAccounts, accountTrades, filteredTrades, stats, storageUsage, saveStatus, journalSaveStatus, dataLoading, dataError, retryLoad, sidebarOpen, addTradeOpen, editingTrade, toast, notify, addTrade, updateTrade, deleteTrade, importTrades, undoImport, removeDemoTrades, loadDemoData, addAccount, updateAccount, deleteAccount, exportBackup, replaceData, resetAllData])
 
   if (user && dataError && dataUserId !== user.id) {
     return <DataContext.Provider value={value}><main className="page-error-state" role="alert"><strong>Could not load your account data</strong><span>{dataError}</span><button type="button" className="button-primary" onClick={retryLoad}>Retry</button></main></DataContext.Provider>
