@@ -221,5 +221,22 @@ export default function TradeDetailsFields({ form, set, onError, uploadingScreen
     <TextArea label="Risk management" value={form.riskManagement} onChange={(value) => set('riskManagement', value)} placeholder="Risk per trade, position sizing..." />
     <TextArea label="Stop loss system" value={form.stopLossSystem} onChange={(value) => set('stopLossSystem', value)} placeholder="Where and why was the SL placed?" />
     <TextArea label="Take profit system" value={form.takeProfitSystem} onChange={(value) => set('takeProfitSystem', value)} placeholder="Where and why was the TP placed?" />
+    <details className="plan-review-section" id="trade-plan-review">
+      <summary><Target size={15} aria-hidden="true" />Plan and review</summary>
+      <div className="details-grid plan-review-grid">
+        <label className="field">Planned stop-loss price<input type="number" step="any" value={form.plannedStopLoss ?? ''} onChange={(event) => set('plannedStopLoss', event.target.value)} /></label>
+        <label className="field">Planned take-profit price<input type="number" step="any" value={form.plannedTakeProfit ?? ''} onChange={(event) => set('plannedTakeProfit', event.target.value)} /></label>
+        <Segmented label="Setup grade" options={['A', 'B', 'C']} value={form.setupGrade} onChange={(value) => set('setupGrade', value)} allowClear />
+        <Segmented label="Confidence" options={['1', '2', '3', '4', '5']} value={String(form.confidence ?? '')} onChange={(value) => set('confidence', value ? Number(value) : '')} allowClear />
+        <Segmented label="Emotion before" options={['Calm', 'Confident', 'Fear', 'FOMO', 'Revenge', 'Bored', 'Hesitant']} value={form.emotionBefore} onChange={(value) => set('emotionBefore', value)} allowClear />
+        <Segmented label="Emotion after" options={['Calm', 'Confident', 'Fear', 'FOMO', 'Revenge', 'Bored', 'Hesitant']} value={form.emotionAfter} onChange={(value) => set('emotionAfter', value)} allowClear />
+        <Segmented label="Market condition" options={['Trending', 'Ranging', 'News-driven', 'Choppy']} value={form.marketCondition} onChange={(value) => set('marketCondition', value)} allowClear />
+        <Segmented label="Timeframe" options={['M1', 'M5', 'M15', 'H1', 'H4', 'D1']} value={form.timeframe} onChange={(value) => set('timeframe', value)} allowClear />
+        <TextArea label="Lesson learned" value={form.lessonLearned} onChange={(value) => set('lessonLearned', value)} placeholder="What will you carry into the next trade?" />
+        <YesNo label="Would I take this trade again?" value={form.takeAgain} onChange={(value) => set('takeAgain', value)} />
+        <label className="field">Best price reached<input type="number" step="any" value={form.bestPriceReached ?? ''} onChange={(event) => set('bestPriceReached', event.target.value)} /></label>
+        <label className="field">Worst price reached<input type="number" step="any" value={form.worstPriceReached ?? ''} onChange={(event) => set('worstPriceReached', event.target.value)} /></label>
+      </div>
+    </details>
   </div>
 }
