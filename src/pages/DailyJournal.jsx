@@ -15,6 +15,28 @@ import './dailyJournal.css'
 
 const moods = ['😞', '😐', '🙂', '😄', '🔥']
 const moodNames = { '😞': 'Low', '😐': 'Okay', '🙂': 'Good', '😄': 'Great', '🔥': 'Energized' }
+const handleMoodKeyDown = (event, index, update) => {
+  let nextIndex = index
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + moods.length + 1) % moods.length
+  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index + moods.length - 1) % moods.length
+  else if (event.key === 'Home') nextIndex = 0
+  else if (event.key === 'End') nextIndex = moods.length - 1
+  else return
+  event.preventDefault()
+  event.currentTarget.parentElement?.querySelectorAll('[role="radio"]')[nextIndex]?.focus()
+  update('mood', moods[nextIndex])
+}
+const handleRatingKeyDown = (event, index, update) => {
+  let nextIndex = index
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % 5
+  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index - 1 + 5) % 5
+  else if (event.key === 'Home') nextIndex = 0
+  else if (event.key === 'End') nextIndex = 4
+  else return
+  event.preventDefault()
+  event.currentTarget.parentElement?.querySelectorAll('[role="radio"]')[nextIndex]?.focus()
+  update('rating', nextIndex + 1)
+}
 const tags = ['A+ setup', 'Breakout', 'Reversal', 'Trend following', 'Scalp', 'News']
 const mistakes = ['FOMO', 'Revenge trade', 'Moved stop', 'Oversized', 'Early exit', 'No setup']
 const blankEntry = () => ({ bias: '', levels: '', news: '', maxRisk: '', maxTrades: '', review: '', lesson: '', rating: 0, mood: '🙂', energy: 3, sleep: '', followedPlan: false, tags: [], mistakes: [], images: [] })
@@ -357,11 +379,11 @@ export default function DailyJournal() {
             <label className="dj-field dj-span-2"><span>End-of-day review</span><textarea rows="3" value={entry.review || ''} onChange={(event) => update('review', event.target.value)} placeholder="What went well? What would you change?" /></label>
             <label className="dj-field dj-span-2"><span>Lesson to carry forward</span><textarea rows="2" value={entry.lesson || ''} onChange={(event) => update('lesson', event.target.value)} placeholder="One thing to remember next session…" /></label>
           </div>
-          <div className="dj-rating"><strong>Rate this session</strong><div role="radiogroup" aria-label="Session rating">{[1, 2, 3, 4, 5].map((rating) => <button type="button" role="radio" aria-checked={Number(entry.rating) === rating} aria-label={`${rating} out of 5`} key={rating} className={Number(entry.rating) >= rating ? 'filled' : ''} onClick={() => update('rating', rating)}>★</button>)}</div><span>{entry.rating ? `${entry.rating} / 5` : 'Not rated'}</span></div>
+          <div className="dj-rating"><strong>Rate this session</strong><div role="radiogroup" aria-label="Session rating">{[1, 2, 3, 4, 5].map((rating, index) => <button type="button" role="radio" aria-checked={Number(entry.rating) === rating} tabIndex={Number(entry.rating) === rating || (!entry.rating && index === 0) ? 0 : -1} aria-label={`${rating} out of 5`} key={rating} className={Number(entry.rating) >= rating ? 'filled' : ''} onKeyDown={(event) => handleRatingKeyDown(event, index, update)} onClick={() => update('rating', rating)}>★</button>)}</div><span>{entry.rating ? `${entry.rating} / 5` : 'Not rated'}</span></div>
         </section>
         <section className="dj-card dj-wellbeing">
           <div className="dj-section-heading"><div><h2>Mind &amp; body</h2><p>Notice the inputs behind your decisions</p></div></div>
-          <div className="dj-wellbeing-grid"><div><strong>Mood</strong><div className="dj-moods">{moods.map((mood) => <button key={mood} aria-label={`Mood: ${moodNames[mood]}`} aria-pressed={entry.mood === mood} className={entry.mood === mood ? 'selected' : ''} onClick={() => update('mood', mood)}><span>{mood}</span><small>{moodNames[mood]}</small></button>)}</div></div><label className="dj-field"><span>Energy · {entry.energy || 3} / 5</span><input type="range" min="1" max="5" value={entry.energy || 3} onChange={(event) => update('energy', Number(event.target.value))} /></label><label className="dj-field"><span>Sleep (hours)</span><input type="number" min="0" max="24" step=".5" value={entry.sleep || ''} onChange={(event) => update('sleep', event.target.value)} placeholder="e.g. 7.5" /></label></div>
+          <div className="dj-wellbeing-grid"><div><strong>Mood</strong><div className="dj-moods" role="radiogroup" aria-label="Mood">{moods.map((mood, index) => <button key={mood} type="button" role="radio" aria-label={`Mood: ${moodNames[mood]}`} aria-checked={entry.mood === mood} tabIndex={entry.mood === mood || (!entry.mood && index === 0) ? 0 : -1} className={entry.mood === mood ? 'selected' : ''} onKeyDown={(event) => handleMoodKeyDown(event, index, update)} onClick={() => update('mood', mood)}>{entry.mood === mood && <Check size={14} aria-hidden="true" />}<span>{mood}</span><small>{moodNames[mood]}</small></button>)}</div></div><label className="dj-field"><span>Energy · {entry.energy || 3} / 5</span><input type="range" min="1" max="5" value={entry.energy || 3} onChange={(event) => update('energy', Number(event.target.value))} /></label><label className="dj-field"><span>Sleep (hours)</span><input type="number" min="0" max="24" step=".5" value={entry.sleep || ''} onChange={(event) => update('sleep', event.target.value)} placeholder="e.g. 7.5" /></label></div>
           <button type="button" className={`dj-follow ${entry.followedPlan ? 'checked' : ''}`} aria-pressed={!!entry.followedPlan} onClick={() => update('followedPlan', !entry.followedPlan)}><span>{entry.followedPlan && <Check size={15} />}</span>I followed my trading plan today</button>
         </section>
         <section className="dj-card dj-label-card">
