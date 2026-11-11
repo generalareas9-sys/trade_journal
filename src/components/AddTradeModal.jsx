@@ -46,6 +46,18 @@ const createInitialForm = () => ({
   exitCondition: 'Closed early',
   rrr: '',
   resultOverride: null,
+  plannedStopLoss: '',
+  plannedTakeProfit: '',
+  setupGrade: '',
+  confidence: '',
+  emotionBefore: '',
+  emotionAfter: '',
+  marketCondition: '',
+  timeframe: '',
+  lessonLearned: '',
+  takeAgain: '',
+  bestPriceReached: '',
+  worstPriceReached: '',
 })
 
 function formFromTrade(trade) {
@@ -390,6 +402,18 @@ export default function AddTradeModal() {
       takeProfitSystem: form.takeProfitSystem,
       exitCondition: form.exitCondition,
       mistakes: form.mistakes,
+      plannedStopLoss: form.plannedStopLoss,
+      plannedTakeProfit: form.plannedTakeProfit,
+      setupGrade: form.setupGrade,
+      confidence: form.confidence,
+      emotionBefore: form.emotionBefore,
+      emotionAfter: form.emotionAfter,
+      marketCondition: form.marketCondition,
+      timeframe: form.timeframe,
+      lessonLearned: form.lessonLearned,
+      takeAgain: form.takeAgain,
+      bestPriceReached: form.bestPriceReached,
+      worstPriceReached: form.worstPriceReached,
     }
     setSavingTrade(true)
     try {
@@ -440,6 +464,7 @@ export default function AddTradeModal() {
   const jumpToSection = (id) => {
     const target = document.getElementById(id)
     if (!target) return
+    if (target instanceof HTMLDetailsElement) target.open = true
     target.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
   }
 
@@ -472,6 +497,7 @@ export default function AddTradeModal() {
               ['trade-outcome', 'Outcome', Target],
               ['trade-screenshots', 'Screenshots', Camera],
               ['trade-psychology', 'Psychology & risk', Brain],
+              ['trade-plan-review', 'Plan and review', Target],
             ].map(([id, label, Icon]) => <button key={id} type="button" aria-current={activeSection === id ? 'step' : undefined} onClick={() => {
               setActiveSection(id)
               draft.setValue((current) => ({ ...current, section: id }))
