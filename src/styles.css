@@ -2578,6 +2578,95 @@ html:has(.lp) { scroll-behavior: smooth; }
 .sidebar-bottom { flex: 0 0 auto; }
 .sidebar-bottom > .nav-link { margin-bottom: 16px; }
 .sidebar-bottom .sidebar-divider { margin: 8px 8px; }
+
+.segmented .seg {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--line-strong);
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+.segmented .seg.active { font-weight: 700; }
+.segmented .seg.active.choice-tone--green {
+  border: 2px solid #22c55e;
+  color: #166534;
+  background: rgba(34, 197, 94, .22);
+  box-shadow: 0 0 12px rgba(34, 197, 94, .2);
+}
+.segmented .seg.active.choice-tone--red {
+  border: 2px solid #ef4444;
+  color: #991b1b;
+  background: rgba(239, 68, 68, .22);
+  box-shadow: 0 0 12px rgba(239, 68, 68, .2);
+}
+.segmented .seg.active.choice-tone--amber {
+  border: 2px solid #f59e0b;
+  color: #854d0e;
+  background: rgba(245, 158, 11, .22);
+  box-shadow: 0 0 12px rgba(245, 158, 11, .2);
+}
+.segmented .seg.active.choice-tone--purple {
+  border: 2px solid #8b7cf6;
+  color: #4338ca;
+  background: rgba(108, 92, 231, .28);
+  box-shadow: 0 0 12px rgba(108, 92, 231, .22);
+}
+.segmented .seg:focus-visible,
+.dj-moods button:focus-visible,
+.dj-rating button:focus-visible {
+  outline: 3px solid #6c5ce7;
+  outline-offset: 2px;
+}
+.trade-side-select.trade-side-long { border-color: #22c55e; color: #166534; background-color: rgba(34, 197, 94, .12); }
+.trade-side-select.trade-side-short { border-color: #ef4444; color: #991b1b; background-color: rgba(239, 68, 68, .12); }
+.trade-choice-value {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-weight: 700;
+}
+.trade-choice-value.choice-tone--green { color: #166534; border-color: #22c55e; background: rgba(34, 197, 94, .16); }
+.trade-choice-value.choice-tone--red { color: #991b1b; border-color: #ef4444; background: rgba(239, 68, 68, .16); }
+.trade-choice-value.choice-tone--amber { color: #854d0e; border-color: #f59e0b; background: rgba(245, 158, 11, .16); }
+.trade-choice-value.choice-tone--purple { color: #4338ca; border-color: #8b7cf6; background: rgba(108, 92, 231, .2); }
+
+.dark-theme .segmented .seg.active.choice-tone--green,
+[data-theme="dark"] .segmented .seg.active.choice-tone--green { color: #22c55e; }
+.dark-theme .segmented .seg.active.choice-tone--red,
+[data-theme="dark"] .segmented .seg.active.choice-tone--red { color: #ff6b6b; }
+.dark-theme .segmented .seg.active.choice-tone--amber,
+[data-theme="dark"] .segmented .seg.active.choice-tone--amber { color: #f59e0b; }
+.dark-theme .segmented .seg.active.choice-tone--purple,
+[data-theme="dark"] .segmented .seg.active.choice-tone--purple { color: #fff; }
+.dark-theme .trade-side-select.trade-side-long,
+[data-theme="dark"] .trade-side-select.trade-side-long { color: #22c55e; }
+.dark-theme .trade-side-select.trade-side-short,
+[data-theme="dark"] .trade-side-select.trade-side-short { color: #ff6b6b; }
+.dark-theme .trade-choice-value.choice-tone--green,
+[data-theme="dark"] .trade-choice-value.choice-tone--green { color: #22c55e; }
+.dark-theme .trade-choice-value.choice-tone--red,
+[data-theme="dark"] .trade-choice-value.choice-tone--red { color: #ff6b6b; }
+.dark-theme .trade-choice-value.choice-tone--amber,
+[data-theme="dark"] .trade-choice-value.choice-tone--amber { color: #f59e0b; }
+.dark-theme .trade-choice-value.choice-tone--purple,
+[data-theme="dark"] .trade-choice-value.choice-tone--purple { color: #fff; }
+
+@media (hover: hover) {
+  .segmented .seg:not(:disabled):hover { border-color: #8b7cf6; filter: brightness(1.06); transform: translateY(-1px); }
+}
+.segmented .seg:not(:disabled):active { transform: scale(.97); }
+@media (prefers-reduced-motion: reduce) {
+  .segmented .seg { transition: none; }
+  .segmented .seg:not(:disabled):hover,
+  .segmented .seg:not(:disabled):active { transform: none; }
+}
 .sidebar-bottom .help-link { margin-bottom: 6px; }
 .sidebar-profile-wrap { margin-top: 0; }
 .sidebar .nav-link { min-height: 44px; }
