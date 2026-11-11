@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { format } from 'date-fns'
-import { currency } from '../utils/trading'
+import { calculateAchievedR, calculatePlannedRewardRisk, currency } from '../utils/trading'
 import { Badge } from './UiElements'
 
 const COLUMN_WIDTHS = {
@@ -14,6 +14,10 @@ const COLUMN_WIDTHS = {
   time: 100,
   session: 110,
   rMultiple: 100,
+  plannedRr: 120,
+  achievedR: 105,
+  setupGrade: 100,
+  emotion: 140,
   tag: 220,
   strategy: 160,
   pnl: 120,
@@ -59,13 +63,20 @@ export function TradeTable({ trades, compact = false, onSelect, searchable = fal
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState({ key: 'date', direction: 'desc' })
   const [page, setPage] = useState(1)
+  const [extraColumns, setExtraColumns] = useState([])
 
   const filtered = useMemo(() => {
     const search = query.toLowerCase()
     return [...trades].filter((trade) => !search || [trade.symbol, trade.side, trade.strategy, trade.tag, trade.notes].some((value) => String(value).toLowerCase().includes(search)))
       .sort((a, b) => {
-        const left = a[sort.key]
-        const right = b[sort.key]
+        const getSortValue = (trade) => {
+          if (sort.key === 'plannedRr') return calculatePlannedRewardRisk(trade) ?? -Infinity
+          if (sort.key === 'achievedR') return calculateAchievedR(trade) ?? -Infinity
+          if (sort.key === 'emotion') return [trade.emotionBefore, trade.emotionAfter].filter(Boolean).join(' → ')
+          return trade[sort.key]
+        }
+        const left = getSortValue(a)
+        const right = getSortValue(b)
         const comparison = typeof left === 'number' ? left - right : String(left).localeCompare(String(right))
         return sort.direction === 'asc' ? comparison : -comparison
       })
@@ -94,13 +105,17 @@ export function TradeTable({ trades, compact = false, onSelect, searchable = fal
     ['time', 'Time'],
     ['session', 'Session'],
     ['rMultiple', 'R-multiple'],
+    ...(extraColumns.includes('setupGrade') ? [['setupGrade', 'Setup grade']] : []),
+    ...(extraColumns.includes('emotion') ? [['emotion', 'Emotion']] : []),
+    ['plannedRr', 'Planned R:R'],
+    ['achievedR', 'Achieved R'],
     ['tag', 'Tags'],
     ['strategy', 'Strategy'],
     ['pnl', 'Net P&L'],
   ]
 
   return <>
-    {searchable && <div className="table-toolbar"><label className="table-search"><Search size={16} /><input aria-label="Search trades" placeholder="Search trades..." value={query} onChange={(event) => { setQuery(event.target.value); setPage(1) }} /></label>{showCount && <span>{filtered.length} trades</span>}</div>}
+    {searchable && <div className="table-toolbar"><label className="table-search"><Search size={16} /><input aria-label="Search trades" placeholder="Search trades..." value={query} onChange={(event) => { setQuery(event.target.value); setPage(1) }} /></label>{showCount && <span>{filtered.length} trades</span>}{!compact && <details className="trade-column-menu"><summary>Columns</summary><div>{[['setupGrade', 'Setup grade'], ['emotion', 'Emotion']].map(([key, label]) => <label key={key}><input type="checkbox" checked={extraColumns.includes(key)} onChange={(event) => setExtraColumns((current) => event.target.checked ? [...current, key] : current.filter((item) => item !== key))} />{label}</label>)}</div></details>}</div>}
     <div className="table-scroll trade-table-scroll"><table className={`trades-table trade-log-table${compact ? ' compact' : ''}`}>
       <colgroup>{columns.map(([key]) => <col key={key} style={{ width: `${COLUMN_WIDTHS[key]}px` }} />)}</colgroup>
       <thead><tr>{columns.map(([key, label]) => <th key={key} className={key === 'pnl' ? 'align-right pnl-cell' : ''}><button type="button" className="table-sort" aria-label={`Sort by ${label}`} onClick={() => selectSort(key)}>{label}<span className="sort-icon">{sort.key === key ? (sort.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : <ArrowUpDown size={11} />}</span></button></th>)}</tr></thead>
@@ -110,6 +125,10 @@ export function TradeTable({ trades, compact = false, onSelect, searchable = fal
         <td><Badge tone={trade.side.toLowerCase()}>{trade.side}</Badge></td>
         {!compact && <><td>{trade.entry}</td><td>{trade.exit}</td><td>{format(new Date(trade.openedAt), 'h:mm a')}</td><td>{trade.session || '—'}</td></>}
         <td className={trade.rMultiple > 0 ? 'profit' : trade.rMultiple < 0 ? 'loss' : ''}>{trade.rMultiple > 0 ? '+' : ''}{Number(trade.rMultiple || 0).toFixed(2)}R</td>
+        {!compact && extraColumns.includes('setupGrade') && <td>{trade.setupGrade || '—'}</td>}
+        {!compact && extraColumns.includes('emotion') && <td>{[trade.emotionBefore, trade.emotionAfter].filter(Boolean).join(' → ') || '—'}</td>}
+        {!compact && <td>{calculatePlannedRewardRisk(trade) === null ? '—' : `1 : ${calculatePlannedRewardRisk(trade).toFixed(2)}`}</td>}
+        {!compact && <td>{calculateAchievedR(trade) === null ? '—' : `${calculateAchievedR(trade) >= 0 ? '+' : ''}${calculateAchievedR(trade).toFixed(2)}R`}</td>}
         {!compact && <><TagCell trade={trade} /><td title={trade.strategy || '—'}>{trade.strategy || '—'}</td></>}
         <td className={`align-right pnl-cell ${trade.pnl > 0 ? 'profit' : trade.pnl < 0 ? 'loss' : ''}`}>{currency(trade.pnl)}</td>
       </tr>)}
