@@ -25,6 +25,8 @@
 .dj-header-actions button, .dj-text-button, .dj-today-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; border: 1px solid var(--dj-border); border-radius: 9px; padding: 0 11px; color: var(--text); background: var(--card); font-size: 12px; font-weight: 650; }
 .dj-header-actions button:hover, .dj-today-button:hover, .dj-text-button:hover { border-color: var(--dj-purple); color: var(--dj-purple); }
 .dj-save-status { color: #23864d; font-size: 12px; display: inline-flex; gap: 5px; align-items: center; padding: 0 6px; }
+.dj-save-status.is-error { color: #b42318; }
+.dark-theme .dj-save-status.is-error { color: #ff8b82; }
 .dj-layout { display: grid; grid-template-columns: minmax(250px, 310px) minmax(0, 1fr); align-items: start; gap: 18px; }
 .dj-sidebar, .dj-content { display: grid; min-width: 0; gap: 14px; }
 .dj-card { padding: 18px; min-width: 0; border: 1px solid var(--dj-border); border-radius: 13px; background: var(--card); box-shadow: var(--shadow); }
@@ -116,6 +118,11 @@
 .dj-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .dj-chips button { border: 1px solid var(--dj-border); border-radius: 20px; padding: 6px 10px; color: var(--text-2); background: var(--card); font-size: 10px; }
 .dj-chips button.selected { border-color: #8b7fea; color: var(--dj-purple); background: var(--purple-soft); }
+.dj-custom-chip { display: inline-flex; align-items: center; overflow: hidden; border: 1px solid var(--dj-border); border-radius: 20px; background: var(--card); }
+.dj-chips .dj-custom-chip > button:first-child { padding: 6px 7px 6px 10px; border: 0; border-radius: 0; background: transparent; color: var(--text-2); font-size: 10px; }
+.dj-chips .dj-custom-chip > button:first-child.selected { color: var(--dj-purple); background: var(--purple-soft); }
+.dj-chips .dj-custom-chip .dj-chip-remove { display: grid; width: 25px; height: 100%; min-height: 28px; place-items: center; padding: 0 5px; border: 0; border-radius: 0; border-left: 1px solid var(--dj-border); color: var(--dj-muted); background: transparent; }
+.dj-chips .dj-custom-chip .dj-chip-remove:hover { color: #b42318; background: rgba(239, 68, 68, .08); }
 .dj-mistakes button.selected { color: #b34a37; border-color: #eab8ad; background: #fff3ef; }
 .dark-theme .dj-mistakes button.selected { color: #ffab98; border-color: #774b43; background: #32211f; }
 .dj-add-chip { display: flex; gap: 6px; max-width: 370px; margin-top: 9px; }
