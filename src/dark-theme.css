@@ -1632,3 +1632,8 @@ html.dark-theme .rc-page select optgroup {
 .app-shell:not(.dark-theme) table tbody tr:hover td {
   background-color: rgba(139, 92, 246, .08);
 }
+
+html.dark-theme .topbar,
+.app-shell.dark-theme .topbar {
+  background: #14112B;
+}
