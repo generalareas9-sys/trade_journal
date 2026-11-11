@@ -67,6 +67,17 @@ export default function WeeklyReview() {
   const mistakeCounts = weekTrades.flatMap((trade) => Array.isArray(trade.mistakes) ? trade.mistakes : typeof trade.mistakes === 'string' && trade.mistakes ? [trade.mistakes] : [])
     .reduce((counts, mistake) => ({ ...counts, [mistake]: (counts[mistake] || 0) + 1 }), {})
   const commonMistake = Object.entries(mistakeCounts).sort((first, second) => second[1] - first[1])[0]
+  const losingEmotionCounts = weekTrades.filter((trade) => Number(trade.pnl) < 0 && trade.emotionBefore)
+    .reduce((counts, trade) => ({ ...counts, [trade.emotionBefore]: (counts[trade.emotionBefore] || 0) + 1 }), {})
+  const commonLosingEmotion = Object.entries(losingEmotionCounts).sort((first, second) => second[1] - first[1])[0]
+  const gradePerformance = new Map()
+  weekTrades.filter((trade) => trade.setupGrade).forEach((trade) => {
+    const current = gradePerformance.get(trade.setupGrade) || { pnl: 0, count: 0 }
+    current.pnl += safePnl(trade)
+    current.count += 1
+    gradePerformance.set(trade.setupGrade, current)
+  })
+  const bestSetupGrade = [...gradePerformance.entries()].sort((first, second) => second[1].pnl - first[1].pnl || second[1].count - first[1].count)[0]
   const dailyChart = useMemo(() => {
     const totals = new Map()
     weekTrades.forEach((trade) => totals.set(trade.date, (totals.get(trade.date) || 0) + safePnl(trade)))
@@ -105,6 +116,8 @@ export default function WeeklyReview() {
       `Journal days: ${weekJournal.length}`,
       `Average mood: ${averageMood === null ? '—' : `${averageMood.toFixed(1)} / 5`}`,
       `Most common mistake: ${commonMistake ? `${commonMistake[0]} (${commonMistake[1]})` : '—'}`,
+      `Most common emotion before losing trades: ${commonLosingEmotion ? `${commonLosingEmotion[0]} (${commonLosingEmotion[1]})` : '—'}`,
+      `Best setup grade: ${bestSetupGrade ? `${bestSetupGrade[0]} · ${currency(bestSetupGrade[1].pnl)}` : '—'}`,
       `Lesson of the week: ${lesson.trim() || '—'}`,
     ]
     disciplineFields.forEach(({ key, label }) => {
@@ -203,6 +216,8 @@ export default function WeeklyReview() {
           return <div className="wr-discipline-item" key={key}><span>{label}</span><strong>{counts.answered ? `${counts.yes} / ${counts.answered}` : '—'}</strong><small>{counts.answered ? 'trades followed this process' : 'No responses recorded'}</small></div>
         })}
         <div className="wr-discipline-item"><span>Most common mistake</span><strong>{commonMistake?.[0] || '—'}</strong><small>{commonMistake ? `${commonMistake[1]} ${commonMistake[1] === 1 ? 'trade' : 'trades'}` : 'No mistakes recorded'}</small></div>
+        <div className="wr-discipline-item"><span>Most common emotion in losing trades</span><strong>{commonLosingEmotion?.[0] || '—'}</strong><small>{commonLosingEmotion ? `${commonLosingEmotion[1]} losing ${commonLosingEmotion[1] === 1 ? 'trade' : 'trades'} · before trade` : 'No losing-trade emotions recorded'}</small></div>
+        <div className="wr-discipline-item"><span>Best setup grade this week</span><strong>{bestSetupGrade?.[0] || '—'}</strong><small>{bestSetupGrade ? `${currency(bestSetupGrade[1].pnl)} net P&amp;L · ${bestSetupGrade[1].count} ${bestSetupGrade[1].count === 1 ? 'trade' : 'trades'}` : 'No setup grades recorded'}</small></div>
       </div>
     </section>
 
