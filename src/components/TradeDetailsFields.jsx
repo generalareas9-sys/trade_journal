@@ -1,19 +1,54 @@
 import { useEffect, useRef, useState } from 'react'
-import { Brain, Camera, ClipboardCheck, LoaderCircle, Target, TrendingUp, X } from 'lucide-react'
+import { Brain, Camera, Check, ClipboardCheck, LoaderCircle, Target, TrendingUp, X } from 'lucide-react'
 import { currency } from '../utils/trading'
 import { getSignedUrl } from '../data/storage'
 
-function Segmented({ label, options, value, onChange, readOnly = false, result = false }) {
+function choiceTone(option) {
+  if (['Yes', 'TP hit', 'Win', 'Long'].includes(option)) return 'green'
+  if (['No', 'SL hit', 'Loss', 'Short'].includes(option)) return 'red'
+  if (['Closed early', 'Breakeven'].includes(option)) return 'amber'
+  return 'purple'
+}
+
+function handleRadioKeyDown(event, index, options, onChange) {
+  let nextIndex = index
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % options.length
+  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index - 1 + options.length) % options.length
+  else if (event.key === 'Home') nextIndex = 0
+  else if (event.key === 'End') nextIndex = options.length - 1
+  else return
+  event.preventDefault()
+  event.currentTarget.parentElement?.querySelectorAll('[role="radio"]')[nextIndex]?.focus()
+  onChange(options[nextIndex])
+}
+
+function Segmented({ label, options, value, onChange, readOnly = false, result = false, allowClear = false }) {
   return <div className="field">
     <label>{label} {result && <span className="auto-tag">Auto</span>}</label>
-    <div className={`segmented ${result ? 'result-segmented' : ''}`} role="group" aria-label={label}>
-      {options.map((option) => <button type="button" key={option} disabled={readOnly} aria-pressed={value === option} className={value === option ? 'seg active' : 'seg'} onClick={() => onChange(option)}>{option}</button>)}
+    <div className={`segmented ${result ? 'result-segmented' : ''}`} role="radiogroup" aria-label={label}>
+      {options.map((option, index) => {
+        const selected = value === option
+        return <button
+          type="button"
+          role="radio"
+          key={option}
+          disabled={readOnly}
+          aria-checked={selected}
+          tabIndex={selected || (!value && index === 0) ? 0 : -1}
+          className={`seg choice-tone--${choiceTone(option)}${selected ? ' active' : ''}`}
+          onKeyDown={(event) => handleRadioKeyDown(event, index, options, onChange)}
+          onClick={() => onChange(allowClear && selected ? '' : option)}
+        >
+          {selected && <Check size={14} aria-hidden="true" />}
+          {option}
+        </button>
+      })}
     </div>
   </div>
 }
 
 function YesNo({ label, value, onChange }) {
-  return <Segmented label={label} options={['Yes', 'No']} value={value} onChange={onChange} />
+  return <Segmented label={label} options={['Yes', 'No']} value={value} onChange={onChange} allowClear />
 }
 
 function ResultField({ form }) {
@@ -40,15 +75,19 @@ function ManualResultField({ form, set }) {
       <label>Set result</label>
       {form.resultOverride !== null && <button className="link-btn" type="button" onClick={() => set('resultOverride', null)}>Reset to auto</button>}
     </div>
-    <div className="segmented result-manual-options" role="group" aria-label="Manual result">
-      {['Win', 'Loss', 'Breakeven'].map((result) => (
+    <div className="segmented result-manual-options" role="radiogroup" aria-label="Manual result">
+      {['Win', 'Loss', 'Breakeven'].map((result, index) => (
         <button
           type="button"
+          role="radio"
           key={result}
-          aria-pressed={form.resultOverride === result}
-          className={`seg ${form.resultOverride === result ? `active ${result === 'Win' ? 'result-manual-win' : result === 'Loss' ? 'result-manual-loss' : ''}` : ''}`}
+          aria-checked={form.resultOverride === result}
+          tabIndex={form.resultOverride === result || (form.resultOverride === null && index === 0) ? 0 : -1}
+          className={`seg choice-tone--${choiceTone(result)}${form.resultOverride === result ? ` active ${result === 'Win' ? 'result-manual-win' : result === 'Loss' ? 'result-manual-loss' : ''}` : ''}`}
+          onKeyDown={(event) => handleRadioKeyDown(event, index, ['Win', 'Loss', 'Breakeven'], (value) => set('resultOverride', value))}
           onClick={() => set('resultOverride', result)}
         >
+          {form.resultOverride === result && <Check size={14} aria-hidden="true" />}
           {result}
         </button>
       ))}
@@ -166,7 +205,7 @@ export default function TradeDetailsFields({ form, set, onError, uploadingScreen
     <YesNo label="Followed trading rules before entry?" value={form.followedRules} onChange={(value) => set('followedRules', value)} />
     <YesNo label="Entry condition fulfilled?" value={form.entryConditionMet} onChange={(value) => set('entryConditionMet', value)} />
     <SectionTitle id="trade-outcome">Outcome</SectionTitle>
-    <Segmented label="Exit condition" options={['TP hit', 'SL hit', 'Closed early']} value={form.exitCondition} onChange={(value) => set('exitCondition', value)} />
+    <Segmented label="Exit condition" options={['TP hit', 'SL hit', 'Closed early']} value={form.exitCondition} onChange={(value) => set('exitCondition', value)} allowClear />
     <ResultField form={form} />
     <div className="field">
       <label>RRR (reward per 1 risk)</label>
