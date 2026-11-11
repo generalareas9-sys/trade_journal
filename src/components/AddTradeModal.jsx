@@ -488,7 +488,7 @@ export default function AddTradeModal() {
           <h3 id="trade-basics" className="section-title"><BookOpen size={15} />Basics</h3>
           <div className="form-grid">
             <label>Symbol<select name="symbol" value={form.symbol} aria-invalid={Boolean(validation.symbol)} onChange={(event) => setField('symbol', event.target.value)}><option value="">Select a symbol</option>{symbolOptions.map((item) => <option key={item}>{item}</option>)}</select>{validation.symbol && <small className="field-error">{validation.symbol}</small>}</label>
-            <label>Side<select name="side" value={form.side} onChange={(event) => setField('side', event.target.value)}><option>Long</option><option>Short</option></select></label>
+            <label>Side<select name="side" className={`trade-side-select trade-side-${form.side.toLowerCase()}`} value={form.side} onChange={(event) => setField('side', event.target.value)}><option>Long</option><option>Short</option></select></label>
             <label>Date<input name="date" type="date" value={form.date} aria-invalid={Boolean(validation.date)} onChange={(event) => setField('date', event.target.value)} />{validation.date && <small className="field-error">{validation.date}</small>}</label>
             <label>Entry time<input name="time" type="time" value={form.time} onChange={(event) => setField('time', event.target.value)} /></label>
             <label>Entry price<input name="entry" type="number" step="any" placeholder="0.00" value={form.entry} aria-invalid={Boolean(validation.entry)} onChange={(event) => changePriceInput('entry', event.target.value)} />{validation.entry && <small className="field-error">{validation.entry}</small>}</label>
