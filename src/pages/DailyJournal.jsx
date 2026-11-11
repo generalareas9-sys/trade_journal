@@ -39,6 +39,7 @@ const handleRatingKeyDown = (event, index, update) => {
 }
 const tags = ['A+ setup', 'Breakout', 'Reversal', 'Trend following', 'Scalp', 'News']
 const mistakes = ['FOMO', 'Revenge trade', 'Moved stop', 'Oversized', 'Early exit', 'No setup']
+const uniqueChoices = (values) => [...new Map(values.filter((value) => typeof value === 'string' && value.trim()).map((value) => [value.trim().toLocaleLowerCase(), value.trim()])).values()]
 const blankEntry = () => ({ bias: '', levels: '', news: '', maxRisk: '', maxTrades: '', review: '', lesson: '', rating: 0, mood: '🙂', energy: 3, sleep: '', followedPlan: false, tags: [], mistakes: [], images: [] })
 const safeDate = (value) => {
   const parsed = parseISO(value || '')
@@ -73,7 +74,7 @@ function JournalImage({ path, alt }) {
 }
 
 export default function DailyJournal() {
-  const { trades = [], journal = {}, setJournal, saveStatus } = useJournal()
+  const { trades = [], journal = {}, setJournal, journalSaveStatus, settings = {}, setSettings } = useJournal()
   const { user } = useAuth()
   const today = format(new Date(), 'yyyy-MM-dd')
   const [params] = useSearchParams()
@@ -97,6 +98,8 @@ export default function DailyJournal() {
   const entry = journalDraft.hasDraft
     ? journalDraft.value.entry || journal[selected] || blankEntry()
     : journal[selected] || journalDraft.value.entry || blankEntry()
+  const customTags = uniqueChoices(Array.isArray(settings.dailyJournalCustomTags) ? settings.dailyJournalCustomTags : [])
+  const customMistakes = uniqueChoices(Array.isArray(settings.dailyJournalCustomMistakes) ? settings.dailyJournalCustomMistakes : [])
   const customTag = journalDraft.value.customTag ?? customTagValue
   const customMistake = journalDraft.value.customMistake ?? customMistakeValue
   const setCustomTag = (value) => {
@@ -143,12 +146,12 @@ export default function DailyJournal() {
   useEffect(() => {
     const pending = journalSaveRef.current
     if (!pending.date) return
-    if (saveStatus === 'saving') pending.sawSaving = true
-    if (saveStatus === 'saved' && pending.sawSaving) {
+    if (journalSaveStatus === 'saving') pending.sawSaving = true
+    if (journalSaveStatus === 'saved' && pending.sawSaving) {
       pending.clearDraft()
       journalSaveRef.current = { date: '', sawSaving: false }
     }
-  }, [saveStatus])
+  }, [journalSaveStatus])
 
   useEffect(() => {
     const onKey = (event) => {
@@ -299,20 +302,49 @@ export default function DailyJournal() {
   }
   const addCustom = (key, text, setter) => {
     const value = text.trim()
-    if (value && !entry[key].includes(value)) update(key, [...entry[key], value])
+    if (!value) {
+      setter('')
+      return
+    }
+    const defaults = key === 'tags' ? tags : mistakes
+    const settingsKey = key === 'tags' ? 'dailyJournalCustomTags' : 'dailyJournalCustomMistakes'
+    const customValues = Array.isArray(settings[settingsKey]) ? settings[settingsKey] : []
+    const listedValue = uniqueChoices([...defaults, ...customValues])
+      .find((item) => item.toLocaleLowerCase() === value.toLocaleLowerCase())
+    const selectedValue = listedValue || value
+    if (!listedValue) {
+      setSettings((current) => ({
+        ...current,
+        [settingsKey]: uniqueChoices([...(Array.isArray(current[settingsKey]) ? current[settingsKey] : []), value]),
+      }))
+    }
+    const currentValues = uniqueChoices(entry[key] || [])
+      .filter((item) => item.toLocaleLowerCase() !== selectedValue.toLocaleLowerCase())
+    update(key, [...currentValues, selectedValue])
     setter('')
+  }
+  const removeCustomChoice = (key, value) => {
+    const settingsKey = key === 'tags' ? 'dailyJournalCustomTags' : 'dailyJournalCustomMistakes'
+    setSettings((current) => ({
+      ...current,
+      [settingsKey]: (Array.isArray(current[settingsKey]) ? current[settingsKey] : [])
+        .filter((item) => typeof item !== 'string' || item.toLocaleLowerCase() !== value.toLocaleLowerCase()),
+    }))
+  }
+  const retryJournalSave = () => {
+    setJournal((current) => ({ ...current, [selected]: entry }))
   }
   const hasAnyTrades = allTrades.some((trade) => trade.date === today && !trade.isDemo)
   const hasJournalEntries = Object.keys(journal).length > 0
   const hasTodayEntry = !!journal[today] && Object.entries(journal[today]).some(([key, value]) => key !== 'date' && (Array.isArray(value) ? value.length : Boolean(value)))
-  const saveLabel = saveStatus === 'saving' ? 'Saving…' : saveStatus === 'error' ? 'Could not save' : 'Saved'
+  const saveLabel = journalSaveStatus === 'saving' ? 'Saving…' : journalSaveStatus === 'error' ? 'Not saved' : 'Saved'
 
   return <main className="page-content dj">
     {hasAnyTrades && !hasTodayEntry && <div className="dj-reminder" role="status">You’ve traded today—take a moment to journal your session.</div>}
     {!hasJournalEntries && <section className="panel page-empty-panel journal-first-empty"><EmptyState icon={BookOpenCheck} title="Your first journal entry starts here" description="Capture your plan and one honest reflection to turn today’s decisions into tomorrow’s learning." action={<div className="first-run-empty-actions"><button type="button" className="button-primary" onClick={() => { setSelected(today); window.setTimeout(() => document.getElementById('daily-journal-entry')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0) }}>Write today’s entry</button><Link className="button-secondary" to="/trades">Review trades</Link></div>} /></section>}
     <header className="dj-header">
       <div><span className="dj-eyebrow">YOUR TRADING PRACTICE</span><h1>Daily journal</h1><p>Plan with intention. Review with honesty. Improve one session at a time.</p></div>
-      <div className="dj-header-actions"><span className="dj-save-status" role="status"><Check size={15} /> {saveLabel}</span>{journalDraft.savedAt && <span role="status"><Check size={13} /> Draft saved {journalDraft.formatDraftTime(journalDraft.savedAt)}</span>}<button type="button" onClick={() => print('day')}><Printer size={16} /> Print day</button><button type="button" onClick={() => print('week')}><Printer size={16} /> Print week</button></div>
+      <div className="dj-header-actions"><span className={`dj-save-status${journalSaveStatus === 'error' ? ' is-error' : ''}`} role="status">{journalSaveStatus === 'error' ? <X size={15} /> : <Check size={15} />} {saveLabel}</span>{journalSaveStatus === 'error' && <button type="button" className="dj-text-button" onClick={retryJournalSave}>Retry</button>}{journalDraft.savedAt && <span role="status"><Check size={13} /> Draft saved {journalDraft.formatDraftTime(journalDraft.savedAt)}</span>}<button type="button" onClick={() => print('day')}><Printer size={16} /> Print day</button><button type="button" onClick={() => print('week')}><Printer size={16} /> Print week</button></div>
     </header>
     <div className="dj-layout">
       <aside className="dj-sidebar">
@@ -388,8 +420,20 @@ export default function DailyJournal() {
         </section>
         <section className="dj-card dj-label-card">
           <div className="dj-section-heading"><div><h2>Tags &amp; mistakes</h2><p>Spot patterns across your sessions</p></div></div>
-          <div className="dj-choice-group"><strong>Setup tags</strong><div className="dj-chips">{[...new Set([...tags, ...(entry.tags || [])])].map((tag) => <button key={tag} className={(entry.tags || []).includes(tag) ? 'selected' : ''} aria-pressed={(entry.tags || []).includes(tag)} onClick={() => toggleChoice('tags', tag)}>{tag}</button>)}</div><div className="dj-add-chip"><input aria-label="Add custom tag" value={customTag} onChange={(event) => setCustomTag(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && addCustom('tags', customTag, setCustomTag)} placeholder="Add a custom tag" /><button onClick={() => addCustom('tags', customTag, setCustomTag)}>Add</button></div></div>
-          <div className="dj-choice-group"><strong>Mistakes to learn from</strong><div className="dj-chips dj-mistakes">{[...new Set([...mistakes, ...(entry.mistakes || [])])].map((mistake) => <button key={mistake} className={(entry.mistakes || []).includes(mistake) ? 'selected' : ''} aria-pressed={(entry.mistakes || []).includes(mistake)} onClick={() => toggleChoice('mistakes', mistake)}>{mistake}</button>)}</div><div className="dj-add-chip"><input aria-label="Add custom mistake" value={customMistake} onChange={(event) => setCustomMistake(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && addCustom('mistakes', customMistake, setCustomMistake)} placeholder="Add a custom mistake" /><button onClick={() => addCustom('mistakes', customMistake, setCustomMistake)}>Add</button></div></div>
+          <div className="dj-choice-group"><strong>Setup tags</strong><div className="dj-chips">{uniqueChoices([...tags, ...customTags, ...(entry.tags || [])]).map((tag) => {
+            const custom = customTags.some((item) => item.toLocaleLowerCase() === tag.toLocaleLowerCase())
+            const selectedTag = (entry.tags || []).includes(tag)
+            return custom
+              ? <span className="dj-custom-chip" key={tag}><button type="button" className={selectedTag ? 'selected' : ''} aria-pressed={selectedTag} onClick={() => toggleChoice('tags', tag)}>{tag}</button><button type="button" className="dj-chip-remove" aria-label={`Remove custom tag ${tag}`} onClick={() => removeCustomChoice('tags', tag)}><X size={12} /></button></span>
+              : <button type="button" key={tag} className={selectedTag ? 'selected' : ''} aria-pressed={selectedTag} onClick={() => toggleChoice('tags', tag)}>{tag}</button>
+          })}</div><div className="dj-add-chip"><input aria-label="Add custom tag" value={customTag} onChange={(event) => setCustomTag(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addCustom('tags', customTag, setCustomTag) } }} placeholder="Add a custom tag" /><button type="button" onClick={() => addCustom('tags', customTag, setCustomTag)}>Add</button></div></div>
+          <div className="dj-choice-group"><strong>Mistakes to learn from</strong><div className="dj-chips dj-mistakes">{uniqueChoices([...mistakes, ...customMistakes, ...(entry.mistakes || [])]).map((mistake) => {
+            const custom = customMistakes.some((item) => item.toLocaleLowerCase() === mistake.toLocaleLowerCase())
+            const selectedMistake = (entry.mistakes || []).includes(mistake)
+            return custom
+              ? <span className="dj-custom-chip" key={mistake}><button type="button" className={selectedMistake ? 'selected' : ''} aria-pressed={selectedMistake} onClick={() => toggleChoice('mistakes', mistake)}>{mistake}</button><button type="button" className="dj-chip-remove" aria-label={`Remove custom mistake ${mistake}`} onClick={() => removeCustomChoice('mistakes', mistake)}><X size={12} /></button></span>
+              : <button type="button" key={mistake} className={selectedMistake ? 'selected' : ''} aria-pressed={selectedMistake} onClick={() => toggleChoice('mistakes', mistake)}>{mistake}</button>
+          })}</div><div className="dj-add-chip"><input aria-label="Add custom mistake" value={customMistake} onChange={(event) => setCustomMistake(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addCustom('mistakes', customMistake, setCustomMistake) } }} placeholder="Add a custom mistake" /><button type="button" onClick={() => addCustom('mistakes', customMistake, setCustomMistake)}>Add</button></div></div>
         </section>
         <section className="dj-card dj-attachments">
           <div className="dj-section-heading"><div><h2>Session images</h2><p>Images are resized to 1200px max before saving.</p></div><label className="dj-upload"><ImagePlus size={16} /> Add images<input type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={imageBusy} onChange={(event) => { void attachImages(event.target.files); event.target.value = '' }} /></label></div>
