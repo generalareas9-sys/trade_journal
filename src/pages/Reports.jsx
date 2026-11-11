@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { CalendarClock, Clock3, Tag, TrendingUp } from 'lucide-react'
 import { endOfMonth, endOfWeek, format, getDay, parseISO, startOfMonth, startOfWeek } from 'date-fns'
@@ -23,10 +23,86 @@ const tabs = [
   'Win rate by followed rules',
   'Mistake cost',
   'Mistakes',
+  'Psychology',
   'Edge',
 ]
 const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const chartAxis = { fill: 'var(--muted)', fontSize: 12, fontFamily: 'Inter' }
+
+function groupedPsychologyTrades(trades, keyFor) {
+  const groups = new Map()
+  trades.forEach((trade) => {
+    const raw = keyFor(trade)
+    const name = raw === null || raw === undefined || raw === '' ? 'Not recorded' : String(raw)
+    groups.set(name, [...(groups.get(name) || []), trade])
+  })
+  return [...groups.entries()].map(([name, groupTrades]) => {
+    const wins = groupTrades.filter((trade) => Number(trade.pnl) > 0).length
+    const pnl = groupTrades.reduce((sum, trade) => sum + (Number.isFinite(Number(trade.pnl)) ? Number(trade.pnl) : 0), 0)
+    return { name, count: groupTrades.length, wins, pnl, winRate: groupTrades.length ? wins / groupTrades.length * 100 : 0 }
+  }).sort((first, second) => second.pnl - first.pnl || second.count - first.count || first.name.localeCompare(second.name))
+}
+
+function mostCommonValue(trades, key) {
+  const counts = new Map()
+  trades.forEach((trade) => {
+    const value = trade[key]
+    if (value !== null && value !== undefined && String(value).trim()) counts.set(String(value), (counts.get(String(value)) || 0) + 1)
+  })
+  return [...counts.entries()].sort((first, second) => second[1] - first[1] || first[0].localeCompare(second[0]))[0]?.[0] || '—'
+}
+
+function averageSize(trades) {
+  if (!trades.length) return '—'
+  const values = trades.map((trade) => Number(trade.size ?? trade.quantity)).filter(Number.isFinite)
+  return values.length ? (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2) : '—'
+}
+
+function PsychologyGroupTable({ title, trades, field }) {
+  const rows = groupedPsychologyTrades(trades, (trade) => trade[field])
+  return <section className="panel psychology-group">
+    <div className="panel-heading"><div><h3>{title}</h3><p>Closed-trade win rate and net P&amp;L</p></div></div>
+    {rows.length ? <div className="table-scroll"><table className="trades-table report-table"><thead><tr><th>{title}</th><th>Trades</th><th>Win rate</th><th className="align-right">Net P&amp;L</th></tr></thead><tbody>{rows.map((row) => <Fragment key={row.name}><tr><td>{row.name}</td><td>{row.count}</td><td>{percent(row.winRate)}</td><td className={`align-right pnl-cell ${row.pnl > 0 ? 'profit' : row.pnl < 0 ? 'loss' : ''}`}>{currency(row.pnl)}</td></tr>{row.count < 20 && <tr className="psychology-sample-row"><td colSpan="4">Small sample: fewer than 20 trades in this group.</td></tr>}</Fragment>)}</tbody></table></div> : <div className="chart-empty">No data yet</div>}
+  </section>
+}
+
+function PsychologyReport({ trades }) {
+  const stats = calculateStats(trades)
+  const wins = trades.filter((trade) => Number(trade.pnl) > 0)
+  const losses = trades.filter((trade) => Number(trade.pnl) < 0)
+  const comparisonRows = [
+    ['Average size', averageSize(wins), averageSize(losses)],
+    ['Average hold time', wins.length ? `${Math.round(calculateStats(wins).avgHoldMinutes)} min` : '—', losses.length ? `${Math.round(calculateStats(losses).avgHoldMinutes)} min` : '—'],
+    ['Most common session', mostCommonValue(wins, 'session'), mostCommonValue(losses, 'session')],
+    ['Most common setup grade', mostCommonValue(wins, 'setupGrade'), mostCommonValue(losses, 'setupGrade')],
+    ['Most common emotion before', mostCommonValue(wins, 'emotionBefore'), mostCommonValue(losses, 'emotionBefore')],
+  ]
+  const hourRows = groupedPsychologyTrades(trades.filter((trade) => Number.isFinite(new Date(trade.openedAt).getTime())), (trade) => `${String(new Date(trade.openedAt).getHours()).padStart(2, '0')}:00`)
+  const weekdayRows = groupedPsychologyTrades(trades.filter((trade) => Number.isFinite(parseISO(trade.date).getTime())), (trade) => weekdays[getDay(parseISO(trade.date))])
+
+  const compactTable = (title, rows) => <section className="panel psychology-group"><div className="panel-heading"><div><h3>{title}</h3><p>Trade count, win rate, and net P&amp;L</p></div></div>{rows.length ? <div className="table-scroll"><table className="trades-table report-table"><thead><tr><th>{title}</th><th>Trades</th><th>Win rate</th><th className="align-right">Net P&amp;L</th></tr></thead><tbody>{rows.map((row) => <Fragment key={row.name}><tr><td>{row.name}</td><td>{row.count}</td><td>{percent(row.winRate)}</td><td className={`align-right pnl-cell ${row.pnl > 0 ? 'profit' : row.pnl < 0 ? 'loss' : ''}`}>{currency(row.pnl)}</td></tr>{row.count < 20 && <tr className="psychology-sample-row"><td colSpan="4">Small sample: fewer than 20 trades in this group.</td></tr>}</Fragment>)}</tbody></table></div> : <div className="chart-empty">No data yet</div>}</section>
+
+  return <div className="psychology-report">
+    <section className="psychology-metrics" aria-label="Psychology performance summary">
+      {[
+        ['Expectancy', currency(stats.expectancy)],
+        ['Max drawdown', currency(-stats.maxDrawdown)],
+        ['Longest win streak', `${stats.maxWinStreak} trades`],
+        ['Longest loss streak', `${stats.maxLossStreak} trades`],
+      ].map(([label, value]) => <article className="panel report-stat" key={label}><span>{label}</span><strong>{trades.length ? value : '—'}</strong></article>)}
+    </section>
+    <div className="psychology-group-grid">
+      <PsychologyGroupTable title="Emotion before" trades={trades} field="emotionBefore" />
+      <PsychologyGroupTable title="Setup grade" trades={trades} field="setupGrade" />
+      <PsychologyGroupTable title="Confidence level" trades={trades} field="confidence" />
+      <PsychologyGroupTable title="Market condition" trades={trades} field="marketCondition" />
+      <PsychologyGroupTable title="Timeframe" trades={trades} field="timeframe" />
+      {compactTable('Performance by hour', hourRows)}
+      {compactTable('Performance by weekday', weekdayRows)}
+    </div>
+    <section className="panel psychology-group"><div className="panel-heading"><div><h3>Wins vs losses</h3><p>Compare execution patterns between profitable and losing trades.</p></div></div><div className="table-scroll"><table className="trades-table report-table"><thead><tr><th>Measure</th><th>Wins</th><th>Losses</th></tr></thead><tbody>{comparisonRows.map(([label, winValue, lossValue]) => <tr key={label}><td>{label}</td><td>{winValue}</td><td>{lossValue}</td></tr>)}</tbody></table></div></section>
+  </div>
+}
 
 export default function Reports() {
   const { trades: allTrades = [], filteredTrades: trades, stats, setAddTradeOpen, setEditingTrade } = useJournal()
@@ -158,7 +234,7 @@ export default function Reports() {
     {trades.length === 0 && <section className="panel page-empty-panel"><EmptyState icon={FileBarChart} title="Reports need a little history" description="Log or import trades to see your performance, patterns, and discipline insights." action={<div className="first-run-empty-actions"><button type="button" className="button-primary" onClick={() => { setEditingTrade(null); setAddTradeOpen(true) }}>Add a trade</button><Link className="button-secondary" to="/import">Import CSV</Link></div>} /></section>}
     <div className="report-tabs">{tabs.map((item) => <button key={item} className={tab === item ? 'selected' : ''} onClick={() => setTab(item)}>{item}</button>)}</div>
     <section className="report-summary-grid">{reportStats.map(([label, value, detail], index) => <div className="panel report-stat" key={label}><span>{label}</span><strong className={index === 2 ? 'profit' : index === 3 || index === 6 ? 'loss' : ''}>{stats.trades ? value : 'No data yet'}</strong><small>{stats.trades ? detail : 'Add or import trades to calculate this metric.'}</small></div>)}</section>
-    {tab === 'Mistakes' ? <section className="panel rp-mistakes">
+    {tab === 'Psychology' ? <PsychologyReport trades={trades} /> : tab === 'Mistakes' ? <section className="panel rp-mistakes">
       <div className="panel-heading"><div><h2>Mistake frequency and net P&amp;L</h2><p>Frequency is counted per tagged trade; net P&amp;L is summed across those trades.</p></div></div>
       {mistakeRows.length ? <>
         <div className="rp-frequency-chart" style={{ height: `${Math.min(420, Math.max(190, mistakeRows.length * 42))}px` }}><ResponsiveContainer width="100%" height="100%"><BarChart data={[...mistakeRows].sort((a, b) => b.frequency - a.frequency)} layout="vertical" margin={{ top: 4, right: 12, left: 12, bottom: 4 }}><CartesianGrid stroke="var(--line)" strokeDasharray="3 5" horizontal={false} /><XAxis type="number" allowDecimals={false} tick={chartAxis} axisLine={false} tickLine={false} /><YAxis type="category" dataKey="name" width={125} tick={chartAxis} axisLine={false} tickLine={false} /><Tooltip contentStyle={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 10, color: 'var(--text)' }} formatter={(value) => [`${value} ${value === 1 ? 'trade' : 'trades'}`, 'Frequency']} /><Bar dataKey="frequency" fill="var(--purple)" radius={[0, 5, 5, 0]} maxBarSize={26} /></BarChart></ResponsiveContainer></div>
