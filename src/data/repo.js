@@ -120,8 +120,33 @@ const tradeExtraFields = [
   'contractMultiplier',
   'tickSize',
   'tickValue',
+  'plannedStopLoss',
+  'plannedTakeProfit',
+  'setupGrade',
+  'confidence',
+  'emotionBefore',
+  'emotionAfter',
+  'marketCondition',
+  'timeframe',
+  'lessonLearned',
+  'takeAgain',
+  'bestPriceReached',
+  'worstPriceReached',
 ]
-const tradeExtraNumericFields = new Set(['pointValue', 'pnlOverride', 'rMultiple', 'quantity', 'contractMultiplier', 'tickSize', 'tickValue'])
+const tradeExtraNumericFields = new Set([
+  'pointValue',
+  'pnlOverride',
+  'rMultiple',
+  'quantity',
+  'contractMultiplier',
+  'tickSize',
+  'tickValue',
+  'plannedStopLoss',
+  'plannedTakeProfit',
+  'confidence',
+  'bestPriceReached',
+  'worstPriceReached',
+])
 const legacyTradeTagPrefixes = {
   'mistake:': ['mistakes', 'array'],
   'outcome:': ['outcome'],
@@ -243,9 +268,12 @@ export function tradeToRow(trade) {
   for (const field of tradeExtraFields) {
     if (normalized[field] === undefined) continue
     let value = normalized[field]
-    if (tradeExtraNumericFields.has(field) && value !== null && value !== '') {
-      const numeric = Number(value)
-      if (!Number.isNaN(numeric)) value = numeric
+    if (tradeExtraNumericFields.has(field)) {
+      if (value === '') value = null
+      else if (value !== null) {
+        const numeric = Number(value)
+        value = Number.isFinite(numeric) ? numeric : null
+      }
     } else if (field === 'mistakes' && !Array.isArray(value)) value = []
     row.extra[field] = value
   }
