@@ -17,6 +17,24 @@ import { calculateTradePnl } from '../utils/trading'
 const PAGE_SIZE = 1000
 const BULK_SIZE = 500
 const SCHEMA_ERROR_MESSAGE = 'Your database is missing a column. Run the latest supabase/schema.sql in the Supabase SQL Editor.'
+const JOURNAL_MOODS = ['😞', '😐', '🙂', '😄', '🔥']
+
+function journalMoodFromRow(value) {
+  if (Number.isInteger(value) && value >= 1 && value <= JOURNAL_MOODS.length) return JOURNAL_MOODS[value - 1]
+  return typeof value === 'string' ? value : null
+}
+
+function journalMoodToRow(value) {
+  if (Number.isInteger(value) && value >= 1 && value <= JOURNAL_MOODS.length) return value
+  const index = JOURNAL_MOODS.indexOf(value)
+  return index < 0 ? null : index + 1
+}
+
+function journalNumber(value, fallback = null) {
+  if (value === null || value === undefined || value === '') return fallback
+  const number = Number(value)
+  return Number.isFinite(number) ? number : fallback
+}
 
 function normalizeSupabaseError(error) {
   const message = typeof error?.message === 'string' ? error.message : ''
@@ -243,7 +261,7 @@ export function journalFromRow(row) {
   return {
     ...metadata,
     date: row.entry_date,
-    mood: row.mood,
+    mood: journalMoodFromRow(row.mood),
     plan: row.pre_market ?? metadata.plan ?? '',
     review: row.post_trade ?? metadata.review ?? '',
     rules,
@@ -254,9 +272,9 @@ export function journalFromRow(row) {
     maxRisk: metadata.maxRisk ?? '',
     maxTrades: metadata.maxTrades ?? '',
     lesson: metadata.lesson || '',
-    rating: Number(metadata.rating) || 0,
-    energy: Number(metadata.energy) || 3,
-    sleep: metadata.sleep ?? '',
+    rating: journalNumber(metadata.rating, 0),
+    energy: journalNumber(metadata.energy, 3),
+    sleep: journalNumber(metadata.sleep),
     followedPlan: Boolean(metadata.followedPlan),
     mistakes: Array.isArray(metadata.mistakes) ? metadata.mistakes : [],
     images: Array.isArray(metadata.images) ? metadata.images : [],
@@ -273,17 +291,24 @@ export function journalToRow(entry) {
     bias: entry?.bias || '',
     levels: entry?.levels || '',
     news: entry?.news || '',
-    maxRisk: entry?.maxRisk ?? '',
-    maxTrades: entry?.maxTrades ?? '',
+    maxRisk: journalNumber(entry?.maxRisk),
+    maxTrades: journalNumber(entry?.maxTrades),
     lesson: entry?.lesson || '',
-    rating: Number(entry?.rating) || 0,
-    energy: Number(entry?.energy) || 3,
-    sleep: entry?.sleep ?? '',
+    rating: journalNumber(entry?.rating, 0),
+    energy: journalNumber(entry?.energy, 3),
+    sleep: journalNumber(entry?.sleep),
     followedPlan: Boolean(entry?.followedPlan),
     mistakes: Array.isArray(entry?.mistakes) ? entry.mistakes : [],
     images: Array.isArray(entry?.images) ? entry.images : [],
   }
-  return { entry_date: date, mood: mood || '', pre_market: preMarket ?? plan ?? '', post_trade: review || '', rules }
+  const entryDate = typeof date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(date) ? date.slice(0, 10) : date
+  return {
+    entry_date: entryDate,
+    mood: journalMoodToRow(mood),
+    pre_market: String(preMarket ?? plan ?? ''),
+    post_trade: String(review ?? ''),
+    rules,
+  }
 }
 
 export function noteFromRow(row) {
