@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Check, Clock3, FileText, ImagePlus, LoaderCircle, X } from 'lucide-react'
 import { format } from 'date-fns'
-import { currency } from '../utils/trading'
+import { calculateAchievedR, calculateExcursions, calculatePlannedRewardRisk, calculatePlannedRisk, currency } from '../utils/trading'
 import { Badge } from './UiElements'
 import { useAuth } from '../context/AuthContext'
 import { deleteScreenshot, getSignedUrl, uploadScreenshot } from '../data/storage'
@@ -56,6 +56,11 @@ export default function TradeDrawer({ trade, onClose, onEdit, onDelete, onUpdate
   }, [trade?.id, trade?.screenshotBefore, trade?.screenshotAfter, retryImageLoad])
 
   if (!trade) return null
+
+  const plannedRisk = calculatePlannedRisk(trade)
+  const plannedRewardRisk = calculatePlannedRewardRisk(trade)
+  const achievedR = calculateAchievedR(trade)
+  const excursions = calculateExcursions(trade)
 
   const upload = async (kind, file = retryFile?.kind === kind ? retryFile.file : null) => {
     if (!file) return
@@ -127,6 +132,27 @@ export default function TradeDrawer({ trade, onClose, onEdit, onDelete, onUpdate
         {trade.riskManagement && <p><strong>Risk management:</strong> {trade.riskManagement}</p>}
         {trade.stopLossSystem && <p><strong>Stop loss:</strong> {trade.stopLossSystem}</p>}
         {trade.takeProfitSystem && <p><strong>Take profit:</strong> {trade.takeProfitSystem}</p>}
+      </div>}
+      {(trade.plannedStopLoss !== undefined || trade.plannedTakeProfit !== undefined || trade.setupGrade || trade.confidence || trade.emotionBefore || trade.emotionAfter || trade.marketCondition || trade.timeframe || trade.lessonLearned || trade.takeAgain || trade.bestPriceReached !== undefined || trade.worstPriceReached !== undefined) && <div className="drawer-section">
+        <h3>Plan and review</h3>
+        <div className="trade-detail-grid">
+          {trade.plannedStopLoss !== undefined && trade.plannedStopLoss !== null && trade.plannedStopLoss !== '' && <div><span>Planned stop-loss</span><strong>{trade.plannedStopLoss}</strong></div>}
+          {trade.plannedTakeProfit !== undefined && trade.plannedTakeProfit !== null && trade.plannedTakeProfit !== '' && <div><span>Planned take-profit</span><strong>{trade.plannedTakeProfit}</strong></div>}
+          {plannedRisk && <div><span>Planned risk per unit</span><strong>{currency(plannedRisk.riskPerUnit)}</strong></div>}
+          {(plannedRewardRisk !== null || achievedR !== null) && <div className="planned-r-metrics"><span>Planned R:R <b>{plannedRewardRisk === null ? '—' : `1 : ${plannedRewardRisk.toFixed(2)}`}</b></span><span>Achieved R <b>{achievedR === null ? '—' : `${achievedR >= 0 ? '+' : ''}${achievedR.toFixed(2)}R`}</b></span></div>}
+          {trade.setupGrade && <div><span>Setup grade</span><ChoiceValue value={trade.setupGrade} /></div>}
+          {trade.confidence !== undefined && trade.confidence !== null && trade.confidence !== '' && <div><span>Confidence</span><strong>{trade.confidence} / 5</strong></div>}
+          {trade.emotionBefore && <div><span>Emotion before</span><ChoiceValue value={trade.emotionBefore} /></div>}
+          {trade.emotionAfter && <div><span>Emotion after</span><ChoiceValue value={trade.emotionAfter} /></div>}
+          {trade.marketCondition && <div><span>Market condition</span><strong>{trade.marketCondition}</strong></div>}
+          {trade.timeframe && <div><span>Timeframe</span><strong>{trade.timeframe}</strong></div>}
+          {trade.takeAgain && <div><span>Would take again?</span><ChoiceValue value={trade.takeAgain} /></div>}
+          {trade.bestPriceReached !== undefined && trade.bestPriceReached !== null && trade.bestPriceReached !== '' && <div><span>Best price reached</span><strong>{trade.bestPriceReached}</strong></div>}
+          {trade.worstPriceReached !== undefined && trade.worstPriceReached !== null && trade.worstPriceReached !== '' && <div><span>Worst price reached</span><strong>{trade.worstPriceReached}</strong></div>}
+          {excursions && <div><span>MFE / MAE</span><strong>{excursions.mfe.toFixed(2)} / {excursions.mae === null ? '—' : excursions.mae.toFixed(2)} price points</strong></div>}
+          {excursions && <div><span>Move captured</span><strong>{excursions.capturedPercent === null || !Number.isFinite(excursions.capturedPercent) ? '—' : `${excursions.capturedPercent.toFixed(1)}%`}</strong></div>}
+        </div>
+        {trade.lessonLearned && <p><strong>Lesson learned:</strong> {trade.lessonLearned}</p>}
       </div>}
       <div className="drawer-section"><h3><ImagePlus size={15} /> Screenshots</h3>{uploading && <p role="status">Uploading screenshot…</p>}<div className="trade-screenshots">
         {['before', 'after'].map((kind) => {
