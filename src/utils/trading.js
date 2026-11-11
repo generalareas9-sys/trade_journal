@@ -21,6 +21,53 @@ export function calculateTradePnl(trade) {
   return Number((gross - fees).toFixed(2))
 }
 
+export function calculatePlannedRisk(trade) {
+  const entry = Number(trade?.entry)
+  const stop = Number(trade?.plannedStopLoss)
+  const size = Number(trade?.size ?? trade?.quantity)
+  const pointValue = Number(trade?.pointValue ?? symbolPointValues[trade?.symbol] ?? 1)
+  if (![entry, stop, size, pointValue].every(Number.isFinite) || entry <= 0 || stop <= 0 || size <= 0 || pointValue <= 0) return null
+  const riskPerUnit = Math.abs(entry - stop) * pointValue
+  const riskAmount = riskPerUnit * size
+  return riskPerUnit > 0 && Number.isFinite(riskAmount) ? { riskPerUnit, riskAmount } : null
+}
+
+export function calculatePlannedRewardRisk(trade) {
+  const entry = Number(trade?.entry)
+  const stop = Number(trade?.plannedStopLoss)
+  const target = Number(trade?.plannedTakeProfit)
+  if (![entry, stop, target].every(Number.isFinite) || entry <= 0 || stop <= 0 || target <= 0) return null
+  const risk = Math.abs(entry - stop)
+  if (!risk) return null
+  const ratio = Math.abs(target - entry) / risk
+  return Number.isFinite(ratio) ? ratio : null
+}
+
+export function calculateAchievedR(trade) {
+  const plannedRisk = calculatePlannedRisk(trade)
+  if (!plannedRisk) return null
+  const pnl = Number.isFinite(Number(trade?.pnl)) ? Number(trade.pnl) : calculateTradePnl(trade)
+  return Number.isFinite(pnl) ? pnl / plannedRisk.riskAmount : null
+}
+
+export function calculateExcursions(trade) {
+  if (trade?.bestPriceReached === null || trade?.bestPriceReached === undefined || trade?.bestPriceReached === '') return null
+  const entry = Number(trade?.entry)
+  const best = Number(trade?.bestPriceReached)
+  const worst = Number(trade?.worstPriceReached)
+  if (!Number.isFinite(entry) || !Number.isFinite(best) || entry <= 0) return null
+  const direction = trade.side === 'Short' ? -1 : 1
+  const mfe = Math.max(0, (best - entry) * direction)
+  const mae = trade?.worstPriceReached !== null && trade?.worstPriceReached !== undefined && trade?.worstPriceReached !== ''
+    && Number.isFinite(worst) && worst > 0 ? Math.max(0, (entry - worst) * direction) : null
+  const realized = (Number(trade?.exit) - entry) * direction
+  return {
+    mfe,
+    mae,
+    capturedPercent: mfe > 0 && Number.isFinite(realized) ? realized / mfe * 100 : null,
+  }
+}
+
 export function normalizeTrade(trade) {
   const size = Number(trade.size ?? trade.quantity)
   const calculatedPnl = calculateTradePnl({ ...trade, size })
