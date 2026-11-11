@@ -88,6 +88,8 @@ export default function AddTradeModal() {
   const [confirmClose, setConfirmClose] = useState(false)
   const [activeSection, setActiveSection] = useState('trade-basics')
   const modalRef = useRef(null)
+  const requestCloseRef = useRef(null)
+  const modalCloseRequestedRef = useRef(false)
   const modalStorageKey = `tradejournal:add-trade:${user?.id || 'anonymous'}:${location.pathname}`
   const setForm = useCallback((nextValue) => {
     setFormState(nextValue)
@@ -98,6 +100,7 @@ export default function AddTradeModal() {
   }, [draft.setValue])
 
   useEffect(() => {
+    if (modalCloseRequestedRef.current) return
     let shouldOpen = false
     try {
       shouldOpen = window.sessionStorage.getItem(`${modalStorageKey}:open`) === 'true'
@@ -153,6 +156,21 @@ export default function AddTradeModal() {
   }, [addTradeOpen, modalStorageKey])
 
   useEffect(() => {
+    if (!addTradeOpen) return undefined
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      if (confirmClose) {
+        setConfirmClose(false)
+      } else {
+        requestCloseRef.current?.()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [addTradeOpen, confirmClose])
+
+  useEffect(() => {
     if (draft.hasDraft) {
       setFormState(draft.value.form || createInitialForm())
       setActiveSection(draft.value.section || 'trade-basics')
@@ -174,6 +192,7 @@ export default function AddTradeModal() {
   }
 
   const closeModal = () => {
+    modalCloseRequestedRef.current = true
     try {
       window.sessionStorage.setItem(`${modalStorageKey}:open`, 'false')
     } catch (storageError) {
@@ -194,13 +213,26 @@ export default function AddTradeModal() {
     draft.clearDraft()
     closeModal()
   }
+  requestCloseRef.current = requestClose
   const keepDraftAndClose = () => {
     closeModal()
   }
   const discardDraftAndClose = () => {
     draft.clearDraft({ form: createInitialForm(), section: 'trade-basics' })
     setFormState(createInitialForm())
+    setActiveSection('trade-basics')
     closeModal()
+  }
+  const discardDraftAndContinue = () => {
+    draft.clearDraft({ form: createInitialForm(), section: 'trade-basics' })
+    setFormState(createInitialForm())
+    setActiveSection('trade-basics')
+    setConfirmClose(false)
+    try {
+      window.sessionStorage.setItem(`${modalStorageKey}:section`, 'trade-basics')
+    } catch (storageError) {
+      console.warn('Could not reset the Add Trade section:', storageError)
+    }
   }
 
   const entry = Number(form.entry)
@@ -412,16 +444,23 @@ export default function AddTradeModal() {
   }
 
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose() }}>
+    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) {
+        if (confirmClose) setConfirmClose(false)
+        else requestClose()
+      }
+    }}>
       <section className="trade-modal" role="dialog" aria-modal="true" aria-labelledby="add-trade-title" ref={modalRef}>
         <div className="modal-heading">
           <div>
             <span className="eyebrow">TRADE JOURNAL</span>
             <h2 id="add-trade-title">{editingTrade ? 'Edit trade' : 'Add a trade'}</h2>
             <p>Capture the details and keep your journal up to date.</p>
-            {draft.savedAt && <small><Check size={13} /> Draft saved {draft.formatDraftTime(draft.savedAt)}</small>}
           </div>
-          <button className="icon-button" onClick={requestClose} aria-label="Close"><X size={19} /></button>
+          <div className="modal-heading-actions">
+            {draft.savedAt && <small className="draft-saved-indicator"><Check size={13} />Draft saved {draft.formatDraftTime(draft.savedAt)}</small>}
+            <button type="button" className="icon-button" onClick={requestClose} aria-label="Close"><X size={19} /></button>
+          </div>
         </div>
 
         <form onSubmit={submit}>
@@ -444,7 +483,7 @@ export default function AddTradeModal() {
               jumpToSection(id)
             }}><Icon size={13} />{label}</button>)}
           </nav>
-          {draft.wasRestored && <div role="status"><span>Draft restored from {draft.formatDraftTime(draft.savedAt)}</span> <button type="button" onClick={() => { draft.clearDraft({ form: createInitialForm(), section: 'trade-basics' }); setFormState(createInitialForm()) }}>Discard draft</button></div>}
+          {draft.wasRestored && <div className="draft-restored-banner" role="status"><span>Draft restored from {draft.formatDraftTime(draft.savedAt)}</span><button type="button" onClick={discardDraftAndContinue}>Discard draft</button></div>}
           {draft.hadScreenshots && <small>Screenshots are not included in drafts and must be added again.</small>}
           <h3 id="trade-basics" className="section-title"><BookOpen size={15} />Basics</h3>
           <div className="form-grid">
@@ -480,7 +519,6 @@ export default function AddTradeModal() {
           />
 
           {error && <p className="form-error" role="alert">{error}</p>}
-          {confirmClose && <div role="alertdialog" aria-label="Keep draft?"><span>Keep draft?</span><button type="button" onClick={keepDraftAndClose}>Keep</button><button type="button" onClick={discardDraftAndClose}>Discard</button></div>}
 
           <div className="modal-actions">
             <button type="button" className="button-secondary" onClick={requestClose}>Cancel</button>
@@ -488,6 +526,17 @@ export default function AddTradeModal() {
           </div>
         </form>
       </section>
+      {confirmClose && <div className="draft-confirm-backdrop" role="presentation" onMouseDown={() => setConfirmClose(false)}>
+        <div className="draft-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="keep-trade-draft-title" onMouseDown={(event) => event.stopPropagation()}>
+          <h2 id="keep-trade-draft-title">Keep draft?</h2>
+          <p>Your changes are saved as a draft.</p>
+          <div className="draft-confirm-actions">
+            <button type="button" className="button-primary" onClick={keepDraftAndClose}>Keep draft</button>
+            <button type="button" className="button-secondary" onClick={discardDraftAndClose}>Discard</button>
+            <button type="button" className="button-secondary" onClick={() => setConfirmClose(false)}>Continue editing</button>
+          </div>
+        </div>
+      </div>}
     </div>
   )
 }
