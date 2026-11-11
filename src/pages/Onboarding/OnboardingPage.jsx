@@ -26,6 +26,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { updateProfileSettings } from '../../data/repo'
 import { useJournal } from '../../hooks/useJournal'
+import { useDraft } from '../../hooks/useDraft'
 import { BitcoinBrand, CartoonAvatar, SimpleBrandIcon } from './OnboardingIllustrations'
 import BrokerLogo from './BrokerLogo'
 import { brokerOptions, onboardingSteps } from './onboardingSteps'
@@ -339,6 +340,10 @@ export default function OnboardingPage() {
   const { accounts = [], addAccount, setSettings } = useJournal()
   const profileSettings = profile?.settings || {}
   const saved = { ...(profileSettings.appSettings || {}), ...profileSettings }
+  const onboardingDraft = useDraft('onboarding-answers', {
+    answers: { ...initialAnswers, ...savedAnswers(saved.onboarding) },
+    stepIndex: resumeStep(saved.onboardingStep),
+  })
   const [stepIndex, setStepIndex] = useState(() => resumeStep(saved.onboardingStep))
   const [answers, setAnswers] = useState(() => ({ ...initialAnswers, ...savedAnswers(saved.onboarding) }))
   const [direction, setDirection] = useState('forward')
@@ -360,6 +365,12 @@ export default function OnboardingPage() {
       ? Boolean(currentValue.trim())
       : Array.isArray(currentValue) && currentValue.length > 0
 
+  useEffect(() => {
+    if (!onboardingDraft.hasDraft) return
+    setAnswers({ ...initialAnswers, ...savedAnswers(onboardingDraft.value.answers) })
+    setStepIndex(resumeStep(onboardingDraft.value.stepIndex))
+  }, [onboardingDraft.hasDraft])
+
   useEffect(() => () => {
     window.clearTimeout(transitionTimer.current)
     window.clearTimeout(hintTimer.current)
@@ -377,6 +388,7 @@ export default function OnboardingPage() {
 
   const saveAnswers = async (nextAnswers, nextStep, completed) => {
     if (!user?.id || !profile) throw new Error('Your account profile is not available. Please reload and try again.')
+    onboardingDraft.setValue((current) => ({ ...current, answers: nextAnswers, stepIndex: nextStep }))
     setSettings((current) => ({
       ...current,
       onboarding: nextAnswers,
@@ -396,6 +408,7 @@ export default function OnboardingPage() {
       onboardingCompleted: completed,
     })
     if (result.error) throw result.error
+    onboardingDraft.clearDraft({ answers: nextAnswers, stepIndex: nextStep })
   }
 
   const createBrokerAccountIfNeeded = (broker) => {
@@ -409,7 +422,10 @@ export default function OnboardingPage() {
     hintTimer.current = window.setTimeout(() => { setHint(''); setShake(false) }, 1100)
   }
 
-  const updateAnswer = (key, value) => setAnswers((current) => ({ ...current, [key]: value }))
+  const updateAnswer = (key, value) => {
+    setAnswers((current) => ({ ...current, [key]: value }))
+    onboardingDraft.setValue((current) => ({ ...current, answers: { ...current.answers, [key]: value } }))
+  }
 
   const changeStep = (nextIndex, nextDirection) => {
     window.clearTimeout(autoContinueTimer.current)
@@ -530,7 +546,9 @@ export default function OnboardingPage() {
         <header className={`obf-heading ${stepIndex === 5 ? 'obf-heading-goals' : ''}`}>
           <h1>{currentStep.title}</h1>
           <p>{currentStep.subtitle}</p>
+          {onboardingDraft.savedAt && <small>✓ Draft saved {onboardingDraft.formatDraftTime(onboardingDraft.savedAt)}</small>}
         </header>
+        {onboardingDraft.wasRestored && <div role="status"><span>Draft restored from {onboardingDraft.formatDraftTime(onboardingDraft.savedAt)}</span> <button type="button" onClick={() => { onboardingDraft.clearDraft({ answers: { ...initialAnswers, ...savedAnswers(saved.onboarding) }, stepIndex: resumeStep(saved.onboardingStep) }); setAnswers({ ...initialAnswers, ...savedAnswers(saved.onboarding) }); setStepIndex(resumeStep(saved.onboardingStep)) }}>Discard draft</button></div>}
         {currentStep.type === 'broker'
             ? <BrokerSelect key={stepIndex} value={answers.broker} onChange={(value) => updateAnswer('broker', value)} onSelected={autoContinue} />
           : <SelectableOptions

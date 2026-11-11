@@ -9,6 +9,8 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState(null)
   const profileRequest = useRef(0)
+  const sessionRef = useRef(null)
+  const authEventCount = useRef(0)
   const user = session?.user ?? null
 
   const refreshProfile = useCallback(async () => {
@@ -33,7 +35,10 @@ export function AuthProvider({ children }) {
       const recoveryRequest = profileRequest.current
       const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' })
       if (signOutError) console.error('Could not clear the stale authentication session:', signOutError)
-      if (recoveryRequest === profileRequest.current) setSession(null)
+      if (recoveryRequest === profileRequest.current) {
+        sessionRef.current = null
+        setSession(null)
+      }
       return null
     }
   }, [user])
@@ -55,11 +60,18 @@ export function AuthProvider({ children }) {
       .getSession()
       .then(({ data, error }) => {
         if (error) console.error('Failed to read auth session:', error)
-        if (active) setSession(data?.session ?? null)
+        if (active && authEventCount.current === 0) {
+          const nextSession = data?.session ?? null
+          sessionRef.current = nextSession
+          setSession(nextSession)
+        }
       })
       .catch((error) => {
         console.error('Failed to read auth session:', error)
-        if (active) setSession(null)
+        if (active && authEventCount.current === 0) {
+          sessionRef.current = null
+          setSession(null)
+        }
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -67,7 +79,14 @@ export function AuthProvider({ children }) {
 
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!active) return
-      setSession(nextSession ?? null)
+      authEventCount.current += 1
+      const currentSession = sessionRef.current
+      const receivedSession = nextSession ?? null
+      const stableSession = receivedSession && currentSession?.user?.id === receivedSession.user?.id
+        ? { ...receivedSession, user: currentSession.user }
+        : receivedSession
+      sessionRef.current = stableSession
+      setSession(stableSession)
       setLoading(false)
     })
 

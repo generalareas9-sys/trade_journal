@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Building2, Check, Download, FileUp, LoaderCircle, Plus, RefreshCw, Search, Shield, SlidersHorizontal, Database, Trash2, UserRound, X } from 'lucide-react'
 import { useJournal } from '../hooks/useJournal'
+import { clearUserDrafts, useDraft } from '../hooks/useDraft'
 import { useAuth } from '../context/AuthContext'
 import { migrateBackup } from '../context/DataContext'
 import { supabase } from '../lib/supabase'
@@ -92,6 +93,7 @@ export function SettingsPage() {
   const [accountDraft, setAccountDraft] = useState({ name: '', currency: 'USD' })
   const [editingAccountId, setEditingAccountId] = useState('')
   const displayName = profile.name || authProfile?.display_name || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || ''
+  const nameDraft = useDraft('settings-profile-name', displayName)
   const avatarPath = authProfile?.settings?.avatarPath || authProfile?.settings?.appSettings?.avatarPath || ''
   const avatarInitials = initials(displayName, user?.email)
   const themePreference = settings.themeChosen === true && ['light', 'dark', 'system'].includes(settings.themePreference)
@@ -99,9 +101,10 @@ export function SettingsPage() {
     : 'dark'
 
   useEffect(() => {
-    setDraftName(profile.name || displayName)
+    if (nameDraft.hasDraft) setDraftName(nameDraft.value)
+    else setDraftName(profile.name || displayName)
     setDraftCountry(profile.country || '')
-  }, [profile.name, profile.country, displayName])
+  }, [profile.name, profile.country, displayName, nameDraft.hasDraft])
 
   useEffect(() => () => {
     if (avatarPreviewRef.current) URL.revokeObjectURL(avatarPreviewRef.current)
@@ -208,9 +211,16 @@ export function SettingsPage() {
     }
     else {
       await refreshProfile()
+      nameDraft.clearDraft(draftName.trim())
       notifySuccess('Profile saved.')
       return true
     }
+  }
+
+  const signOutAndClearDrafts = async () => {
+    const result = await signOut()
+    if (!result?.error) clearUserDrafts(user?.id)
+    return result
   }
 
   const clearAvatarPreview = () => {
@@ -405,7 +415,7 @@ export function SettingsPage() {
       functionUnavailable = true
     }
     if (functionUnavailable) window.alert('Your data was deleted. Account removal needs the delete-account function to be deployed.')
-    await signOut()
+    await signOutAndClearDrafts()
     setBusy(false)
     navigate('/welcome', { replace: true })
   }
@@ -425,7 +435,9 @@ export function SettingsPage() {
         </div>
       </div>
       <p className="set-profile-email">Current email <strong>{user?.email || '—'}</strong></p>
-      <label className="settings-field"><span>Display name</span><input autoComplete="name" value={draftName} onChange={(event) => setDraftName(event.target.value)} /></label>
+      {nameDraft.wasRestored && <div role="status"><span>Draft restored from {nameDraft.formatDraftTime(nameDraft.savedAt)}</span> <button type="button" onClick={() => { nameDraft.clearDraft(displayName); setDraftName(displayName) }}>Discard draft</button></div>}
+      {nameDraft.savedAt && <small role="status">✓ Draft saved {nameDraft.formatDraftTime(nameDraft.savedAt)}</small>}
+      <label className="settings-field"><span>Display name</span><input autoComplete="name" value={draftName} onChange={(event) => { setDraftName(event.target.value); nameDraft.setValue(event.target.value) }} /></label>
       <label className="settings-field"><span>Country <small>(optional)</small></span><input autoComplete="country-name" value={draftCountry} onChange={(event) => setDraftCountry(event.target.value)} /></label>
       <button className="button-primary" disabled={busy} onClick={saveProfile}>{busy ? 'Saving...' : 'Save profile'}</button>
     </div>
@@ -433,7 +445,7 @@ export function SettingsPage() {
       <p className="settings-current-email">Signed in as <strong>{user?.email || '—'}</strong></p>
       <form onSubmit={changeEmail} className="settings-security-form"><h3>Change email</h3><label className="settings-field"><span>New email address</span><input type="email" required autoComplete="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} /></label><button className="button-secondary" disabled={busy || !newEmail.trim()}>{busy ? 'Updating...' : 'Update email'}</button><small>Supabase will send a confirmation link to the new address.</small></form>
       <form onSubmit={changePassword} className="settings-security-form"><h3>Change password</h3><label className="settings-field"><span>New password</span><input type="password" required autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} aria-invalid={Boolean(newPassword) && newPassword.length < 8} aria-describedby="settings-password-hint" /></label><span className={`auth-password-strength strength-${passwordLevel(newPassword)}`}><span className="auth-strength-meter">{[1, 2, 3, 4].map((part) => <i key={part} />)}</span><span>{newPassword ? passwordLevel(newPassword) : ' '}</span></span><small id="settings-password-hint">{newPassword.length < 8 ? 'At least 8 characters' : 'Use a mix of characters for more strength.'}</small><label className="settings-field"><span>Confirm password</span><input type="password" required autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} aria-invalid={Boolean(confirmPassword) && confirmPassword !== newPassword} /></label><button className="button-secondary" disabled={busy || newPassword.length < 8 || newPassword !== confirmPassword}>{busy ? 'Updating...' : 'Update password'}</button></form>
-      <button className="settings-signout" disabled={busy} onClick={async () => { setBusy(true); const result = await signOut(); setBusy(false); if (result?.error) notifyError(`Could not sign out: ${result.error.message}`); else navigate('/welcome', { replace: true }) }}>Sign out of this device</button>
+      <button className="settings-signout" disabled={busy} onClick={async () => { setBusy(true); const result = await signOutAndClearDrafts(); setBusy(false); if (result?.error) notifyError(`Could not sign out: ${result.error.message}`); else navigate('/welcome', { replace: true }) }}>Sign out of this device</button>
     </div>
     if (tab === 'Accounts') return <div className="settings-account-content">
       <div className="settings-account-heading"><p>You can create and manage your trading accounts here. Broker connections are not available yet.</p><button className="button-primary" type="button" onClick={openAccountWizard}><Plus size={16} />Add account</button></div>

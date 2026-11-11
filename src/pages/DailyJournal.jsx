@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { addDays, addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, getDay, isValid, parseISO, startOfMonth, startOfWeek, subMonths } from 'date-fns'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronLeft, ChevronRight, ImagePlus, Printer, Search, Settings2, X } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { useJournal } from '../hooks/useJournal'
 import { useAuth } from '../context/AuthContext'
+import { useDraft } from '../hooks/useDraft'
 import { deleteScreenshot, getSignedUrl, uploadJournalImage } from '../data/storage'
 import { axisCurrency, currency, percent } from '../utils/trading'
 import { EmptyState } from '../components/UiElements'
@@ -57,15 +58,33 @@ export default function DailyJournal() {
   const queryDate = params.get('date')
   const initial = queryDate && isValid(parseISO(queryDate)) && format(parseISO(queryDate), 'yyyy-MM-dd') === queryDate ? queryDate : today
   const [selected, setSelected] = useState(initial)
+  const journalDraft = useDraft(`daily-journal-${selected}`, {
+    entry: journal[selected] || blankEntry(),
+    customTag: '',
+    customMistake: '',
+  })
   const [imageStatus, setImageStatus] = useState('')
   const [imageBusy, setImageBusy] = useState(false)
   const [retryImage, setRetryImage] = useState(null)
   const [month, setMonth] = useState(safeDate(initial))
   const [filter, setFilter] = useState({ query: '', tag: '', mood: '', mistake: '', from: '', to: '' })
-  const [customTag, setCustomTag] = useState('')
-  const [customMistake, setCustomMistake] = useState('')
+  const [customTagValue, setCustomTagValue] = useState('')
+  const [customMistakeValue, setCustomMistakeValue] = useState('')
   const [goalEditor, setGoalEditor] = useState(false)
-  const entry = journal[selected] || blankEntry()
+  const journalSaveRef = useRef({ date: '', sawSaving: false })
+  const entry = journalDraft.hasDraft
+    ? journalDraft.value.entry || journal[selected] || blankEntry()
+    : journal[selected] || journalDraft.value.entry || blankEntry()
+  const customTag = journalDraft.value.customTag ?? customTagValue
+  const customMistake = journalDraft.value.customMistake ?? customMistakeValue
+  const setCustomTag = (value) => {
+    setCustomTagValue(value)
+    journalDraft.setValue((current) => ({ ...current, customTag: value }))
+  }
+  const setCustomMistake = (value) => {
+    setCustomMistakeValue(value)
+    journalDraft.setValue((current) => ({ ...current, customMistake: value }))
+  }
   const date = safeDate(selected)
   const start = startOfWeek(date, { weekStartsOn: 1 })
   const end = endOfWeek(date, { weekStartsOn: 1 })
@@ -94,6 +113,22 @@ export default function DailyJournal() {
   useEffect(() => setImageStatus(''), [selected])
 
   useEffect(() => {
+    if (!journalDraft.hasDraft) return
+    setCustomTagValue(journalDraft.value.customTag || '')
+    setCustomMistakeValue(journalDraft.value.customMistake || '')
+  }, [journalDraft.hasDraft, selected])
+
+  useEffect(() => {
+    const pending = journalSaveRef.current
+    if (!pending.date) return
+    if (saveStatus === 'saving') pending.sawSaving = true
+    if (saveStatus === 'saved' && pending.sawSaving) {
+      pending.clearDraft()
+      journalSaveRef.current = { date: '', sawSaving: false }
+    }
+  }, [saveStatus])
+
+  useEffect(() => {
     const onKey = (event) => {
       if (event.altKey || event.ctrlKey || event.metaKey || event.target instanceof HTMLElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName)) return
       if (event.key === 'ArrowLeft') setSelected((value) => format(addDays(safeDate(value), -1), 'yyyy-MM-dd'))
@@ -103,13 +138,24 @@ export default function DailyJournal() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const updateDate = (date, key, value) => setJournal((current) => {
-    const previous = current[date] || blankEntry()
-    return {
-      ...current,
-      [date]: { ...previous, [key]: typeof value === 'function' ? value(previous[key]) : value },
+  const updateDate = (date, key, value) => {
+    const currentEntry = date === selected ? journalDraft.value.entry || journal[date] || blankEntry() : journal[date] || blankEntry()
+    const nextField = typeof value === 'function' ? value(currentEntry[key]) : value
+    const nextEntry = { ...currentEntry, [key]: nextField }
+    if (date === selected) {
+      const pending = journalSaveRef.current.date === date
+        ? journalSaveRef.current
+        : { date, sawSaving: false }
+      pending.clearDraft = journalDraft.clearDraft
+      journalSaveRef.current = pending
+      journalDraft.setValue((current) => ({ ...current, entry: nextEntry }))
     }
-  })
+    setJournal((current) => {
+      const previous = current[date] || blankEntry()
+      const base = date === selected ? { ...previous, ...(journalDraft.value.entry || {}) } : previous
+      return { ...current, [date]: { ...base, [key]: nextField } }
+    })
+  }
   const update = (key, value) => updateDate(selected, key, value)
   const toggleChoice = (key, value) => {
     const values = entry[key] || []
@@ -244,7 +290,7 @@ export default function DailyJournal() {
     {!hasJournalEntries && <section className="panel page-empty-panel journal-first-empty"><EmptyState icon={BookOpenCheck} title="Your first journal entry starts here" description="Capture your plan and one honest reflection to turn today’s decisions into tomorrow’s learning." action={<div className="first-run-empty-actions"><button type="button" className="button-primary" onClick={() => { setSelected(today); window.setTimeout(() => document.getElementById('daily-journal-entry')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0) }}>Write today’s entry</button><Link className="button-secondary" to="/trades">Review trades</Link></div>} /></section>}
     <header className="dj-header">
       <div><span className="dj-eyebrow">YOUR TRADING PRACTICE</span><h1>Daily journal</h1><p>Plan with intention. Review with honesty. Improve one session at a time.</p></div>
-      <div className="dj-header-actions"><span className="dj-save-status" role="status"><Check size={15} /> {saveLabel}</span><button type="button" onClick={() => print('day')}><Printer size={16} /> Print day</button><button type="button" onClick={() => print('week')}><Printer size={16} /> Print week</button></div>
+      <div className="dj-header-actions"><span className="dj-save-status" role="status"><Check size={15} /> {saveLabel}</span>{journalDraft.savedAt && <span role="status"><Check size={13} /> Draft saved {journalDraft.formatDraftTime(journalDraft.savedAt)}</span>}<button type="button" onClick={() => print('day')}><Printer size={16} /> Print day</button><button type="button" onClick={() => print('week')}><Printer size={16} /> Print week</button></div>
     </header>
     <div className="dj-layout">
       <aside className="dj-sidebar">
@@ -278,6 +324,8 @@ export default function DailyJournal() {
       <div className="dj-content">
         <section className="dj-card dj-day-card" id="daily-journal-entry">
           <div className="dj-day-heading"><button className="dj-nav-button" aria-label="Previous day" onClick={() => moveDay(-1)}><ArrowLeft size={17} /></button><div><span className="dj-eyebrow">TRADING SESSION</span><h2>{format(date, 'EEEE, MMMM d, yyyy')}</h2></div><button className="dj-nav-button" aria-label="Next day" onClick={() => moveDay(1)}><ArrowRight size={17} /></button><button className="dj-today-button" onClick={() => setSelected(today)}>Today</button></div>
+          {journalDraft.wasRestored && <div role="status"><span>Draft restored from {journalDraft.formatDraftTime(journalDraft.savedAt)}</span> <button type="button" onClick={() => journalDraft.clearDraft()}>Discard draft</button></div>}
+          {journalDraft.hadScreenshots && <small>Images are not included in drafts and must be added again.</small>}
           <div className="dj-kpis">
             <div><span>Net P&amp;L</span><strong className={pnl > 0 ? 'profit' : pnl < 0 ? 'loss' : ''}>{dayTrades.length ? currency(pnl) : 'No data yet'}</strong></div>
             <div><span>Trades</span><strong>{dayTrades.length}</strong></div>

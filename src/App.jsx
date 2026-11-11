@@ -9,6 +9,7 @@ import { SkeletonCard, SkeletonRows } from './components/UiElements'
 import Skeleton from './components/Skeleton'
 import { useJournal } from './hooks/useJournal'
 import useShortcuts from './hooks/useShortcuts'
+import { cleanExpiredDrafts } from './hooks/useDraft'
 import WelcomeTour from './components/WelcomeTour'
 import OnboardingGate from './components/OnboardingGate'
 import './onboarding-flow.css'
@@ -239,6 +240,34 @@ export default function App() {
   useRouteSeo(location.pathname)
   const setDarkRef = useRef(setDark)
   setDarkRef.current = setDark
+
+  useEffect(() => {
+    cleanExpiredDrafts()
+  }, [])
+
+  useEffect(() => {
+    const key = `tradejournal:scroll:${location.pathname}`
+    try {
+      const savedPosition = Number(window.sessionStorage.getItem(key) || 0)
+      window.requestAnimationFrame(() => window.requestAnimationFrame(() => window.scrollTo(0, savedPosition)))
+    } catch (error) {
+      console.warn('Could not restore the page scroll position:', error)
+    }
+    const savePosition = () => {
+      try {
+        window.sessionStorage.setItem(key, String(window.scrollY))
+      } catch (error) {
+        console.warn('Could not save the page scroll position:', error)
+      }
+    }
+    window.addEventListener('scroll', savePosition, { passive: true })
+    window.addEventListener('pagehide', savePosition)
+    return () => {
+      savePosition()
+      window.removeEventListener('scroll', savePosition)
+      window.removeEventListener('pagehide', savePosition)
+    }
+  }, [location.pathname])
 
   useLayoutEffect(() => {
     const workspacePaths = ['/', '/home', '/journal', '/trades', '/import', '/reports', '/weekly-review', '/progress-tracker', '/notebook', '/playbooks', '/backtesting', '/risk-calculator', '/settings', '/help', '/contact', '/changelog']

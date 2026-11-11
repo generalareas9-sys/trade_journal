@@ -213,6 +213,10 @@ export function DataProvider({ children }) {
   const [editingTrade, setEditingTrade] = useState(null)
   const dataRef = useRef(data)
   const userRef = useRef(user)
+  const dataUserIdRef = useRef('')
+  const saveStatusRef = useRef(saveStatus)
+  const loadRequestRef = useRef(0)
+  const lastBackgroundRefreshRef = useRef(0)
   const loadDemoDataRef = useRef(null)
   const profileWriteQueue = useRef(Promise.resolve())
   const journalSaveRef = useRef({ timer: null, ownerId: null, before: null, after: null })
@@ -223,6 +227,11 @@ export function DataProvider({ children }) {
     setToast(message)
     window.clearTimeout(toastTimer.current)
     toastTimer.current = window.setTimeout(() => setToast(''), 3500)
+  }, [])
+
+  const updateSaveStatus = useCallback((status) => {
+    saveStatusRef.current = status
+    setSaveStatus(status)
   }, [])
 
   const applyData = useCallback((updater) => {
@@ -237,45 +246,32 @@ export function DataProvider({ children }) {
     setRetryCount((count) => count + 1)
   }, [])
 
-  useEffect(() => {
-    let active = true
-    const currentUser = user
-    window.clearTimeout(journalSaveRef.current.timer)
-    journalSaveRef.current = { timer: null, ownerId: null, before: null, after: null }
-    if (!currentUser) {
-      dataRef.current = defaultData()
-      setCurrencyDisplay('USD')
-      setData(dataRef.current)
-      setDataLoading(false)
-      setDataError('')
-      setDataUserId('')
-      setSaveStatus('saved')
-      return () => { active = false }
-    }
+  const loadAccountData = useCallback(async (currentUser, { quiet = false, isActive = () => true } = {}) => {
+    const request = ++loadRequestRef.current
+    const isCurrent = () => isActive()
+      && request === loadRequestRef.current
+      && userRef.current?.id === currentUser.id
 
-    dataRef.current = defaultData()
-    setCurrencyDisplay('USD')
-    setData(dataRef.current)
-    setDataLoading(true)
-    setDataError('')
-    setDataUserId('')
-    setSaveStatus('saved')
-
-    Promise.resolve(refreshProfile()).then(() => Promise.all([
-      repo.listAccounts(currentUser.id),
-      repo.listTrades(currentUser.id),
-      repo.listJournalEntries(currentUser.id),
-      repo.listNotes(currentUser.id),
-      repo.listPlaybooks(currentUser.id),
-      repo.getProfileSettings(currentUser.id),
-    ])).then(async (results) => {
-      if (!active) return
+    try {
+      await refreshProfile()
+      const results = await Promise.all([
+        repo.listAccounts(currentUser.id),
+        repo.listTrades(currentUser.id),
+        repo.listJournalEntries(currentUser.id),
+        repo.listNotes(currentUser.id),
+        repo.listPlaybooks(currentUser.id),
+        repo.getProfileSettings(currentUser.id),
+      ])
+      if (!isCurrent()) return
       const failed = results.find((result) => result.error)
       if (failed) {
-        setDataError(failed.error?.message || 'Could not load your TradeJournal data.')
-        setDataLoading(false)
+        const message = failed.error?.message || 'Could not load your TradeJournal data.'
+        if (quiet) notify(`Could not refresh your data: ${message}`)
+        else setDataError(message)
+        if (!quiet) setDataLoading(false)
         return
       }
+
       const [accountsResult, tradesResult, journalResult, notesResult, playbooksResult, profileSettingsResult] = results
       const storedSettings = profileSettingsResult.data || {}
       const journal = Object.fromEntries((journalResult.data || []).map((entry) => [entry.date, entry]))
@@ -291,7 +287,7 @@ export function DataProvider({ children }) {
         && !(notesResult.data || []).length
         && !(playbooksResult.data || []).length
       const next = {
-        ...defaultData(),
+        ...dataRef.current,
         accounts: accountsResult.data || [],
         trades: (tradesResult.data || []).map((trade) => normalizeTrade(trade)),
         journal,
@@ -315,48 +311,114 @@ export function DataProvider({ children }) {
           name: storedSettings.profile?.name || currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || '',
           country: storedSettings.profile?.country || '',
         },
-        account: storedSettings.defaultAccount || 'all',
+        account: dataUserIdRef.current === currentUser.id
+          ? dataRef.current.account
+          : storedSettings.defaultAccount || 'all',
         dark: themeChosen
           ? themePreference === 'system'
             ? window.matchMedia('(prefers-color-scheme: dark)').matches
             : themePreference === 'dark'
           : true,
       }
+      if (quiet && saveStatusRef.current === 'saving') return
       if (shouldLoadDemoData) {
         const markerResult = await repo.updateProfileSettings(currentUser.id, {
           ...storedSettings,
           appSettings: { ...appSettings, demoDataInitialized: true },
         })
-        if (!active) return
+        if (!isCurrent()) return
         if (markerResult.error) {
-          setDataError(`Could not prepare demo data: ${markerResult.error.message || 'Unknown error'}`)
-          setDataLoading(false)
+          const message = `Could not prepare demo data: ${markerResult.error.message || 'Unknown error'}`
+          if (quiet) notify(`Could not refresh your data: ${message}`)
+          else setDataError(message)
+          if (!quiet) setDataLoading(false)
           return
         }
       }
+      if (!isCurrent()) return
       dataRef.current = next
       setCurrencyDisplay(next.settings.currencyDisplay || 'USD')
       setData(next)
+      dataUserIdRef.current = currentUser.id
       setDataUserId(currentUser.id)
+      setDataError('')
+      lastBackgroundRefreshRef.current = Date.now()
       if (shouldLoadDemoData) {
         const loadDemoData = loadDemoDataRef.current
         if (!loadDemoData) {
           setDataError('Could not initialize demo data because the demo loader is unavailable.')
-          setDataLoading(false)
+          if (!quiet) setDataLoading(false)
           return
         }
         await loadDemoData()
       }
-      setDataLoading(false)
-    }).catch((error) => {
+      if (!quiet) setDataLoading(false)
+    } catch (error) {
       console.error('Failed to load account data:', error)
-      if (!active) return
-      setDataError(error?.message || 'Could not load your TradeJournal data.')
+      if (!isCurrent()) return
+      const message = error?.message || 'Could not load your TradeJournal data.'
+      if (quiet) notify(`Could not refresh your data: ${message}`)
+      else setDataError(message)
+      if (!quiet) setDataLoading(false)
+    }
+  }, [notify, refreshProfile])
+
+  useEffect(() => {
+    let active = true
+    const currentUser = user
+    if (!currentUser) {
+      loadRequestRef.current += 1
+      if (dataUserIdRef.current) {
+        window.clearTimeout(journalSaveRef.current.timer)
+        journalSaveRef.current = { timer: null, ownerId: null, before: null, after: null }
+        dataRef.current = defaultData()
+        setCurrencyDisplay('USD')
+        setData(dataRef.current)
+      }
+      dataUserIdRef.current = ''
       setDataLoading(false)
-    })
+      setDataError('')
+      setDataUserId('')
+      updateSaveStatus('saved')
+      return () => { active = false }
+    }
+
+    const isNewUser = dataUserIdRef.current !== currentUser.id
+    if (isNewUser) {
+      loadRequestRef.current += 1
+      window.clearTimeout(journalSaveRef.current.timer)
+      journalSaveRef.current = { timer: null, ownerId: null, before: null, after: null }
+      dataRef.current = defaultData()
+      setCurrencyDisplay('USD')
+      setData(dataRef.current)
+      dataUserIdRef.current = ''
+      setDataLoading(true)
+      setDataError('')
+      setDataUserId('')
+      updateSaveStatus('saved')
+    }
+    void loadAccountData(currentUser, { quiet: !isNewUser, isActive: () => active })
 
     return () => { active = false }
-  }, [user?.id, retryCount, refreshProfile])
+  }, [user?.id, retryCount, loadAccountData])
+
+  useEffect(() => {
+    const currentUserId = user?.id
+    if (!currentUserId) return undefined
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState !== 'visible'
+        || dataUserIdRef.current !== currentUserId
+        || saveStatusRef.current === 'saving'
+        || Date.now() - lastBackgroundRefreshRef.current < 60_000) return
+
+      lastBackgroundRefreshRef.current = Date.now()
+      const currentUser = userRef.current
+      if (currentUser?.id === currentUserId) void loadAccountData(currentUser, { quiet: true })
+    }
+    document.addEventListener('visibilitychange', refreshWhenVisible)
+    return () => document.removeEventListener('visibilitychange', refreshWhenVisible)
+  }, [user?.id, loadAccountData])
 
   useEffect(() => {
     try {
@@ -378,22 +440,22 @@ export function DataProvider({ children }) {
   const persistProfileSettings = useCallback((snapshot, rollback) => {
     const userId = userRef.current?.id
     if (!userId) return
-    setSaveStatus('saving')
+    updateSaveStatus('saving')
     profileWriteQueue.current = profileWriteQueue.current.then(async () => {
       if (userRef.current?.id !== userId) return
       const result = await repo.updateProfileSettings(userId, snapshot)
       if (userRef.current?.id !== userId) return
       if (result.error) {
         rollback?.()
-        setSaveStatus('error')
+        updateSaveStatus('error')
         notify(`Could not save settings: ${result.error.message || 'Unknown error'}`)
       } else {
-        setSaveStatus('saved')
+        updateSaveStatus('saved')
       }
     }).catch((error) => {
       console.error('Unexpected profile settings save failure:', error)
       rollback?.()
-      setSaveStatus('error')
+      updateSaveStatus('error')
       notify(`Could not save settings: ${error?.message || 'Unknown error'}`)
     })
   }, [notify])
@@ -426,17 +488,17 @@ export function DataProvider({ children }) {
     prepared.outcome = prepared.result
     prepared.rrr = prepared.rrr ?? prepared.rMultiple
     applyData((current) => ({ ...current, trades: [prepared, ...current.trades] }))
-    setSaveStatus('saving')
+    updateSaveStatus('saving')
     const result = await repo.createTrade(prepared)
     if (userRef.current?.id !== ownerId) return { data: null, error: new Error('User changed before the trade was saved.') }
     if (result.error) {
       applyData((current) => ({ ...current, trades: current.trades.filter((item) => item.id !== id) }))
-      setSaveStatus('error')
+      updateSaveStatus('error')
       notify(`Could not save trade: ${result.error.message || 'Unknown error'}`)
       return result
     }
     applyData((current) => ({ ...current, trades: current.trades.map((item) => item.id === id ? normalizeTrade(result.data) : item) }))
-    setSaveStatus('saved')
+    updateSaveStatus('saved')
     notify('Trade saved.')
     return result
   }, [applyData, notify, tempId])
@@ -457,12 +519,12 @@ export function DataProvider({ children }) {
       prepared.rrr = prepared.rrr ?? prepared.rMultiple
     }
     applyData((current) => ({ ...current, trades: current.trades.map((trade) => trade.id === id ? prepared : trade) }))
-    setSaveStatus('saving')
+    updateSaveStatus('saving')
     const result = await repo.updateTrade(id, prepared)
     if (userRef.current?.id !== ownerId) return { data: null, error: new Error('User changed before the trade was updated.') }
     if (result.error) {
       applyData((current) => ({ ...current, trades: current.trades.map((trade) => trade.id === id && trade === prepared ? before : trade) }))
-      setSaveStatus('error')
+      updateSaveStatus('error')
       notify(`Could not update trade: ${result.error.message || 'Unknown error'}`)
       return result
     }
@@ -474,7 +536,7 @@ export function DataProvider({ children }) {
         if (removal.error) console.warn(`Could not delete replaced trade screenshot: ${removal.error.message || removal.error}`)
       }
     }
-    setSaveStatus('saved')
+    updateSaveStatus('saved')
     notify('Trade updated.')
     return result
   }, [applyData, notify])
@@ -485,15 +547,15 @@ export function DataProvider({ children }) {
     const before = dataRef.current.trades.find((trade) => trade.id === id)
     if (!before) return
     applyData((current) => ({ ...current, trades: current.trades.filter((trade) => trade.id !== id) }))
-    setSaveStatus('saving')
+    updateSaveStatus('saving')
     void repo.deleteTrade(id).then(async (result) => {
       if (userRef.current?.id !== ownerId) return
       if (result.error) {
         applyData((current) => ({ ...current, trades: current.trades.some((trade) => trade.id === id) ? current.trades : [before, ...current.trades] }))
-        setSaveStatus('error')
+        updateSaveStatus('error')
         notify(`Could not delete trade: ${result.error.message || 'Unknown error'}`)
       } else {
-        setSaveStatus('saved')
+        updateSaveStatus('saved')
         await cleanupTradeScreenshots(ownerId, [before])
       }
     })
@@ -513,7 +575,7 @@ export function DataProvider({ children }) {
       return prepared
     })
     applyData((current) => ({ ...current, trades: [...imported, ...current.trades] }))
-    setSaveStatus('saving')
+    updateSaveStatus('saving')
     void repo.insertTradesBulk(imported).then((result) => {
       if (userRef.current?.id !== ownerId) return
       const failedIndexes = new Set()
@@ -535,10 +597,10 @@ export function DataProvider({ children }) {
       }))
       const failures = failedIndexes.size
       if (failures) {
-        setSaveStatus('error')
+        updateSaveStatus('error')
         notify(`${(result.data?.insertedCount || 0)} trades imported; ${failures} failed. ${result.error?.message || ''}`.trim())
       } else {
-        setSaveStatus('saved')
+        updateSaveStatus('saved')
         notify(`${result.data?.insertedCount || 0} trades imported.`)
       }
     })
@@ -581,12 +643,12 @@ export function DataProvider({ children }) {
     if (!ownerId) return { inserted: 0, failed: 0 }
     const temporaryAccount = { ...demoAccounts[0], id: tempId('demo-account') }
     applyData((current) => ({ ...current, accounts: [temporaryAccount, ...current.accounts] }))
-    setSaveStatus('saving')
+    updateSaveStatus('saving')
     const accountResult = await repo.createAccount(temporaryAccount)
     if (userRef.current?.id !== ownerId) return { inserted: 0, failed: 0 }
     if (accountResult.error) {
       applyData((current) => ({ ...current, accounts: current.accounts.filter((account) => account.id !== temporaryAccount.id) }))
-      setSaveStatus('error')
+      updateSaveStatus('error')
       notify(`Could not load demo data: ${accountResult.error.message || 'Account creation failed'}`)
       return { inserted: 0, failed: mockTrades.length }
     }
@@ -645,11 +707,11 @@ export function DataProvider({ children }) {
     const normalizedAfter = after.map((item) => item.id ? item : { ...item, id: tempId(type) })
     const afterById = new Map(normalizedAfter.map((item) => [idFor(item), item]))
     applyData((current) => ({ ...current, [key]: normalizedAfter }))
-    if (JSON.stringify(before) !== JSON.stringify(normalizedAfter)) setSaveStatus('saving')
+    if (JSON.stringify(before) !== JSON.stringify(normalizedAfter)) updateSaveStatus('saving')
     let pendingWrites = 0
     const completeWrite = () => {
       pendingWrites -= 1
-      if (pendingWrites <= 0) setSaveStatus('saved')
+      if (pendingWrites <= 0) updateSaveStatus('saved')
     }
     for (const oldItem of before) {
       const id = idFor(oldItem)
@@ -660,7 +722,7 @@ export function DataProvider({ children }) {
         if (userRef.current?.id !== ownerId) return
         if (result.error) {
           applyData((current) => ({ ...current, [key]: current[key].some((item) => item.id === oldItem.id) ? current[key] : [oldItem, ...current[key]] }))
-          setSaveStatus('error')
+          updateSaveStatus('error')
           notify(`Could not delete ${type.slice(0, -1)}: ${result.error.message || 'Unknown error'}`)
         } else completeWrite()
       })
@@ -678,7 +740,7 @@ export function DataProvider({ children }) {
           if (userRef.current?.id !== ownerId) return
           if (result.error) {
             applyData((current) => ({ ...current, [key]: current[key].filter((candidate) => candidate.id !== item.id) }))
-            setSaveStatus('error')
+            updateSaveStatus('error')
             notify(`Could not create ${type.slice(0, -1)}: ${result.error.message || 'Unknown error'}`)
             return
           }
@@ -691,7 +753,7 @@ export function DataProvider({ children }) {
           if (userRef.current?.id !== ownerId) return
           if (result.error) {
             applyData((current) => ({ ...current, [key]: current[key].map((candidate) => candidate.id === item.id && candidate === item ? oldItem : candidate) }))
-            setSaveStatus('error')
+            updateSaveStatus('error')
             notify(`Could not update ${type.slice(0, -1)}: ${result.error.message || 'Unknown error'}`)
           } else {
             applyData((current) => ({ ...current, [key]: current[key].map((candidate) => candidate.id === item.id ? result.data : candidate) }))
@@ -700,7 +762,7 @@ export function DataProvider({ children }) {
         })
       }
     }
-    if (pendingWrites === 0 && JSON.stringify(before) !== JSON.stringify(normalizedAfter)) setSaveStatus('saved')
+    if (pendingWrites === 0 && JSON.stringify(before) !== JSON.stringify(normalizedAfter)) updateSaveStatus('saved')
   }, [applyData, notify, tempId])
 
   const setNotes = useCallback((next) => { replaceArray('notes', next, 'notes') }, [replaceArray])
@@ -722,11 +784,11 @@ export function DataProvider({ children }) {
     if (!writes.length) {
       if (pending?.inFlight) return after
       journalSaveRef.current = { timer: null, ownerId, before: null, after: null }
-      setSaveStatus('saved')
+      updateSaveStatus('saved')
       return after
     }
 
-    setSaveStatus('saving')
+    updateSaveStatus('saving')
     const scheduled = { timer: null, ownerId, before: original, after, inFlight: false }
     scheduled.timer = window.setTimeout(async () => {
       if (userRef.current?.id !== ownerId) return
@@ -749,10 +811,10 @@ export function DataProvider({ children }) {
           }
           return { ...current, journal }
         })
-        setSaveStatus('error')
+        updateSaveStatus('error')
         notify(`Could not save journal entry: ${failures[0].result.error.message || 'Unknown error'}`)
       } else if (journalSaveRef.current === scheduled) {
-        setSaveStatus('saved')
+        updateSaveStatus('saved')
       }
       if (journalSaveRef.current === scheduled) {
         journalSaveRef.current = { timer: null, ownerId: null, before: null, after: null }

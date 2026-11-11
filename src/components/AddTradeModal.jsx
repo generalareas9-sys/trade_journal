@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { format } from 'date-fns'
-import { BookOpen, Brain, Camera, ClipboardCheck, Target, TrendingUp, X } from 'lucide-react'
+import { BookOpen, Brain, Camera, Check, ClipboardCheck, Target, TrendingUp, X } from 'lucide-react'
 import { STRATEGIES } from '../data/mockData'
 import { calculateTradePnl } from '../utils/trading'
 import { useJournal } from '../hooks/useJournal'
+import { useDraft } from '../hooks/useDraft'
 import { useAuth } from '../context/AuthContext'
+import { useLocation } from 'react-router-dom'
 import { deleteScreenshot, uploadScreenshot } from '../data/storage'
 import TradeDetailsFields from './TradeDetailsFields'
 
@@ -46,10 +48,36 @@ const createInitialForm = () => ({
   resultOverride: null,
 })
 
+function formFromTrade(trade) {
+  if (!trade) return createInitialForm()
+  const localTime = (date) => {
+    const value = new Date(date)
+    return `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}`
+  }
+  return {
+    ...createInitialForm(),
+    ...trade,
+    date: trade.date,
+    time: localTime(trade.openedAt),
+    exitTime: localTime(trade.closedAt),
+    quantity: String(trade.size ?? trade.quantity ?? ''),
+    contractExpiry: trade.contractExpiry || '',
+    contractMultiplier: trade.contractMultiplier ?? trade.pointValue ?? '',
+    tickSize: trade.tickSize ?? '',
+    tickValue: trade.tickValue ?? '',
+    risk: String(trade.riskAmount ?? 0),
+    fees: String(trade.fees ?? 0),
+    resultOverride: trade.resultOverride ?? null,
+    rrr: trade.rrr ?? '',
+  }
+}
+
 export default function AddTradeModal() {
   const { addTradeOpen, setAddTradeOpen, addTrade, updateTrade, editingTrade, setEditingTrade } = useJournal()
   const { user } = useAuth()
-  const [form, setForm] = useState(createInitialForm)
+  const location = useLocation()
+  const draft = useDraft(`add-trade-${editingTrade?.id || 'new'}`, { form: formFromTrade(editingTrade), section: 'trade-basics' })
+  const [form, setFormState] = useState(createInitialForm)
   const [error, setError] = useState('')
   const [validation, setValidation] = useState({})
   const [screenshotFiles, setScreenshotFiles] = useState({ before: null, after: null })
@@ -57,32 +85,35 @@ export default function AddTradeModal() {
   const [screenshotErrors, setScreenshotErrors] = useState({ before: '', after: '' })
   const [persistedTradeId, setPersistedTradeId] = useState('')
   const [savingTrade, setSavingTrade] = useState(false)
+  const [confirmClose, setConfirmClose] = useState(false)
+  const [activeSection, setActiveSection] = useState('trade-basics')
+  const modalRef = useRef(null)
+  const modalStorageKey = `tradejournal:add-trade:${user?.id || 'anonymous'}:${location.pathname}`
+  const setForm = useCallback((nextValue) => {
+    setFormState(nextValue)
+    draft.setValue((current) => ({
+      ...current,
+      form: typeof nextValue === 'function' ? nextValue(current.form) : nextValue,
+    }))
+  }, [draft.setValue])
 
   useEffect(() => {
+    let shouldOpen = false
+    try {
+      shouldOpen = window.sessionStorage.getItem(`${modalStorageKey}:open`) === 'true'
+    } catch (storageError) {
+      console.warn('Could not restore the Add Trade modal state:', storageError)
+    }
+    if (shouldOpen) setAddTradeOpen(true)
+  }, [modalStorageKey, setAddTradeOpen, user?.id])
+
+  useEffect(() => {
+    if (!addTradeOpen) return
     if (addTradeOpen) {
-      if (editingTrade) {
-        const localTime = (date) => {
-          const value = new Date(date)
-          return `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}`
-        }
-        setForm({
-          ...createInitialForm(),
-          ...editingTrade,
-          date: editingTrade.date,
-          time: localTime(editingTrade.openedAt),
-          exitTime: localTime(editingTrade.closedAt),
-          quantity: String(editingTrade.size ?? editingTrade.quantity ?? ''),
-          contractExpiry: editingTrade.contractExpiry || '',
-          contractMultiplier: editingTrade.contractMultiplier ?? editingTrade.pointValue ?? '',
-          tickSize: editingTrade.tickSize ?? '',
-          tickValue: editingTrade.tickValue ?? '',
-          risk: String(editingTrade.riskAmount ?? 0),
-          fees: String(editingTrade.fees ?? 0),
-          resultOverride: editingTrade.resultOverride ?? null,
-          rrr: editingTrade.rrr ?? '',
-        })
+      if (draft.hasDraft) {
+        setFormState(draft.value.form || createInitialForm())
       } else {
-        setForm(createInitialForm())
+        setFormState(formFromTrade(editingTrade))
       }
       setError('')
       setValidation({})
@@ -92,7 +123,41 @@ export default function AddTradeModal() {
       setPersistedTradeId('')
       setSavingTrade(false)
     }
-  }, [addTradeOpen, editingTrade])
+    try {
+      window.sessionStorage.setItem(`${modalStorageKey}:open`, 'true')
+    } catch (storageError) {
+      console.warn('Could not save the Add Trade modal state:', storageError)
+    }
+  }, [addTradeOpen, editingTrade, draft.hasDraft, modalStorageKey])
+
+  useEffect(() => {
+    const modal = modalRef.current
+    if (!addTradeOpen || !modal) return undefined
+    try {
+      const savedScroll = Number(window.sessionStorage.getItem(`${modalStorageKey}:scroll`) || 0)
+      if (Number.isFinite(savedScroll)) modal.scrollTop = savedScroll
+      const savedSection = window.sessionStorage.getItem(`${modalStorageKey}:section`)
+      if (savedSection) setActiveSection(savedSection)
+    } catch (storageError) {
+      console.warn('Could not restore Add Trade scroll position:', storageError)
+    }
+    const saveScroll = () => {
+      try {
+        window.sessionStorage.setItem(`${modalStorageKey}:scroll`, String(modal.scrollTop))
+      } catch (storageError) {
+        console.warn('Could not save Add Trade scroll position:', storageError)
+      }
+    }
+    modal.addEventListener('scroll', saveScroll, { passive: true })
+    return () => modal.removeEventListener('scroll', saveScroll)
+  }, [addTradeOpen, modalStorageKey])
+
+  useEffect(() => {
+    if (draft.hasDraft) {
+      setFormState(draft.value.form || createInitialForm())
+      setActiveSection(draft.value.section || 'trade-basics')
+    }
+  }, [draft.hasDraft])
 
   if (!addTradeOpen) return null
 
@@ -108,6 +173,36 @@ export default function AddTradeModal() {
     setError('')
   }
 
+  const closeModal = () => {
+    try {
+      window.sessionStorage.setItem(`${modalStorageKey}:open`, 'false')
+    } catch (storageError) {
+      console.warn('Could not save the Add Trade modal state:', storageError)
+    }
+    setAddTradeOpen(false)
+    setConfirmClose(false)
+  }
+  const formHasContent = Object.entries(form).some(([key, value]) => {
+    if (/screenshot/i.test(key)) return false
+    return JSON.stringify(value) !== JSON.stringify(createInitialForm()[key])
+  }) || Object.values(screenshotFiles).some(Boolean)
+  const requestClose = () => {
+    if (formHasContent) {
+      setConfirmClose(true)
+      return
+    }
+    draft.clearDraft()
+    closeModal()
+  }
+  const keepDraftAndClose = () => {
+    closeModal()
+  }
+  const discardDraftAndClose = () => {
+    draft.clearDraft({ form: createInitialForm(), section: 'trade-basics' })
+    setFormState(createInitialForm())
+    closeModal()
+  }
+
   const entry = Number(form.entry)
   const exit = Number(form.exit)
   const quantity = Number(form.quantity)
@@ -120,6 +215,7 @@ export default function AddTradeModal() {
 
   const setScreenshotFile = (kind, file) => {
     setScreenshotFiles((current) => ({ ...current, [kind]: file }))
+    draft.setValue((current) => ({ ...current, hadScreenshots: Boolean(file) }))
     setScreenshotErrors((current) => ({ ...current, [kind]: '' }))
     if (!file) setField(kind === 'before' ? 'screenshotBefore' : 'screenshotAfter', '')
   }
@@ -301,7 +397,8 @@ export default function AddTradeModal() {
         const success = await uploadTradeScreenshot(kind, tradeId)
         if (!success) return
       }
-      setAddTradeOpen(false)
+      draft.clearDraft()
+      closeModal()
       if (editingTrade) setEditingTrade(null)
     } finally {
       setSavingTrade(false)
@@ -315,15 +412,16 @@ export default function AddTradeModal() {
   }
 
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAddTradeOpen(false) }}>
-      <section className="trade-modal" role="dialog" aria-modal="true" aria-labelledby="add-trade-title">
+    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose() }}>
+      <section className="trade-modal" role="dialog" aria-modal="true" aria-labelledby="add-trade-title" ref={modalRef}>
         <div className="modal-heading">
           <div>
             <span className="eyebrow">TRADE JOURNAL</span>
             <h2 id="add-trade-title">{editingTrade ? 'Edit trade' : 'Add a trade'}</h2>
             <p>Capture the details and keep your journal up to date.</p>
+            {draft.savedAt && <small><Check size={13} /> Draft saved {draft.formatDraftTime(draft.savedAt)}</small>}
           </div>
-          <button className="icon-button" onClick={() => setAddTradeOpen(false)} aria-label="Close"><X size={19} /></button>
+          <button className="icon-button" onClick={requestClose} aria-label="Close"><X size={19} /></button>
         </div>
 
         <form onSubmit={submit}>
@@ -335,8 +433,19 @@ export default function AddTradeModal() {
               ['trade-outcome', 'Outcome', Target],
               ['trade-screenshots', 'Screenshots', Camera],
               ['trade-psychology', 'Psychology & risk', Brain],
-            ].map(([id, label, Icon]) => <button key={id} type="button" onClick={() => jumpToSection(id)}><Icon size={13} />{label}</button>)}
+            ].map(([id, label, Icon]) => <button key={id} type="button" aria-current={activeSection === id ? 'step' : undefined} onClick={() => {
+              setActiveSection(id)
+              draft.setValue((current) => ({ ...current, section: id }))
+              try {
+                window.sessionStorage.setItem(`${modalStorageKey}:section`, id)
+              } catch (storageError) {
+                console.warn('Could not save the Add Trade section:', storageError)
+              }
+              jumpToSection(id)
+            }}><Icon size={13} />{label}</button>)}
           </nav>
+          {draft.wasRestored && <div role="status"><span>Draft restored from {draft.formatDraftTime(draft.savedAt)}</span> <button type="button" onClick={() => { draft.clearDraft({ form: createInitialForm(), section: 'trade-basics' }); setFormState(createInitialForm()) }}>Discard draft</button></div>}
+          {draft.hadScreenshots && <small>Screenshots are not included in drafts and must be added again.</small>}
           <h3 id="trade-basics" className="section-title"><BookOpen size={15} />Basics</h3>
           <div className="form-grid">
             <label>Symbol<select name="symbol" value={form.symbol} aria-invalid={Boolean(validation.symbol)} onChange={(event) => setField('symbol', event.target.value)}><option value="">Select a symbol</option>{symbolOptions.map((item) => <option key={item}>{item}</option>)}</select>{validation.symbol && <small className="field-error">{validation.symbol}</small>}</label>
@@ -371,9 +480,10 @@ export default function AddTradeModal() {
           />
 
           {error && <p className="form-error" role="alert">{error}</p>}
+          {confirmClose && <div role="alertdialog" aria-label="Keep draft?"><span>Keep draft?</span><button type="button" onClick={keepDraftAndClose}>Keep</button><button type="button" onClick={discardDraftAndClose}>Discard</button></div>}
 
           <div className="modal-actions">
-            <button type="button" className="button-secondary" onClick={() => setAddTradeOpen(false)}>Cancel</button>
+            <button type="button" className="button-secondary" onClick={requestClose}>Cancel</button>
             <button type="submit" className="button-primary" disabled={savingTrade}>{savingTrade ? 'Saving…' : editingTrade ? 'Save changes' : 'Save trade'}</button>
           </div>
         </form>

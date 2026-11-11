@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { Activity, BarChart3, BookOpen, Calculator, CalendarDays, CalendarRange, ChevronLeft, CircleHelp, Home as HomeIcon, LayoutDashboard, LogOut, NotebookPen, Settings, SlidersHorizontal, Swords, Target, X } from 'lucide-react'
 import { useJournal } from '../hooks/useJournal'
 import { useAuth } from '../context/AuthContext'
+import { clearUserDrafts } from '../hooks/useDraft'
 import ProfileAvatar from './ProfileAvatar'
 
 const links = [
@@ -35,6 +36,7 @@ export default function Sidebar({ collapsed, onCollapse }) {
         notify(`Could not sign out: ${error.message || 'Please try again.'}`)
         return
       }
+      clearUserDrafts(user?.id)
       setProfileMenuOpen(false)
       setSidebarOpen(false)
       navigate('/welcome', { replace: true })

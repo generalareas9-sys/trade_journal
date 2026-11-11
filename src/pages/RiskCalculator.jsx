@@ -13,12 +13,27 @@ import {
   Wallet,
 } from 'lucide-react'
 import { useJournal } from '../hooks/useJournal'
+import { useDraft } from '../hooks/useDraft'
 import { symbolPointValues, calculateTradePnl } from '../utils/trading'
 import '../risk-calculator.css'
 
 const lotStepOptions = ['0.001', '0.01', '0.1', '1']
 const defaultSymbol = Object.keys(symbolPointValues)[0] || ''
 const knownSymbols = Object.keys(symbolPointValues)
+const createInitialForm = () => ({
+  balance: '',
+  riskMode: 'percent',
+  riskValue: '1',
+  symbol: defaultSymbol,
+  customSymbol: '',
+  side: 'Buy',
+  entry: '',
+  stop: '',
+  target: '',
+  feesPerUnit: '0',
+  contractSize: String(symbolPointValues[defaultSymbol] || ''),
+  lotStep: '0.01',
+})
 
 const numberFrom = (value) => {
   if (value === null || value === undefined) return null
@@ -117,20 +132,17 @@ function Output({ label, value, detail, tone = 'neutral', icon: Icon = Target })
 
 export default function RiskCalculator() {
   const { settings = {}, notify } = useJournal()
-  const [form, setForm] = useState(() => ({
-    balance: '',
-    riskMode: 'percent',
-    riskValue: '1',
-    symbol: defaultSymbol,
-    customSymbol: '',
-    side: 'Buy',
-    entry: '',
-    stop: '',
-    target: '',
-    feesPerUnit: '0',
-    contractSize: String(symbolPointValues[defaultSymbol] || ''),
-    lotStep: '0.01',
-  }))
+  const draft = useDraft('risk-calculator', createInitialForm())
+  const [form, setFormState] = useState(createInitialForm)
+
+  useEffect(() => {
+    if (draft.hasDraft) setFormState(draft.value)
+  }, [draft.hasDraft])
+
+  function setForm(nextValue) {
+    setFormState(nextValue)
+    draft.setValue((current) => typeof nextValue === 'function' ? nextValue(current) : nextValue)
+  }
 
   function update(key, value) {
     setForm((current) => {
@@ -159,20 +171,9 @@ export default function RiskCalculator() {
   }
 
   function reset() {
-    setForm(() => ({
-      balance: '',
-      riskMode: 'percent',
-      riskValue: '1',
-      symbol: defaultSymbol,
-      customSymbol: '',
-      side: 'Buy',
-      entry: '',
-      stop: '',
-      target: '',
-      feesPerUnit: '0',
-      contractSize: String(symbolPointValues[defaultSymbol] || ''),
-      lotStep: '0.01',
-    }))
+    const initial = createInitialForm()
+    draft.clearDraft(initial)
+    setFormState(initial)
   }
 
   const calculation = useMemo(() => {
@@ -356,6 +357,7 @@ export default function RiskCalculator() {
     <header className="rc-header">
       <div className="rc-title"><span className="rc-title-icon"><Calculator size={20} /></span><div><span className="rc-eyebrow">POSITION PLANNING</span><h2>Risk calculator</h2><p>Estimate position size and potential outcomes before a trade.</p></div></div>
       <div className="rc-actions">
+        {draft.savedAt && <small role="status">✓ Draft saved {draft.formatDraftTime(draft.savedAt)}</small>}
         <button type="button" className="rc-button" onClick={reset}><RotateCcw size={16} />Reset</button>
         <button type="button" className="rc-button rc-copy-button" onClick={() => void copySummary()}><Copy size={16} />Copy summary</button>
       </div>
@@ -364,6 +366,7 @@ export default function RiskCalculator() {
     <div className="rc-layout">
       <section className={`rc-card rc-input-card rc-enter rc-enter-1${calculation.error ? ' rc-has-error' : ''}`} aria-labelledby="rc-input-title">
         <div className="rc-section-heading"><div><h3 id="rc-input-title">Trade details</h3><p>Enter your account and planned trade prices.</p></div></div>
+        {draft.wasRestored && <div role="status"><span>Draft restored from {draft.formatDraftTime(draft.savedAt)}</span> <button type="button" onClick={() => { draft.clearDraft(createInitialForm()); setFormState(createInitialForm()) }}>Discard draft</button></div>}
         <div className="rc-fields">
           <Field label="Account balance ($)" hint="USD" name="balance" value={form.balance} onChange={(event) => update('balance', event.target.value)} min="0" step="any" inputMode="decimal" placeholder="e.g. 25000" />
           <div className="rc-field">
