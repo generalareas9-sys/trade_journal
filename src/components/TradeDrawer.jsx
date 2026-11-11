@@ -1,10 +1,21 @@
 import { useEffect, useState } from 'react'
-import { Clock3, FileText, ImagePlus, LoaderCircle, X } from 'lucide-react'
+import { Check, Clock3, FileText, ImagePlus, LoaderCircle, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { currency } from '../utils/trading'
 import { Badge } from './UiElements'
 import { useAuth } from '../context/AuthContext'
 import { deleteScreenshot, getSignedUrl, uploadScreenshot } from '../data/storage'
+
+function choiceTone(value) {
+  if (['Yes', 'TP hit', 'Win', 'Long'].includes(value)) return 'green'
+  if (['No', 'SL hit', 'Loss', 'Short'].includes(value)) return 'red'
+  if (['Closed early', 'Breakeven'].includes(value)) return 'amber'
+  return 'purple'
+}
+
+function ChoiceValue({ value }) {
+  return <strong className={`trade-choice-value choice-tone--${choiceTone(value)}`}><Check size={14} aria-hidden="true" />{value}</strong>
+}
 
 export default function TradeDrawer({ trade, onClose, onEdit, onDelete, onUpdate }) {
   const { user } = useAuth()
@@ -101,15 +112,15 @@ export default function TradeDrawer({ trade, onClose, onEdit, onDelete, onUpdate
       {(trade.session || trade.result || trade.management || trade.exitCondition || trade.rrr !== undefined) && <div className="drawer-section">
         <h3>Trade details</h3>
         <div className="trade-detail-grid">
-          {trade.session && <div><span>Session</span><strong>{trade.session}</strong></div>}
-          {trade.result && <div><span>Result</span><strong>{trade.result}</strong></div>}
-          {trade.management && <div><span>Management</span><strong>{trade.management}</strong></div>}
-          {trade.exitCondition && <div><span>Exit condition</span><strong>{trade.exitCondition}</strong></div>}
+          {trade.session && <div><span>Session</span><ChoiceValue value={trade.session} /></div>}
+          {trade.result && <div><span>Result</span><ChoiceValue value={trade.result} /></div>}
+          {trade.management && <div><span>Management</span><ChoiceValue value={trade.management} /></div>}
+          {trade.exitCondition && <div><span>Exit condition</span><ChoiceValue value={trade.exitCondition} /></div>}
           {trade.rrr !== undefined && trade.rrr !== null && <div><span>Planned RRR</span><strong>1 : {trade.rrr}</strong></div>}
           {trade.riskAmount !== undefined && <div><span>Risk amount</span><strong>{currency(trade.riskAmount)}</strong></div>}
-          {trade.preAnalysis && <div><span>Pre-analysis</span><strong>{trade.preAnalysis}</strong></div>}
-          {trade.followedRules && <div><span>Followed rules</span><strong>{trade.followedRules}</strong></div>}
-          {trade.entryConditionMet && <div><span>Entry condition</span><strong>{trade.entryConditionMet}</strong></div>}
+          {trade.preAnalysis && <div><span>Pre-analysis</span><ChoiceValue value={trade.preAnalysis} /></div>}
+          {trade.followedRules && <div><span>Followed rules</span><ChoiceValue value={trade.followedRules} /></div>}
+          {trade.entryConditionMet && <div><span>Entry condition</span><ChoiceValue value={trade.entryConditionMet} /></div>}
         </div>
         {trade.psychBefore && <p><strong>Psychology before:</strong> {trade.psychBefore}</p>}
         {trade.psychAfter && <p><strong>Psychology after:</strong> {trade.psychAfter}</p>}
