@@ -2556,6 +2556,23 @@ html:has(.lp) { scroll-behavior: smooth; }
   .modal-actions { bottom: -16px; margin-right: -16px; margin-left: -16px; padding: 12px 16px; }
 }
 
+.modal-heading-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.draft-saved-indicator { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 11px; white-space: nowrap; }
+.draft-restored-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px; color: var(--purple); border: 1px solid var(--line); border-radius: 8px; background: var(--purple-soft); font-size: 14px; }
+.draft-restored-banner button { flex: 0 0 auto; padding: 0; color: var(--purple); border: 0; background: transparent; font-size: 12px; font-weight: 600; cursor: pointer; }
+.draft-confirm-backdrop { position: fixed; z-index: 1001; inset: 0; display: grid; place-items: center; padding: 18px; background: #10121b99; }
+.draft-confirm-dialog { width: min(390px, 100%); padding: 20px; color: var(--text); border: 1px solid var(--line); border-radius: 14px; background: var(--card); box-shadow: 0 22px 80px #0005; }
+.draft-confirm-dialog h2 { margin: 0 0 7px; font-size: 18px; }
+.draft-confirm-dialog p { margin: 0; color: var(--muted); font-size: 13px; }
+.draft-confirm-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+@media (max-width: 640px) {
+ .modal-heading-actions { gap: 6px; }
+ .draft-saved-indicator { font-size: 10px; }
+ .draft-confirm-actions { flex-direction: column; }
+ .draft-confirm-actions button { width: 100%; }
+}
+
 .sidebar > .nav-link { margin-bottom: 16px; flex: 0 0 auto; }
 .side-nav { flex: 0 0 auto; overflow: visible; }
 .sidebar-bottom { flex: 0 0 auto; }
