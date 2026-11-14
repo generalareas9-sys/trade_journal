@@ -1,6 +1,6 @@
 import { Component, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
-import { ProtectedRoute, PublicOnlyRoute } from './components/RouteGuards'
+import { ProtectedRoute, PublicOnlyRoute, RequireSubscription } from './components/RouteGuards'
 import Sidebar from './components/Sidebar'
 import Topbar from './components/Topbar'
 import AddTradeModal from './components/AddTradeModal'
@@ -30,11 +30,16 @@ const ROUTE_SEO = {
   '/terms': { title: 'Terms of Service | TradeJournal', description: 'Read the terms that apply when using the TradeJournal trading journal and analytics service.' },
   '/privacy': { title: 'Privacy Policy | TradeJournal', description: 'Learn what information TradeJournal collects, how it is used, and how your journal data is handled.' },
   '/disclaimer': { title: 'Disclaimer | TradeJournal', description: 'Read important information about the limitations of TradeJournal and the risks of trading.' },
+  '/refund-policy': { title: 'Refund Policy | TradeJournal', description: 'Read the TradeJournal refund and cancellation policy.' },
+  '/plans': { title: 'Subscription Plans | TradeJournal', description: 'Choose the subscription plan that fits your trading goals.' },
+  '/checkout': { title: 'Checkout | TradeJournal', description: 'Complete your TradeJournal subscription order.' },
+  '/payment/success': { title: 'Payment Success | TradeJournal', description: 'Your TradeJournal subscription has been activated.' },
+  '/admin/payments': { title: 'Admin Payments | TradeJournal', description: 'Review and approve TradeJournal manual payment requests.' },
 }
 const PRIVATE_ROUTES = new Set([
   '/home', '/settings', '/trades', '/journal', '/reports', '/import', '/risk-calculator',
   '/weekly-review', '/notebook', '/playbooks', '/backtesting', '/progress-tracker', '/onboarding', '/forgot-password',
-  '/reset-password',
+  '/reset-password', '/plans', '/checkout', '/payment/success', '/admin/payments',
 ])
 
 function useRouteSeo(pathname) {
@@ -101,6 +106,11 @@ const Backtesting = lazy(() => import('./pages/WorkspacePages').then((module) =>
 const SettingsPage = lazy(() => import('./pages/WorkspacePages').then((module) => ({ default: module.SettingsPage })))
 const TradeImport = lazy(() => import('./pages/TradeImport'))
 const OnboardingPage = lazy(() => import('./pages/Onboarding/OnboardingPage'))
+const PlansPage = lazy(() => import('./pages/subscription/PlansPage'))
+const CheckoutPage = lazy(() => import('./pages/subscription/CheckoutPage'))
+const PaymentSuccessPage = lazy(() => import('./pages/subscription/PaymentSuccessPage'))
+const AdminPaymentsPage = lazy(() => import('./pages/subscription/AdminPaymentsPage'))
+const RefundPage = lazy(() => import('./pages/legal/RefundPage'))
 
 class PageErrorBoundary extends Component {
   state = { hasError: false }
@@ -300,6 +310,8 @@ export default function App() {
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/disclaimer" element={<DisclaimerPage />} />
+      <Route path="/refund-policy" element={<RefundPage />} />
+      <Route path="/refund" element={<Navigate to="/refund-policy" replace />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/help" element={<HelpCenterPage />} />
       <Route path="/changelog" element={<ChangelogPage />} />
@@ -314,20 +326,27 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<OnboardingGate />}>
           <Route path="/onboarding" element={<Suspense fallback={<main className="obf-gate-message" role="status">Preparing onboarding…</main>}><OnboardingPage /></Suspense>} />
-          <Route element={<ProtectedLayout />}>
-            <Route path="/home" element={<Home />} />
-            <Route path="/" element={<Suspense fallback={<Skeleton variant="dashboard" />}><Dashboard /></Suspense>} />
-            <Route path="/journal" element={<Suspense fallback={<Skeleton variant="journal" />}><DailyJournal /></Suspense>} />
-            <Route path="/trades" element={<Suspense fallback={<Skeleton variant="trade-log" />}><TradeLog /></Suspense>} />
-            <Route path="/import" element={<TradeImport />} />
-            <Route path="/reports" element={<Suspense fallback={<Skeleton variant="reports" />}><Reports /></Suspense>} />
-            <Route path="/weekly-review" element={<WeeklyReview />} />
-            <Route path="/progress-tracker" element={<ProgressTracker />} />
-            <Route path="/notebook" element={<Suspense fallback={<Skeleton variant="notebook" />}><Notebook /></Suspense>} />
-            <Route path="/playbooks" element={<Suspense fallback={<Skeleton variant="playbooks" />}><Playbooks /></Suspense>} />
-            <Route path="/backtesting" element={<Backtesting />} />
-            <Route path="/risk-calculator" element={<RiskCalculator />} />
-            <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/plans" element={<PlansPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/payment/success" element={<PaymentSuccessPage />} />
+          <Route path="/admin/payments" element={<AdminPaymentsPage />} />
+
+          <Route element={<RequireSubscription />}>
+            <Route element={<ProtectedLayout />}>
+              <Route path="/home" element={<Home />} />
+              <Route path="/" element={<Suspense fallback={<Skeleton variant="dashboard" />}><Dashboard /></Suspense>} />
+              <Route path="/journal" element={<Suspense fallback={<Skeleton variant="journal" />}><DailyJournal /></Suspense>} />
+              <Route path="/trades" element={<Suspense fallback={<Skeleton variant="trade-log" />}><TradeLog /></Suspense>} />
+              <Route path="/import" element={<TradeImport />} />
+              <Route path="/reports" element={<Suspense fallback={<Skeleton variant="reports" />}><Reports /></Suspense>} />
+              <Route path="/weekly-review" element={<WeeklyReview />} />
+              <Route path="/progress-tracker" element={<ProgressTracker />} />
+              <Route path="/notebook" element={<Suspense fallback={<Skeleton variant="notebook" />}><Notebook /></Suspense>} />
+              <Route path="/playbooks" element={<Suspense fallback={<Skeleton variant="playbooks" />}><Playbooks /></Suspense>} />
+              <Route path="/backtesting" element={<Backtesting />} />
+              <Route path="/risk-calculator" element={<RiskCalculator />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Route>
           </Route>
         </Route>
       </Route>
