@@ -95,7 +95,7 @@ export const PLANS = [
     },
     features: [
       'Everything in Pro',
-      'Unlimited AI assistant queries & deep-dives',
+      'Higher AI assistant usage limits',
       'Risk violation alerts & discipline tracking',
       'Automated tagging & backtesting workspace',
       'Exportable institutional-grade PDF reports',
@@ -130,4 +130,3 @@ export function formatCurrency(amount, currency = CURRENCIES.USD) {
   }
   return `$${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
 }
-
