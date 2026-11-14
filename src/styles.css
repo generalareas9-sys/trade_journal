@@ -3204,3 +3204,18 @@ button:focus-visible, a:focus-visible, [tabindex="0"]:focus-visible { outline: 3
   .psychology-metrics { gap: 8px; }
   .psychology-group { padding: 11px; }
 }
+
+.pending-save-banner { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 18px; border-bottom: 1px solid #efb4b4; background: #fff1f1; color: #842626; }
+.pending-save-banner > div { display: grid; gap: 3px; min-width: 0; }
+.pending-save-banner strong { font-size: 13px; }
+.pending-save-banner span { overflow-wrap: anywhere; color: #8c4a4a; font-size: 12px; }
+.pending-save-banner button { flex: 0 0 auto; }
+.pending-save-restore { border-color: #b7c8f2; background: #eff5ff; color: #223b73; }
+.pending-save-restore span { color: #45608f; }
+.dark-theme .pending-save-banner, [data-theme="dark"] .pending-save-banner { border-color: #733b42; background: #321f25; color: #ffc9c9; }
+.dark-theme .pending-save-banner span, [data-theme="dark"] .pending-save-banner span { color: #e7aaaa; }
+.dark-theme .pending-save-restore, [data-theme="dark"] .pending-save-restore { border-color: #364d78; background: #1d2b45; color: #c9d8ff; }
+.dark-theme .pending-save-restore span, [data-theme="dark"] .pending-save-restore span { color: #b4c6ec; }
+@media (max-width: 520px) {
+  .pending-save-banner { align-items: flex-start; flex-direction: column; padding: 11px 13px; }
+}
