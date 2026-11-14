@@ -4,10 +4,12 @@ import { accounts as demoAccounts, mockTrades } from '../data/mockData'
 import { calculateStats, calculateTradePnl, filterTrades, normalizeTrade, setCurrencyDisplay, symbolPointValues } from '../utils/trading'
 import { useAuth } from './AuthContext'
 import * as repo from '../data/repo'
+import { registerPendingSavesFlusher } from '../data/pendingSaves'
 import { deleteScreenshot, deleteTradeScreenshots } from '../data/storage'
 import { SkeletonCard, SkeletonRows } from '../components/UiElements'
 
 const DATA_SCHEMA_VERSION = 5
+const pendingBackupKey = (userId) => `trade-journal-pending-backup:${userId}`
 const LEGACY_KEYS = {
   trades: 'trade-journal-trades',
   range: 'trade-journal-range',
@@ -207,6 +209,8 @@ export function DataProvider({ children }) {
   const [dataError, setDataError] = useState('')
   const [dataUserId, setDataUserId] = useState('')
   const [saveStatus, setSaveStatus] = useState('saved')
+  const [saveErrorMessage, setSaveErrorMessage] = useState('')
+  const [localBackup, setLocalBackup] = useState(null)
   const [journalSaveStatus, setJournalSaveStatus] = useState('saved')
   const [retryCount, setRetryCount] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -221,6 +225,10 @@ export function DataProvider({ children }) {
   const loadDemoDataRef = useRef(null)
   const profileWriteQueue = useRef(Promise.resolve())
   const journalSaveRef = useRef({ timer: null, ownerId: null, before: null, after: null })
+  const pendingSaveTasksRef = useRef(new Map())
+  const saveTaskQueuesRef = useRef(new Map())
+  const backupWriteStatusRef = useRef(new Map())
+  const restoreInProgressRef = useRef(false)
   const toastTimer = useRef(null)
   userRef.current = user
 
@@ -234,6 +242,146 @@ export function DataProvider({ children }) {
     saveStatusRef.current = status
     setSaveStatus(status)
   }, [])
+
+  const updateTrackedSaveStatus = useCallback(() => {
+    const ownerId = userRef.current?.id
+    const pending = ownerId
+      ? [...pendingSaveTasksRef.current.values()].filter((task) => task.ownerId === ownerId)
+      : []
+    const failed = pending.find((task) => task.failed)
+    if (failed) {
+      setSaveErrorMessage(failed.message)
+      updateSaveStatus('error')
+    } else if (pending.length) {
+      setSaveErrorMessage('')
+      updateSaveStatus('saving')
+    } else {
+      setSaveErrorMessage('')
+      updateSaveStatus('saved')
+    }
+  }, [updateSaveStatus])
+
+  const saveLocalBackup = useCallback((ownerId, additionalSaves = []) => {
+    const pendingSaves = [...pendingSaveTasksRef.current.values()]
+      .filter((task) => task.ownerId === ownerId && task.backupKind && task.backupValue !== undefined)
+      .map((task) => ({ key: task.key, kind: task.backupKind, value: task.backupValue }))
+    const scheduledJournal = journalSaveRef.current.ownerId === ownerId ? journalSaveRef.current : null
+    if (scheduledJournal) {
+      for (const date of new Set([...Object.keys(scheduledJournal.before || {}), ...Object.keys(scheduledJournal.after || {})])) {
+        if (!(date in (scheduledJournal.after || {}))
+          || JSON.stringify(scheduledJournal.before?.[date]) === JSON.stringify(scheduledJournal.after?.[date])) continue
+        pendingSaves.push({ key: `journal:${date}`, kind: 'journal', value: { date, ...scheduledJournal.after[date] } })
+      }
+    }
+    pendingSaves.push(...additionalSaves)
+    const deduplicated = [...new Map(pendingSaves.map((item) => [item.key, item])).values()]
+    const hasFailure = [...pendingSaveTasksRef.current.values()].some((task) => task.ownerId === ownerId && task.failed)
+    const available = hasFailure || Boolean(scheduledJournal) || additionalSaves.length > 0
+    const backup = {
+      userId: ownerId,
+      savedAt: new Date().toISOString(),
+      schemaVersion: DATA_SCHEMA_VERSION,
+      pendingSaves: deduplicated,
+    }
+    try {
+      window.localStorage.setItem(pendingBackupKey(ownerId), JSON.stringify(backup))
+      backupWriteStatusRef.current.set(ownerId, true)
+      setLocalBackup({ ...backup, ownerId, available })
+    } catch (error) {
+      backupWriteStatusRef.current.set(ownerId, false)
+      console.error('Could not write the pending data backup:', error)
+      setLocalBackup({ ...backup, ownerId, available: true, backupError: error?.message || 'Local storage is unavailable.' })
+    }
+    return backup
+  }, [])
+
+  const executeSaveTask = useCallback(async (task) => {
+    task.failed = false
+    updateTrackedSaveStatus()
+    try {
+      const result = await task.run()
+      if (result?.error) throw result.error
+      if (pendingSaveTasksRef.current.get(task.key) === task) {
+        await task.onSuccess?.(result)
+        pendingSaveTasksRef.current.delete(task.key)
+        const ownerHasPending = [...pendingSaveTasksRef.current.values()].some((pendingTask) => pendingTask.ownerId === task.ownerId)
+          || journalSaveRef.current.ownerId === task.ownerId
+        if (!ownerHasPending && !restoreInProgressRef.current) {
+          try {
+            window.localStorage.removeItem(pendingBackupKey(task.ownerId))
+            setLocalBackup((current) => current?.ownerId === task.ownerId ? null : current)
+          } catch (error) {
+            console.error('Could not clear the pending data backup:', error)
+          }
+        } else {
+          saveLocalBackup(task.ownerId)
+        }
+      }
+      updateTrackedSaveStatus()
+      if (task.backupKind === 'journal') {
+        const hasPendingJournal = [...pendingSaveTasksRef.current.values()].some((pendingTask) => pendingTask.ownerId === task.ownerId && pendingTask.backupKind === 'journal')
+          || journalSaveRef.current.ownerId === task.ownerId
+        setJournalSaveStatus(hasPendingJournal ? 'saving' : 'saved')
+      }
+      return result
+    } catch (error) {
+      console.error(`Could not save ${task.label}:`, error)
+      if (pendingSaveTasksRef.current.get(task.key) === task) {
+        task.failed = true
+        task.message = error?.message || `Could not save ${task.label}.`
+        saveLocalBackup(task.ownerId)
+        setSaveErrorMessage(task.message)
+        updateSaveStatus('error')
+        if (task.backupKind === 'journal') setJournalSaveStatus('error')
+      }
+      return { data: null, error }
+    }
+  }, [saveLocalBackup, updateSaveStatus, updateTrackedSaveStatus])
+
+  const enqueueSaveTask = useCallback((key, ownerId, label, run, onSuccess, backupKind, backupValue) => {
+    const task = {
+      key,
+      ownerId,
+      label,
+      run,
+      onSuccess,
+      backupKind,
+      backupValue,
+      failed: false,
+      message: '',
+      promise: null,
+    }
+    pendingSaveTasksRef.current.set(key, task)
+    saveLocalBackup(ownerId)
+    updateTrackedSaveStatus()
+    if (backupKind === 'journal') setJournalSaveStatus('saving')
+    const previous = saveTaskQueuesRef.current.get(key) || Promise.resolve()
+    task.promise = previous.catch(() => undefined).then(() => {
+      if (pendingSaveTasksRef.current.get(key) !== task) return { data: null, error: null }
+      return executeSaveTask(task)
+    })
+    saveTaskQueuesRef.current.set(key, task.promise)
+    void task.promise.then(() => {
+      if (saveTaskQueuesRef.current.get(key) === task.promise) saveTaskQueuesRef.current.delete(key)
+    }, () => {
+      if (saveTaskQueuesRef.current.get(key) === task.promise) saveTaskQueuesRef.current.delete(key)
+    })
+    return task.promise
+  }, [executeSaveTask, saveLocalBackup, updateTrackedSaveStatus])
+
+  const retryPendingSaves = useCallback(async () => {
+    const ownerId = userRef.current?.id
+    if (!ownerId) return { error: new Error('Sign in before retrying saves.') }
+    const tasks = [...pendingSaveTasksRef.current.values()].filter((task) => task.ownerId === ownerId)
+    if (!tasks.length) {
+      if (localBackup?.ownerId === ownerId) return { error: new Error('Restore the local backup to retry these changes.') }
+      return { error: null }
+    }
+    const results = await Promise.all(tasks.map((task) => task.failed
+      ? executeSaveTask(task)
+      : task.promise || Promise.resolve({ error: null })))
+    return { error: results.find((result) => result?.error)?.error || null }
+  }, [executeSaveTask, localBackup])
 
   const applyData = useCallback((updater) => {
     const next = typeof updater === 'function' ? updater(dataRef.current) : updater
@@ -321,7 +469,7 @@ export function DataProvider({ children }) {
             : themePreference === 'dark'
           : true,
       }
-      if (quiet && saveStatusRef.current === 'saving') return
+      if (quiet && ['saving', 'error'].includes(saveStatusRef.current)) return
       if (shouldLoadDemoData) {
         const markerResult = await repo.updateProfileSettings(currentUser.id, {
           ...storedSettings,
@@ -344,6 +492,22 @@ export function DataProvider({ children }) {
       setDataUserId(currentUser.id)
       setDataError('')
       lastBackgroundRefreshRef.current = Date.now()
+      try {
+        const storedBackup = window.localStorage.getItem(pendingBackupKey(currentUser.id))
+        if (storedBackup) {
+          const parsedBackup = JSON.parse(storedBackup)
+          if (parsedBackup?.userId === currentUser.id && Array.isArray(parsedBackup.pendingSaves)) {
+            backupWriteStatusRef.current.set(currentUser.id, true)
+            setLocalBackup({ ...parsedBackup, ownerId: currentUser.id, available: true, loadedFromDisk: true })
+          }
+        } else {
+          setLocalBackup((current) => current?.ownerId === currentUser.id ? null : current)
+        }
+      } catch (error) {
+        backupWriteStatusRef.current.set(currentUser.id, false)
+        console.error('Could not read the pending data backup:', error)
+        setLocalBackup({ ownerId: currentUser.id, available: true, backupError: error?.message || 'The local backup could not be read.' })
+      }
       if (shouldLoadDemoData) {
         const loadDemoData = loadDemoDataRef.current
         if (!loadDemoData) {
@@ -370,6 +534,7 @@ export function DataProvider({ children }) {
     if (!currentUser) {
       loadRequestRef.current += 1
       if (dataUserIdRef.current) {
+        if (journalSaveRef.current.ownerId) saveLocalBackup(journalSaveRef.current.ownerId)
         window.clearTimeout(journalSaveRef.current.timer)
         journalSaveRef.current = { timer: null, ownerId: null, before: null, after: null }
         dataRef.current = defaultData()
@@ -387,6 +552,9 @@ export function DataProvider({ children }) {
     const isNewUser = dataUserIdRef.current !== currentUser.id
     if (isNewUser) {
       loadRequestRef.current += 1
+      if (journalSaveRef.current.ownerId && journalSaveRef.current.ownerId !== currentUser.id) {
+        saveLocalBackup(journalSaveRef.current.ownerId)
+      }
       window.clearTimeout(journalSaveRef.current.timer)
       journalSaveRef.current = { timer: null, ownerId: null, before: null, after: null }
       dataRef.current = defaultData()
@@ -401,7 +569,7 @@ export function DataProvider({ children }) {
     void loadAccountData(currentUser, { quiet: !isNewUser, isActive: () => active })
 
     return () => { active = false }
-  }, [user?.id, retryCount, loadAccountData])
+  }, [user?.id, retryCount, loadAccountData, saveLocalBackup])
 
   useEffect(() => {
     const currentUserId = user?.id
@@ -438,28 +606,18 @@ export function DataProvider({ children }) {
     profile: current.profile,
   }), [])
 
-  const persistProfileSettings = useCallback((snapshot, rollback) => {
+  const persistProfileSettings = useCallback((snapshot) => {
     const userId = userRef.current?.id
-    if (!userId) return
-    updateSaveStatus('saving')
-    profileWriteQueue.current = profileWriteQueue.current.then(async () => {
-      if (userRef.current?.id !== userId) return
-      const result = await repo.updateProfileSettings(userId, snapshot)
-      if (userRef.current?.id !== userId) return
-      if (result.error) {
-        rollback?.()
-        updateSaveStatus('error')
-        notify(`Could not save settings: ${result.error.message || 'Unknown error'}`)
-      } else {
-        updateSaveStatus('saved')
-      }
-    }).catch((error) => {
-      console.error('Unexpected profile settings save failure:', error)
-      rollback?.()
-      updateSaveStatus('error')
-      notify(`Could not save settings: ${error?.message || 'Unknown error'}`)
-    })
-  }, [notify])
+    if (!userId) return Promise.resolve({ error: new Error('Sign in before saving settings.') })
+    return enqueueSaveTask('profile-settings', userId, 'save settings', () => {
+      const write = profileWriteQueue.current.catch(() => undefined).then(() => {
+        if (userRef.current?.id !== userId) return { error: new Error('User changed before settings were saved.') }
+        return repo.updateProfileSettings(userId, snapshot)
+      })
+      profileWriteQueue.current = write.then(() => undefined)
+      return write
+    }, null, 'settings', snapshot)
+  }, [enqueueSaveTask])
 
   const updateSettingsSlot = useCallback((key, value) => {
     const current = dataRef.current
@@ -467,9 +625,7 @@ export function DataProvider({ children }) {
     const nextValue = typeof value === 'function' ? value(previous) : value
     const next = applyData((state) => ({ ...state, [key]: nextValue }))
     const snapshot = profileSettingsSnapshot(next)
-    persistProfileSettings(snapshot, () => {
-      applyData((state) => state[key] === nextValue ? { ...state, [key]: previous } : state)
-    })
+    void persistProfileSettings(snapshot)
     return nextValue
   }, [applyData, persistProfileSettings, profileSettingsSnapshot])
 
@@ -477,7 +633,14 @@ export function DataProvider({ children }) {
   const accountTrades = useMemo(() => data.trades.filter((trade) => !data.account || data.account === 'all' || trade.account === data.account), [data.trades, data.account])
   const filteredTrades = useMemo(() => rangedTrades.filter((trade) => !data.account || data.account === 'all' || trade.account === data.account), [rangedTrades, data.account])
   const stats = useMemo(() => calculateStats(filteredTrades), [filteredTrades])
-  const tempId = useCallback((prefix) => `${prefix}-pending-${Date.now()}-${tradeSequence++}`, [])
+  const tempId = useCallback(() => {
+    if (window.crypto?.randomUUID) return window.crypto.randomUUID()
+    const seed = `${Date.now()}-${tradeSequence++}`
+    return `xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx`.replace(/[xy]/g, (character, index) => {
+      const random = (seed.charCodeAt(index % seed.length) + Math.floor(Math.random() * 16)) % 16
+      return (character === 'x' ? random : (random & 0x3) | 0x8).toString(16)
+    })
+  }, [])
 
   const addTrade = useCallback(async (trade) => {
     const ownerId = userRef.current?.id
@@ -489,20 +652,12 @@ export function DataProvider({ children }) {
     prepared.outcome = prepared.result
     prepared.rrr = prepared.rrr ?? prepared.rMultiple
     applyData((current) => ({ ...current, trades: [prepared, ...current.trades] }))
-    updateSaveStatus('saving')
-    const result = await repo.createTrade(prepared)
-    if (userRef.current?.id !== ownerId) return { data: null, error: new Error('User changed before the trade was saved.') }
-    if (result.error) {
-      applyData((current) => ({ ...current, trades: current.trades.filter((item) => item.id !== id) }))
-      updateSaveStatus('error')
-      notify(`Could not save trade: ${result.error.message || 'Unknown error'}`)
-      return result
-    }
-    applyData((current) => ({ ...current, trades: current.trades.map((item) => item.id === id ? normalizeTrade(result.data) : item) }))
-    updateSaveStatus('saved')
-    notify('Trade saved.')
-    return result
-  }, [applyData, notify, tempId])
+    return enqueueSaveTask(`trade:${id}`, ownerId, 'save trade', () => repo.upsertTrade(ownerId, prepared), (result) => {
+      if (userRef.current?.id !== ownerId) return
+      applyData((current) => ({ ...current, trades: current.trades.map((item) => item.id === id ? normalizeTrade(result.data) : item) }))
+      notify('Trade saved.')
+    }, 'trade', prepared)
+  }, [applyData, enqueueSaveTask, notify, tempId])
 
   const updateTrade = useCallback(async (id, updates) => {
     const ownerId = userRef.current?.id
@@ -520,27 +675,19 @@ export function DataProvider({ children }) {
       prepared.rrr = prepared.rrr ?? prepared.rMultiple
     }
     applyData((current) => ({ ...current, trades: current.trades.map((trade) => trade.id === id ? prepared : trade) }))
-    updateSaveStatus('saving')
-    const result = await repo.updateTrade(id, prepared)
-    if (userRef.current?.id !== ownerId) return { data: null, error: new Error('User changed before the trade was updated.') }
-    if (result.error) {
-      applyData((current) => ({ ...current, trades: current.trades.map((trade) => trade.id === id && trade === prepared ? before : trade) }))
-      updateSaveStatus('error')
-      notify(`Could not update trade: ${result.error.message || 'Unknown error'}`)
-      return result
-    }
-    applyData((current) => ({ ...current, trades: current.trades.map((trade) => trade.id === id && trade === prepared ? normalizeTrade(result.data) : trade) }))
-    for (const kind of ['Before', 'After']) {
-      const field = `screenshot${kind}`
-      if (before[field] && before[field] !== prepared[field]) {
-        const removal = await deleteScreenshot(before[field])
-        if (removal.error) console.warn(`Could not delete replaced trade screenshot: ${removal.error.message || removal.error}`)
+    return enqueueSaveTask(`trade:${id}`, ownerId, 'update trade', () => repo.upsertTrade(ownerId, prepared), async (result) => {
+      if (userRef.current?.id !== ownerId) return
+      applyData((current) => ({ ...current, trades: current.trades.map((trade) => trade.id === id ? normalizeTrade(result.data) : trade) }))
+      for (const kind of ['Before', 'After']) {
+        const field = `screenshot${kind}`
+        if (before[field] && before[field] !== prepared[field]) {
+          const removal = await deleteScreenshot(before[field])
+          if (removal.error) console.warn(`Could not delete replaced trade screenshot: ${removal.error.message || removal.error}`)
+        }
       }
-    }
-    updateSaveStatus('saved')
-    notify('Trade updated.')
-    return result
-  }, [applyData, notify])
+      notify('Trade updated.')
+    }, 'trade', prepared)
+  }, [applyData, enqueueSaveTask, notify])
 
   const deleteTrade = useCallback((id) => {
     const ownerId = userRef.current?.id
@@ -576,37 +723,20 @@ export function DataProvider({ children }) {
       return prepared
     })
     applyData((current) => ({ ...current, trades: [...imported, ...current.trades] }))
-    updateSaveStatus('saving')
-    void repo.insertTradesBulk(imported).then((result) => {
+    void enqueueSaveTask(`trade-import:${importBatchId}`, ownerId, 'import trades', () => repo.upsertTradesBulk(ownerId, imported), (result) => {
       if (userRef.current?.id !== ownerId) return
-      const failedIndexes = new Set()
-      for (const failed of result.data?.failedChunks || []) {
-        for (let index = failed.startIndex; index < failed.startIndex + failed.count; index += 1) failedIndexes.add(index)
-      }
-      const idsByIndex = new Map((result.data?.insertedTrades || []).map(({ index, trade }) => [index, trade]))
+      const byId = new Map((result.data?.insertedTrades || []).map(({ trade }) => [trade.id, trade]))
       applyData((current) => ({
         ...current,
-        trades: current.trades.flatMap((trade) => {
-          const index = imported.findIndex((item) => item.id === trade.id)
-          if (index < 0) return [trade]
-          if (failedIndexes.has(index)) return []
-          const stored = idsByIndex.get(index)
-          if (!stored) return [trade]
-          const { _importIndex, ...clean } = stored
-          return [normalizeTrade({ ...trade, ...clean, id: stored.id })]
+        trades: current.trades.map((trade) => {
+          const stored = byId.get(trade.id)
+          return stored ? normalizeTrade({ ...trade, ...stored }) : trade
         }),
       }))
-      const failures = failedIndexes.size
-      if (failures) {
-        updateSaveStatus('error')
-        notify(`${(result.data?.insertedCount || 0)} trades imported; ${failures} failed. ${result.error?.message || ''}`.trim())
-      } else {
-        updateSaveStatus('saved')
-        notify(`${result.data?.insertedCount || 0} trades imported.`)
-      }
-    })
+      notify(`${result.data?.insertedCount || imported.length} trades imported.`)
+    }, 'trades', imported)
     return imported.length
-  }, [applyData, notify, tempId])
+  }, [applyData, enqueueSaveTask, notify, tempId])
 
   const undoImport = useCallback((importBatchId) => {
     const ownerId = userRef.current?.id
@@ -732,43 +862,82 @@ export function DataProvider({ children }) {
       const id = idFor(item)
       const oldItem = beforeById.get(id)
       const isNew = !oldItem
-      const isTemp = String(item.id).includes('-pending-')
-      const create = type === 'notes' ? repo.createNote : type === 'playbooks' ? repo.createPlaybook : repo.createAccount
-      const update = type === 'notes' ? repo.updateNote : type === 'playbooks' ? repo.updatePlaybook : repo.updateAccount
-      if (isNew || isTemp) {
-        pendingWrites += 1
-        void create(item).then((result) => {
-          if (userRef.current?.id !== ownerId) return
-          if (result.error) {
-            applyData((current) => ({ ...current, [key]: current[key].filter((candidate) => candidate.id !== item.id) }))
-            updateSaveStatus('error')
-            notify(`Could not create ${type.slice(0, -1)}: ${result.error.message || 'Unknown error'}`)
-            return
-          }
-          applyData((current) => ({ ...current, [key]: current[key].map((candidate) => candidate.id === item.id ? result.data : candidate) }))
-          completeWrite()
-        })
-      } else if (JSON.stringify(oldItem) !== JSON.stringify(item)) {
-        pendingWrites += 1
-        void update(oldItem.id, item).then((result) => {
-          if (userRef.current?.id !== ownerId) return
-          if (result.error) {
-            applyData((current) => ({ ...current, [key]: current[key].map((candidate) => candidate.id === item.id && candidate === item ? oldItem : candidate) }))
-            updateSaveStatus('error')
-            notify(`Could not update ${type.slice(0, -1)}: ${result.error.message || 'Unknown error'}`)
-          } else {
+      if (isNew) {
+        const save = type === 'notes' ? repo.upsertNote : type === 'playbooks' ? repo.upsertPlaybook : repo.upsertAccount
+        void enqueueSaveTask(`${type}:${item.id}`, ownerId, `save ${type.slice(0, -1)}`, () => save(ownerId, item), (result) => {
+          if (userRef.current?.id === ownerId) {
             applyData((current) => ({ ...current, [key]: current[key].map((candidate) => candidate.id === item.id ? result.data : candidate) }))
-            completeWrite()
           }
-        })
+        }, type.slice(0, -1), item)
+      } else if (JSON.stringify(oldItem) !== JSON.stringify(item)) {
+        const save = type === 'notes' ? repo.upsertNote : type === 'playbooks' ? repo.upsertPlaybook : repo.upsertAccount
+        void enqueueSaveTask(`${type}:${item.id}`, ownerId, `save ${type.slice(0, -1)}`, () => save(ownerId, item), (result) => {
+          if (userRef.current?.id === ownerId) {
+            applyData((current) => ({ ...current, [key]: current[key].map((candidate) => candidate.id === item.id ? result.data : candidate) }))
+          }
+        }, type.slice(0, -1), item)
       }
     }
-    if (pendingWrites === 0 && JSON.stringify(before) !== JSON.stringify(normalizedAfter)) updateSaveStatus('saved')
-  }, [applyData, notify, tempId])
+    if (pendingWrites === 0 && JSON.stringify(before) !== JSON.stringify(normalizedAfter)) updateTrackedSaveStatus()
+  }, [applyData, enqueueSaveTask, notify, tempId, updateTrackedSaveStatus, updateSaveStatus])
 
   const setNotes = useCallback((next) => { replaceArray('notes', next, 'notes') }, [replaceArray])
   const setPlaybooks = useCallback((next) => { replaceArray('playbooks', next, 'playbooks') }, [replaceArray])
   const setAccounts = useCallback((next) => { replaceArray('accounts', next, 'accounts') }, [replaceArray])
+
+  const persistJournalScheduled = useCallback(async (scheduled) => {
+    if (userRef.current?.id !== scheduled.ownerId) {
+      saveLocalBackup(scheduled.ownerId)
+      return { error: new Error('The active account changed before the journal entry was saved.') }
+    }
+    scheduled.inFlight = true
+    const dates = new Set([...Object.keys(scheduled.before || {}), ...Object.keys(scheduled.after || {})])
+    const writes = [...dates].filter((date) => JSON.stringify(scheduled.before?.[date]) !== JSON.stringify(scheduled.after?.[date]))
+    const results = await Promise.all(writes.map(async (date) => {
+      if (date in scheduled.after) {
+        const entry = { ...scheduled.after[date], date, userId: scheduled.ownerId }
+        return {
+          date,
+          isDelete: false,
+          result: await enqueueSaveTask(`journal:${date}`, scheduled.ownerId, 'save journal entry', () => repo.upsertJournalEntry(entry), null, 'journal', entry),
+        }
+      }
+      return { date, isDelete: true, result: await repo.deleteJournalEntry(date) }
+    }))
+    if (userRef.current?.id !== scheduled.ownerId) return { error: new Error('The active account changed during the journal save.') }
+    const failures = results.filter(({ result }) => result.error)
+    const deleteFailures = failures.filter(({ isDelete }) => isDelete)
+    if (deleteFailures.length) {
+      applyData((current) => {
+        const journal = { ...current.journal }
+        for (const { date } of deleteFailures) {
+          if (JSON.stringify(journal[date]) !== JSON.stringify(scheduled.after[date])) continue
+          if (date in scheduled.before) journal[date] = scheduled.before[date]
+          else delete journal[date]
+        }
+        return { ...current, journal }
+      })
+      notify(`Could not delete journal entry: ${deleteFailures[0].result.error.message || 'Unknown error'}`)
+    }
+    if (journalSaveRef.current === scheduled) {
+      journalSaveRef.current = { timer: null, ownerId: null, before: null, after: null }
+    }
+    const hasPendingJournal = [...pendingSaveTasksRef.current.values()].some((task) => task.ownerId === scheduled.ownerId && task.backupKind === 'journal')
+    const hasPendingOwnerTasks = [...pendingSaveTasksRef.current.values()].some((task) => task.ownerId === scheduled.ownerId)
+    if (!hasPendingOwnerTasks) {
+      try {
+        window.localStorage.removeItem(pendingBackupKey(scheduled.ownerId))
+        setLocalBackup((current) => current?.ownerId === scheduled.ownerId ? null : current)
+      } catch (error) {
+        console.error('Could not clear the pending journal backup:', error)
+      }
+    } else {
+      saveLocalBackup(scheduled.ownerId)
+    }
+    setJournalSaveStatus(failures.length ? 'error' : hasPendingJournal ? 'saving' : 'saved')
+    updateTrackedSaveStatus()
+    return { error: failures[0]?.result.error || null }
+  }, [applyData, enqueueSaveTask, notify, saveLocalBackup, updateTrackedSaveStatus])
 
   const setJournal = useCallback((value) => {
     const ownerId = userRef.current?.id
@@ -785,51 +954,152 @@ export function DataProvider({ children }) {
     if (!writes.length) {
       if (pending?.inFlight) return after
       journalSaveRef.current = { timer: null, ownerId, before: null, after: null }
-      updateSaveStatus('saved')
+      updateTrackedSaveStatus()
       setJournalSaveStatus('saved')
       return after
     }
 
     updateSaveStatus('saving')
     setJournalSaveStatus('saving')
-    const scheduled = { timer: null, ownerId, before: original, after, inFlight: false }
-    scheduled.timer = window.setTimeout(async () => {
-      if (userRef.current?.id !== ownerId) return
-      scheduled.inFlight = true
-      const results = await Promise.all(writes.map(async (date) => ({
-        date,
-        result: date in after
-          ? await repo.upsertJournalEntry({ date, ...after[date] })
-          : await repo.deleteJournalEntry(date),
-      })))
-      if (userRef.current?.id !== ownerId) return
-      const failures = results.filter(({ result }) => result.error)
-      if (failures.length) {
-        applyData((current) => {
-          const journal = { ...current.journal }
-          for (const { date } of failures) {
-            if (JSON.stringify(journal[date]) !== JSON.stringify(after[date])) continue
-            if (date in original) journal[date] = original[date]
-            else delete journal[date]
-          }
-          return { ...current, journal }
-        })
-        updateSaveStatus('error')
-        setJournalSaveStatus('error')
-        notify(`Could not save journal entry: ${failures[0].result.error.message || 'Unknown error'}`)
-      } else if (journalSaveRef.current === scheduled) {
-        updateSaveStatus('saved')
-        setJournalSaveStatus('saved')
-      }
-      if (journalSaveRef.current === scheduled) {
-        journalSaveRef.current = { timer: null, ownerId: null, before: null, after: null }
-      }
+    const scheduled = { timer: null, ownerId, before: original, after, inFlight: false, promise: null }
+    scheduled.timer = window.setTimeout(() => {
+      scheduled.promise = persistJournalScheduled(scheduled)
     }, 500)
     journalSaveRef.current = scheduled
+    saveLocalBackup(ownerId)
     return after
-  }, [applyData, notify])
+  }, [applyData, persistJournalScheduled, saveLocalBackup, updateSaveStatus, updateTrackedSaveStatus])
 
-  useEffect(() => () => window.clearTimeout(journalSaveRef.current.timer), [])
+  useEffect(() => () => {
+    const scheduled = journalSaveRef.current
+    if (scheduled?.ownerId) saveLocalBackup(scheduled.ownerId)
+    window.clearTimeout(scheduled?.timer)
+  }, [saveLocalBackup])
+
+  const flushPendingSaves = useCallback(async () => {
+    const ownerId = userRef.current?.id
+    if (!ownerId) return { error: null }
+    const scheduled = journalSaveRef.current.ownerId === ownerId ? journalSaveRef.current : null
+    if (scheduled) {
+      window.clearTimeout(scheduled.timer)
+      scheduled.timer = null
+      if (!scheduled.promise) scheduled.promise = persistJournalScheduled(scheduled)
+      const journalResult = await scheduled.promise
+      if (journalResult?.error && !backupWriteStatusRef.current.get(ownerId)) {
+        return { error: journalResult.error, backupSaved: false }
+      }
+    }
+    await profileWriteQueue.current
+    const tasks = [...pendingSaveTasksRef.current.values()].filter((task) => task.ownerId === ownerId)
+    const results = await Promise.all(tasks.map((task) => task.failed
+      ? executeSaveTask(task)
+      : task.promise || Promise.resolve({ error: null })))
+    const failure = results.find((result) => result?.error)?.error
+    if (failure) return { error: failure, backupSaved: backupWriteStatusRef.current.get(ownerId) === true }
+    if ([...pendingSaveTasksRef.current.values()].some((task) => task.ownerId === ownerId && task.failed)) {
+      return {
+        error: new Error('Some changes could not be saved. Retry before signing out.'),
+        backupSaved: backupWriteStatusRef.current.get(ownerId) === true,
+      }
+    }
+    return { error: null }
+  }, [executeSaveTask, persistJournalScheduled])
+
+  useEffect(() => registerPendingSavesFlusher(flushPendingSaves), [flushPendingSaves])
+
+  useEffect(() => {
+    const flushWhenHidden = () => {
+      if (document.visibilityState === 'hidden') void flushPendingSaves()
+    }
+    const flushOnPageHide = () => { void flushPendingSaves() }
+    document.addEventListener('visibilitychange', flushWhenHidden)
+    window.addEventListener('pagehide', flushOnPageHide)
+    return () => {
+      document.removeEventListener('visibilitychange', flushWhenHidden)
+      window.removeEventListener('pagehide', flushOnPageHide)
+    }
+  }, [flushPendingSaves])
+
+  const restoreLocalBackup = useCallback(async () => {
+    const ownerId = userRef.current?.id
+    if (!ownerId || localBackup?.ownerId !== ownerId) return { error: new Error('No backup is available for this account.') }
+    if (localBackup.backupError) return { error: new Error(localBackup.backupError) }
+    if (!Array.isArray(localBackup.pendingSaves)) return { error: new Error('The local backup format is not valid.') }
+    const supportedKinds = new Set(['trade', 'trades', 'journal', 'note', 'playbook', 'account', 'settings', 'profile'])
+    if (localBackup.pendingSaves.some((saved) => !supportedKinds.has(saved?.kind) || !saved.key || !saved.value)) {
+      return { error: new Error('The local backup contains an unsupported or incomplete change.') }
+    }
+    restoreInProgressRef.current = true
+    const restoredTasks = []
+    const orderedSaves = [...localBackup.pendingSaves].sort((a, b) => Number(b.kind === 'account') - Number(a.kind === 'account'))
+    for (const saved of orderedSaves) {
+      const { kind, value } = saved
+      if (!kind || !value) continue
+      let run
+      let apply
+      if (kind === 'trades' && Array.isArray(value)) {
+        run = () => repo.upsertTradesBulk(ownerId, value)
+        apply = (current, result) => {
+          const stored = new Map((result.data?.insertedTrades || []).map(({ trade }) => [trade.id, trade]))
+          return {
+            ...current,
+            trades: [...value.map((trade) => normalizeTrade({ ...trade, ...stored.get(trade.id) })), ...current.trades.filter((trade) => !value.some((savedTrade) => savedTrade.id === trade.id))],
+          }
+        }
+      } else if (kind === 'trade') {
+        run = () => repo.upsertTrade(ownerId, value)
+        apply = (current, result) => ({ ...current, trades: [result.data, ...current.trades.filter((item) => item.id !== value.id)] })
+      } else if (kind === 'journal') {
+        const entry = { ...value, userId: ownerId }
+        run = () => repo.upsertJournalEntry(entry)
+        apply = (current) => ({ ...current, journal: { ...current.journal, [entry.date]: entry } })
+      } else if (kind === 'note' || kind === 'playbook' || kind === 'account') {
+        const save = kind === 'note' ? repo.upsertNote : kind === 'playbook' ? repo.upsertPlaybook : repo.upsertAccount
+        const collection = kind === 'note' ? 'notes' : kind === 'playbook' ? 'playbooks' : 'accounts'
+        run = () => save(ownerId, value)
+        apply = (current, result) => ({ ...current, [collection]: [result.data, ...current[collection].filter((item) => item.id !== value.id)] })
+      } else if (kind === 'settings') {
+        run = () => repo.updateProfileSettings(ownerId, value)
+        apply = (current) => ({
+          ...current,
+          settings: { ...current.settings, ...(value.appSettings || {}) },
+          importSettings: { ...current.importSettings, ...(value.importSettings || {}) },
+          playbookChecklists: value.playbookChecklists || current.playbookChecklists,
+          profile: value.profile || current.profile,
+        })
+      } else if (kind === 'profile') {
+        run = () => repo.updateProfileDisplayName(ownerId, value.name || '')
+        apply = (current) => ({ ...current, profile: value })
+      }
+      if (!run) continue
+      const optimisticResult = kind === 'trades' ? { data: { insertedTrades: [] } } : { data: value }
+      applyData((current) => apply(current, optimisticResult))
+      const task = enqueueSaveTask(saved.key, ownerId, `restore ${kind}`, run, (result) => {
+        applyData((current) => apply(current, result))
+      }, kind, value)
+      if (kind === 'account') {
+        const accountResult = await task
+        if (accountResult?.error) {
+          restoreInProgressRef.current = false
+          return accountResult
+        }
+      } else restoredTasks.push(task)
+    }
+    const results = await Promise.all(restoredTasks)
+    restoreInProgressRef.current = false
+    const error = results.find((result) => result?.error)?.error || null
+    const remaining = [...pendingSaveTasksRef.current.values()].some((task) => task.ownerId === ownerId)
+    if (!error && !remaining) {
+      try {
+        window.localStorage.removeItem(pendingBackupKey(ownerId))
+        setLocalBackup(null)
+      } catch (storageError) {
+        console.error('Could not clear the restored data backup:', storageError)
+        return { error: storageError }
+      }
+    }
+    return { error }
+  }, [applyData, enqueueSaveTask, localBackup])
 
   const setTrades = useCallback((value) => {
     const ownerId = userRef.current?.id
@@ -853,26 +1123,20 @@ export function DataProvider({ children }) {
     for (const trade of normalized) {
       const oldTrade = before.find((item) => item.id === trade.id)
       if (!oldTrade) {
-        void repo.createTrade(trade).then((result) => {
-          if (userRef.current?.id !== ownerId) return
-          if (result.error) {
-            applyData((current) => ({ ...current, trades: current.trades.filter((item) => item.id !== trade.id) }))
-            notify(`Could not save trade: ${result.error.message || 'Unknown error'}`)
-          } else {
+        void enqueueSaveTask(`trade:${trade.id}`, ownerId, 'save trade', () => repo.upsertTrade(ownerId, trade), (result) => {
+          if (userRef.current?.id === ownerId) {
             applyData((current) => ({ ...current, trades: current.trades.map((item) => item.id === trade.id ? normalizeTrade(result.data) : item) }))
           }
-        })
+        }, 'trade', trade)
       } else if (JSON.stringify(oldTrade) !== JSON.stringify(trade)) {
-        void repo.updateTrade(oldTrade.id, trade).then((result) => {
-          if (userRef.current?.id !== ownerId) return
-          if (result.error) {
-            applyData((current) => ({ ...current, trades: current.trades.map((item) => item.id === trade.id && item === trade ? oldTrade : item) }))
-            notify(`Could not update trade: ${result.error.message || 'Unknown error'}`)
-          } else applyData((current) => ({ ...current, trades: current.trades.map((item) => item.id === trade.id ? normalizeTrade(result.data) : item) }))
-        })
+        void enqueueSaveTask(`trade:${trade.id}`, ownerId, 'update trade', () => repo.upsertTrade(ownerId, trade), (result) => {
+          if (userRef.current?.id === ownerId) {
+            applyData((current) => ({ ...current, trades: current.trades.map((item) => item.id === trade.id ? normalizeTrade(result.data) : item) }))
+          }
+        }, 'trade', trade)
       }
     }
-  }, [applyData, notify, tempId])
+  }, [applyData, enqueueSaveTask, notify, tempId])
 
   const clearAllTrades = useCallback(async () => {
     const ownerId = userRef.current?.id
@@ -896,15 +1160,13 @@ export function DataProvider({ children }) {
     const id = tempId('account')
     const optimistic = { ...account, id }
     applyData((current) => ({ ...current, accounts: [optimistic, ...current.accounts] }))
-    void repo.createAccount(optimistic).then((result) => {
-      if (userRef.current?.id !== ownerId) return
-      if (result.error) {
-        applyData((current) => ({ ...current, accounts: current.accounts.filter((item) => item.id !== id) }))
-        notify(`Could not create account: ${result.error.message || 'Unknown error'}`)
-      } else applyData((current) => ({ ...current, accounts: current.accounts.map((item) => item.id === id ? result.data : item) }))
-    })
+    void enqueueSaveTask(`account:${id}`, ownerId, 'save account', () => repo.upsertAccount(ownerId, optimistic), (result) => {
+      if (userRef.current?.id === ownerId) {
+        applyData((current) => ({ ...current, accounts: current.accounts.map((item) => item.id === id ? result.data : item) }))
+      }
+    }, 'account', optimistic)
     return optimistic
-  }, [applyData, notify, tempId])
+  }, [applyData, enqueueSaveTask, tempId])
 
   const updateAccount = useCallback((id, patch) => {
     const ownerId = userRef.current?.id
@@ -913,15 +1175,13 @@ export function DataProvider({ children }) {
     if (!before) return null
     const optimistic = { ...before, ...patch }
     applyData((current) => ({ ...current, accounts: current.accounts.map((item) => item.id === id ? optimistic : item) }))
-    void repo.updateAccount(id, patch).then((result) => {
-      if (userRef.current?.id !== ownerId) return
-      if (result.error) {
-        applyData((current) => ({ ...current, accounts: current.accounts.map((item) => item.id === id && item === optimistic ? before : item) }))
-        notify(`Could not update account: ${result.error.message || 'Unknown error'}`)
-      } else applyData((current) => ({ ...current, accounts: current.accounts.map((item) => item.id === id ? result.data : item) }))
-    })
+    void enqueueSaveTask(`account:${id}`, ownerId, 'update account', () => repo.upsertAccount(ownerId, optimistic), (result) => {
+      if (userRef.current?.id === ownerId) {
+        applyData((current) => ({ ...current, accounts: current.accounts.map((item) => item.id === id ? result.data : item) }))
+      }
+    }, 'account', optimistic)
     return optimistic
-  }, [applyData, notify])
+  }, [applyData, enqueueSaveTask])
 
   const deleteAccount = useCallback((id) => {
     const ownerId = userRef.current?.id
@@ -941,17 +1201,14 @@ export function DataProvider({ children }) {
 
   const setProfile = useCallback((value) => {
     const ownerId = userRef.current?.id
-    const before = dataRef.current.profile
-    const nextValue = typeof value === 'function' ? value(before) : value
+    const nextValue = typeof value === 'function' ? value(dataRef.current.profile) : value
     applyData((current) => ({ ...current, profile: nextValue }))
-    if (ownerId) void repo.updateProfileDisplayName(ownerId, nextValue.name || '').then(async (result) => {
-      if (userRef.current?.id !== ownerId) return
-      if (result.error) {
-        applyData((current) => ({ ...current, profile: current.profile === nextValue ? before : current.profile }))
-        notify(`Could not update profile: ${result.error.message || 'Unknown error'}`)
-      } else await refreshProfile()
-    })
-  }, [applyData, notify, refreshProfile])
+    if (ownerId) {
+      void enqueueSaveTask('profile-display-name', ownerId, 'save profile', () => repo.updateProfileDisplayName(ownerId, nextValue.name || ''), async () => {
+        if (userRef.current?.id === ownerId) await refreshProfile()
+      }, 'profile', nextValue)
+    }
+  }, [applyData, enqueueSaveTask, refreshProfile])
 
   const replaceData = useCallback((nextData) => {
     const migrated = migrateData(nextData, nextData.schemaVersion || 1)
@@ -1050,6 +1307,11 @@ export function DataProvider({ children }) {
     storageUsage,
     storageLimit: 5 * 1024 * 1024,
     saveStatus,
+    saveErrorMessage,
+    localBackup,
+    retryPendingSaves,
+    restoreLocalBackup,
+    flushPendingSaves,
     journalSaveStatus,
     dataLoading,
     dataError,
@@ -1076,15 +1338,34 @@ export function DataProvider({ children }) {
     exportBackup,
     replaceData,
     resetAllData,
-  }), [data, setTrades, clearAllTrades, setLocalValue, setThemeChoice, setProfile, updateSettingsSlot, setPlaybooks, setJournal, setNotes, setAccounts, accountTrades, filteredTrades, stats, storageUsage, saveStatus, journalSaveStatus, dataLoading, dataError, retryLoad, sidebarOpen, addTradeOpen, editingTrade, toast, notify, addTrade, updateTrade, deleteTrade, importTrades, undoImport, removeDemoTrades, loadDemoData, addAccount, updateAccount, deleteAccount, exportBackup, replaceData, resetAllData])
+  }), [data, setTrades, clearAllTrades, setLocalValue, setThemeChoice, setProfile, updateSettingsSlot, setPlaybooks, setJournal, setNotes, setAccounts, accountTrades, filteredTrades, stats, storageUsage, saveStatus, saveErrorMessage, localBackup, retryPendingSaves, restoreLocalBackup, flushPendingSaves, journalSaveStatus, dataLoading, dataError, retryLoad, sidebarOpen, addTradeOpen, editingTrade, toast, notify, addTrade, updateTrade, deleteTrade, importTrades, undoImport, removeDemoTrades, loadDemoData, addAccount, updateAccount, deleteAccount, exportBackup, replaceData, resetAllData])
+
+  const pendingBackupForUser = user && localBackup?.ownerId === user.id && localBackup.loadedFromDisk
+  const saveNotice = <>
+    {user && saveErrorMessage && <section className="pending-save-banner" role="alert">
+      <div><strong>Not saved. Check your connection. Retry</strong><span>{saveErrorMessage}</span></div>
+      <button type="button" className="button-secondary" disabled={saveStatus === 'saving'} onClick={async () => {
+        const result = await retryPendingSaves()
+        if (result.error) setSaveErrorMessage(result.error.message || 'Some changes could not be saved.')
+      }}>Retry</button>
+    </section>}
+    {pendingBackupForUser && <section className="pending-save-banner pending-save-restore" role="status">
+      <div><strong>A local backup has unsaved changes for this account.</strong><span>Restore it to merge those changes and send them to Supabase.</span></div>
+      <button type="button" className="button-primary" disabled={saveStatus === 'saving'} onClick={async () => {
+        const result = await restoreLocalBackup()
+        if (result.error) setSaveErrorMessage(result.error.message || 'The backup could not be restored.')
+      }}>Restore backup</button>
+    </section>}
+  </>
 
   if (user && dataError && dataUserId !== user.id) {
-    return <DataContext.Provider value={value}><main className="page-error-state" role="alert"><strong>Could not load your account data</strong><span>{dataError}</span><button type="button" className="button-primary" onClick={retryLoad}>Retry</button></main></DataContext.Provider>
+    return <DataContext.Provider value={value}>{saveNotice}<main className="page-error-state" role="alert"><strong>Could not load your account data</strong><span>{dataError}</span><button type="button" className="button-primary" onClick={retryLoad}>Retry</button></main></DataContext.Provider>
   }
   if (user && (dataLoading || dataUserId !== user.id)) {
-    return <DataContext.Provider value={value}><main className="data-loading-shell" role="status" aria-label="Loading your account data"><div className="page-content page-loading"><div className="page-loading-stats"><SkeletonCard /><SkeletonCard /><SkeletonCard /></div><div className="page-loading-chart"><SkeletonCard /><SkeletonRows rows={6} /></div></div></main></DataContext.Provider>
+    return <DataContext.Provider value={value}>{saveNotice}<main className="data-loading-shell" role="status" aria-label="Loading your account data"><div className="page-content page-loading"><div className="page-loading-stats"><SkeletonCard /><SkeletonCard /><SkeletonCard /></div><div className="page-loading-chart"><SkeletonCard /><SkeletonRows rows={6} /></div></div></main></DataContext.Provider>
   }
-  return <DataContext.Provider value={value}>{children}</DataContext.Provider>
+
+  return <DataContext.Provider value={value}>{saveNotice}{children}</DataContext.Provider>
 }
 
 export function useData() {
