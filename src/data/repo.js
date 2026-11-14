@@ -25,9 +25,9 @@ function journalMoodFromRow(value) {
 }
 
 function journalMoodToRow(value) {
-  if (Number.isInteger(value) && value >= 1 && value <= JOURNAL_MOODS.length) return value
-  const index = JOURNAL_MOODS.indexOf(value)
-  return index < 0 ? null : index + 1
+  if (Number.isInteger(value) && value >= 1 && value <= JOURNAL_MOODS.length) return JOURNAL_MOODS[value - 1]
+  if (typeof value === 'string') return value
+  return null
 }
 
 function journalNumber(value, fallback = null) {
@@ -310,8 +310,9 @@ export function journalFromRow(row) {
 }
 
 export function journalToRow(entry) {
-  const { date, entry_date: ignoredEntryDate, mood, plan, preMarket, review, ...extra } = entry || {}
+  const { date, entry_date: ignoredEntryDate, userId: ignoredUserId, mood, plan, preMarket, review, ...extra } = entry || {}
   void ignoredEntryDate
+  void ignoredUserId
   const rules = {
     ...extra,
     rules: Array.isArray(entry?.rules) ? entry.rules : [],
@@ -397,9 +398,9 @@ export function accountToRow(account) {
 
 async function runQuery(buildQuery, mapData = (data) => data) {
   try {
-    const { data, error } = await buildQuery()
+    const { data, error, count } = await buildQuery()
     if (error) return { data: null, error: normalizeSupabaseError(error) }
-    return { data: mapData(data), error: null }
+    return { data: mapData(data, count), error: null }
   } catch (error) {
     return { data: null, error: normalizeSupabaseError(error) }
   }
@@ -407,6 +408,16 @@ async function runQuery(buildQuery, mapData = (data) => data) {
 
 async function insertOne(table, value, toRow, fromRowMapper) {
   return runQuery(() => supabase.from(table).insert(toRow(value)).select('*').single(), fromRowMapper)
+}
+
+async function upsertOne(table, userId, value, toRow, fromRowMapper) {
+  if (!userId) return { data: null, error: new Error('A signed-in user is required to save data.') }
+  const row = toRow(value)
+  if (value?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.id)) {
+    row.id = value.id
+  }
+  row.user_id = userId
+  return runQuery(() => supabase.from(table).upsert(row, { onConflict: 'id' }).select('*').single(), fromRowMapper)
 }
 
 async function deleteOne(table, id) {
@@ -438,6 +449,10 @@ export async function createTrade(trade) {
   return insertOne('trades', trade, tradeToRow, tradeFromRow)
 }
 
+export async function upsertTrade(userId, trade) {
+  return upsertOne('trades', userId, trade, tradeToRow, tradeFromRow)
+}
+
 export async function updateTrade(id, patch) {
   const row = tradeToRow(patch)
   delete row.id
@@ -467,6 +482,33 @@ export async function insertTradesBulk(trades) {
     }
   }
   return { data: { insertedCount, failedChunks, insertedTrades }, error: failedChunks.length ? failedChunks[0].error : null }
+}
+
+export async function upsertTradesBulk(userId, trades) {
+  if (!userId) return { data: null, error: new Error('A signed-in user is required to save trades.') }
+  const failedChunks = []
+  const insertedTrades = []
+  const items = Array.isArray(trades) ? trades : []
+  const indexesById = new Map(items.map((trade, index) => [trade.id, index]))
+  for (let offset = 0; offset < items.length; offset += BULK_SIZE) {
+    const chunk = items.slice(offset, offset + BULK_SIZE).map((trade) => {
+      const row = tradeToRow(trade)
+      if (trade.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(trade.id)) row.id = trade.id
+      row.user_id = userId
+      return row
+    })
+    try {
+      const { data, error } = await supabase.from('trades').upsert(chunk, { onConflict: 'id' }).select('*')
+      if (error) failedChunks.push({ chunk: Math.floor(offset / BULK_SIZE), startIndex: offset, count: chunk.length, error: normalizeSupabaseError(error) })
+      else (data || []).forEach((row) => insertedTrades.push({ index: indexesById.get(row.id), trade: tradeFromRow(row) }))
+    } catch (error) {
+      failedChunks.push({ chunk: Math.floor(offset / BULK_SIZE), startIndex: offset, count: chunk.length, error: normalizeSupabaseError(error) })
+    }
+  }
+  return {
+    data: { insertedCount: insertedTrades.length, failedChunks, insertedTrades },
+    error: failedChunks.length ? failedChunks[0].error : null,
+  }
 }
 
 export async function deleteTradesByBatch(importBatchId) {
@@ -504,6 +546,7 @@ export async function listJournalEntries(userId) {
 
 export async function upsertJournalEntry(entry) {
   const row = journalToRow(entry)
+  if (entry?.userId) row.user_id = entry.userId
   return runQuery(() => supabase.from('journal_entries').upsert(row, { onConflict: 'user_id,entry_date' }).select('*').single(), journalFromRow)
 }
 
@@ -518,6 +561,10 @@ export async function listNotes(userId) {
 
 export async function createNote(note) {
   return insertOne('notes', note, noteToRow, noteFromRow)
+}
+
+export async function upsertNote(userId, note) {
+  return upsertOne('notes', userId, note, noteToRow, noteFromRow)
 }
 
 export async function updateNote(id, patch) {
@@ -539,6 +586,10 @@ export async function createPlaybook(playbook) {
   return insertOne('playbooks', playbook, playbookToRow, playbookFromRow)
 }
 
+export async function upsertPlaybook(userId, playbook) {
+  return upsertOne('playbooks', userId, playbook, playbookToRow, playbookFromRow)
+}
+
 export async function updatePlaybook(id, patch) {
   const row = playbookToRow(patch)
   delete row.id
@@ -556,6 +607,10 @@ export async function listAccounts(userId) {
 
 export async function createAccount(account) {
   return insertOne('accounts', account, accountToRow, accountFromRow)
+}
+
+export async function upsertAccount(userId, account) {
+  return upsertOne('accounts', userId, account, accountToRow, accountFromRow)
 }
 
 export async function updateAccount(id, patch) {
@@ -584,4 +639,21 @@ export async function updateProfileSettings(userId, settings) {
 export async function updateProfileDisplayName(userId, displayName) {
   if (!userId) return { data: null, error: new Error('A user id is required to update the profile.') }
   return runQuery(() => supabase.from('profiles').update({ display_name: displayName }).eq('user_id', userId).select('display_name').single(), (profile) => ({ name: profile?.display_name || '' }))
+}
+
+export async function getUserDataCounts(userId) {
+  if (!userId) return { data: null, error: new Error('A signed-in user is required to count account data.') }
+  const tables = ['trades', 'journal_entries', 'notes', 'playbooks', 'accounts']
+  const results = await Promise.all(tables.map(async (table) => {
+    try {
+      const { count, error } = await supabase.from(table).select('id', { count: 'exact', head: true }).eq('user_id', userId)
+      if (error) return { table, error: normalizeSupabaseError(error) }
+      return { table, count: count ?? 0 }
+    } catch (error) {
+      return { table, error: normalizeSupabaseError(error) }
+    }
+  }))
+  const failure = results.find((result) => result.error)
+  if (failure) return { data: null, error: failure.error }
+  return { data: Object.fromEntries(results.map(({ table, count }) => [table, count])), error: null }
 }
