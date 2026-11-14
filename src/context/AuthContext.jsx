@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getOrCreateProfile, StaleAuthSessionError } from '../data/profile'
+import { flushRegisteredPendingSaves } from '../data/pendingSaves'
 
 const AuthContext = createContext(null)
 
@@ -97,6 +98,8 @@ export function AuthProvider({ children }) {
   }, [])
 
   const signOut = useCallback(async () => {
+    const pendingSaveResult = await flushRegisteredPendingSaves()
+    if (pendingSaveResult?.error) return { error: pendingSaveResult.error }
     const { error } = await supabase.auth.signOut()
     if (error) console.error('Sign out failed:', error)
     return { error }
