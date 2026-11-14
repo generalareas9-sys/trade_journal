@@ -20,7 +20,7 @@ const links = [
 ]
 
 export default function Sidebar({ collapsed, onCollapse }) {
-  const { sidebarOpen, setSidebarOpen, notify } = useJournal()
+  const { sidebarOpen, setSidebarOpen, notify, flushPendingSaves } = useJournal()
   const { signOut, profile, user } = useAuth()
   const navigate = useNavigate()
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
@@ -31,6 +31,11 @@ export default function Sidebar({ collapsed, onCollapse }) {
   async function handleSignOut() {
     setSigningOut(true)
     try {
+      const flushResult = await flushPendingSaves()
+      if (flushResult?.error) {
+        notify(`Could not save pending changes: ${flushResult.error.message || 'Please retry before signing out.'}`)
+        return
+      }
       const { error } = await signOut()
       if (error) {
         notify(`Could not sign out: ${error.message || 'Please try again.'}`)
