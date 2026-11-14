@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useSubscription } from '../../context/SubscriptionContext'
 import { updateProfileSettings } from '../../data/repo'
 import { useJournal } from '../../hooks/useJournal'
 import { useDraft } from '../../hooks/useDraft'
@@ -335,7 +336,8 @@ function BackgroundConfetti() {
 export default function OnboardingPage() {
   const location = useLocation()
   const navigate = useNavigate()
-  const returnTo = location.state?.from || '/'
+  const { hasActiveSubscription } = useSubscription()
+  const returnTo = hasActiveSubscription ? (location.state?.from || '/') : '/plans'
   const { user, profile, refreshProfile } = useAuth()
   const { accounts = [], addAccount, setSettings } = useJournal()
   const profileSettings = profile?.settings || {}
