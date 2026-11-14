@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Activity, BarChart3, BookOpen, Calculator, CalendarDays, CalendarRange, ChevronLeft, CircleHelp, Home as HomeIcon, LayoutDashboard, LogOut, NotebookPen, Settings, SlidersHorizontal, Swords, Target, X } from 'lucide-react'
+import { Activity, BarChart3, BookOpen, Calculator, CalendarDays, CalendarRange, ChevronLeft, CircleHelp, CreditCard, Home as HomeIcon, LayoutDashboard, LogOut, NotebookPen, Settings, SlidersHorizontal, Swords, Target, X } from 'lucide-react'
 import { useJournal } from '../hooks/useJournal'
 import { useAuth } from '../context/AuthContext'
 import { clearUserDrafts } from '../hooks/useDraft'
@@ -82,6 +82,9 @@ export default function Sidebar({ collapsed, onCollapse }) {
             </button>
             {profileMenuOpen && (
               <div className="sidebar-profile-menu" role="menu">
+                <button type="button" role="menuitem" onClick={() => { setProfileMenuOpen(false); navigate('/plans') }}>
+                  <CreditCard size={15} /> Subscription Plans
+                </button>
                 <button type="button" role="menuitem" disabled={signingOut} onClick={handleSignOut}><LogOut size={15} /> {signingOut ? 'Signing out…' : 'Sign out'}</button>
               </div>
             )}
