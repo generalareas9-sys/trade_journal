@@ -1,44 +1,75 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowRight, Check, Sparkles, Zap, Shield, Crown } from 'lucide-react'
-import { PLANS, PLAN_PERIODS, CURRENCIES, formatCurrency, getPlanPrice } from '../../config/plans'
+import { ArrowLeft, ArrowRight, Check, Crown, Diamond, LogOut, Rocket, ShieldCheck, Sparkles, Zap } from 'lucide-react'
+import { PLANS, PLAN_PERIODS, CURRENCIES, formatCurrency } from '../../config/plans'
+import { useAuth } from '../../context/AuthContext'
 import { useSubscription } from '../../context/SubscriptionContext'
+import PremiumBackground from './PremiumBackground'
+import CurrencyFlag from './CurrencyFlag'
 import './subscription.css'
 
 export default function PlansPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { currency, setCurrency, hasActiveSubscription, subscription } = useSubscription()
+  const { signOut } = useAuth()
 
   const initialPlan = searchParams.get('plan') || 'pro'
   const initialPeriod = searchParams.get('period') === 'yearly' ? PLAN_PERIODS.YEARLY : PLAN_PERIODS.MONTHLY
 
   const [selectedPlanId, setSelectedPlanId] = useState(initialPlan)
   const [period, setPeriod] = useState(initialPeriod)
+  const [signingOut, setSigningOut] = useState(false)
+  const [signOutError, setSignOutError] = useState('')
 
   const handleSelectPlan = (planId) => {
     setSelectedPlanId(planId)
   }
 
-  const handleContinue = () => {
-    navigate(`/checkout?plan=${selectedPlanId}&period=${period}&currency=${currency}`)
+  const handleContinue = (planId = selectedPlanId) => {
+    navigate(`/checkout?plan=${planId}&period=${period}&currency=${currency}`)
   }
 
-  const selectedPlan = PLANS.find((p) => p.id === selectedPlanId) || PLANS[1]
+  const handleSignOut = async () => {
+    setSigningOut(true)
+    setSignOutError('')
+    try {
+      const { error } = await signOut()
+      if (error) {
+        setSignOutError(`Could not sign out: ${error.message || 'Please try again.'}`)
+        return
+      }
+      navigate('/welcome', { replace: true })
+    } catch (error) {
+      console.error('Unexpected sign-out failure:', error)
+      setSignOutError(`Could not sign out: ${error?.message || 'Please try again.'}`)
+    } finally {
+      setSigningOut(false)
+    }
+  }
+
   const isYearly = period === PLAN_PERIODS.YEARLY
 
   return (
-    <div className="sub-page-shell">
-      <div className="sub-container">
+    <div className="sub-page-shell plans-page">
+      <PremiumBackground variant="plans" />
+      <div className="sub-container plans-container">
         {/* Top Header */}
-        <header className="sub-header">
-          <Link to="/" className="sub-brand">
-            <img src="/bear-logo.png" alt="TradeJournal" />
+        <header className="sub-header plans-header plans-entrance" style={{ '--entrance-delay': '0ms' }}>
+          <Link to="/welcome" className="sub-brand plans-brand" aria-label="TradeJournal home">
+            <img src="/bear-logo.png" alt="" />
             <span>Trade<b>Journal</b></span>
           </Link>
 
-          <div className="sub-nav-actions">
-            {/* Currency selector */}
+          <div className="plans-header-actions">
+            <Link to="/welcome" className="plans-header-link">
+              <ArrowLeft size={16} />
+              Back to home
+            </Link>
+            <button type="button" className="plans-header-link plans-signout" onClick={handleSignOut} disabled={signingOut}>
+              <LogOut size={16} />
+              {signingOut ? 'Signing out…' : 'Sign out'}
+            </button>
             <div className="sub-currency-pill" role="group" aria-label="Currency selection">
               <button
                 type="button"
@@ -46,7 +77,7 @@ export default function PlansPage() {
                 onClick={() => setCurrency(CURRENCIES.ETB)}
                 title="Show prices in Ethiopian Birr"
               >
-                🇪🇹 ETB
+                <CurrencyFlag currency={CURRENCIES.ETB} /> ETB
               </button>
               <button
                 type="button"
@@ -54,54 +85,37 @@ export default function PlansPage() {
                 onClick={() => setCurrency(CURRENCIES.USD)}
                 title="Show prices in US Dollars"
               >
-                🌐 USD
+                <CurrencyFlag currency={CURRENCIES.USD} /> USD
               </button>
             </div>
-
-            {hasActiveSubscription && (
-              <Link to="/" className="plan-select-btn" style={{ padding: '6px 14px', fontSize: '13px' }}>
-                Go to Dashboard
-              </Link>
-            )}
           </div>
         </header>
 
+        {signOutError && <p className="plans-signout-error" role="alert">{signOutError}</p>}
+
         {hasActiveSubscription && (
-          <div style={{
-            background: 'var(--purple-soft)',
-            border: '1px solid var(--purple)',
-            borderRadius: '12px',
-            padding: '12px 18px',
-            marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            fontSize: '14px',
-          }}>
-            <div>
+          <div className="plans-subscription-notice">
+            <span>
               <strong>You have an active {subscription?.plan?.toUpperCase()} subscription</strong>
-              <span style={{ color: 'var(--text-2)', marginLeft: '8px' }}>
-                (Renews: {new Date(subscription?.current_period_end).toLocaleDateString()})
-              </span>
-            </div>
-            <Link to="/" style={{ color: 'var(--purple)', fontWeight: 700, textDecoration: 'none' }}>
-              Return to Journal →
-            </Link>
+              <span>Renews {new Date(subscription?.current_period_end).toLocaleDateString()}</span>
+            </span>
           </div>
         )}
 
-        {/* Hero title */}
-        <div className="plans-hero">
-          <span className="plans-badge">
-            <Sparkles size={14} /> Invest in your trading discipline
-          </span>
-          <h1>Choose the Plan That Elevates Your Edge</h1>
-          <p>
-            Gain complete clarity over every setup, eliminate impulsive mistakes, and build lasting consistency with TradeJournal.
-          </p>
+        <section className="plans-hero-layout plans-entrance" style={{ '--entrance-delay': '70ms' }} aria-labelledby="plans-heading">
+          <div className="plans-hero plans-hero-copy">
+            <span className="plans-badge">
+              <Sparkles size={14} /> Invest in your trading discipline
+            </span>
+            <h1 id="plans-heading">
+              Choose the Plan That <span>Elevates</span> Your Edge
+            </h1>
+            <p>
+              Gain complete clarity over every setup, eliminate impulsive mistakes, and build lasting consistency with TradeJournal.
+            </p>
+          </div>
 
-          {/* Billing Toggle (Monthly / Yearly) */}
-          <div className="sub-toggle-wrapper">
+          <div className="sub-toggle-wrapper plans-billing-entrance">
             <div className="sub-toggle" role="group" aria-label="Billing frequency">
               <button
                 type="button"
@@ -120,21 +134,22 @@ export default function PlansPage() {
               </button>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* 3 Plan Cards */}
-        <div className="plans-grid">
-          {PLANS.map((plan) => {
+        <div className="plans-grid plans-entrance" style={{ '--entrance-delay': '210ms' }}>
+          {PLANS.map((plan, idx) => {
             const isSelected = selectedPlanId === plan.id
             const isPopular = plan.popular
             const pricing = plan.pricing[currency] || plan.pricing[CURRENCIES.USD]
             const priceMonthly = isYearly ? pricing.monthlyEquivalentYearly : pricing.monthly
             const totalAnnual = pricing.yearly
+            const PlanIcon = plan.id === 'essential' ? Rocket : plan.id === 'pro' ? Diamond : Crown
 
             return (
               <div
                 key={plan.id}
-                className={`plan-card ${isSelected ? 'selected' : ''} ${isPopular ? 'popular' : ''}`}
+                className={`plan-card ${isSelected ? 'selected' : ''} ${isPopular ? 'popular' : ''}`} style={{ '--i': idx }}
                 onClick={() => handleSelectPlan(plan.id)}
                 role="radio"
                 aria-checked={isSelected}
@@ -151,6 +166,7 @@ export default function PlansPage() {
 
                 <div className="plan-header">
                   <h3 className="plan-name">
+                    <span className={`plan-icon plan-icon--${plan.id}`}><PlanIcon size={20} aria-hidden="true" /></span>
                     <span>{plan.name}</span>
                     {isSelected && <Check size={18} color="var(--purple)" />}
                   </h3>
@@ -177,7 +193,9 @@ export default function PlansPage() {
                   {plan.features.map((feature, idx) => (
                     <li key={idx} className="plan-feature-item">
                       <Check className="plan-feature-icon" size={16} />
-                      <span>{feature}</span>
+                      <span>
+                        {feature}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -188,38 +206,42 @@ export default function PlansPage() {
                   onClick={(e) => {
                     e.stopPropagation()
                     handleSelectPlan(plan.id)
-                    handleContinue()
+                    handleContinue(plan.id)
                   }}
                 >
-                  {isSelected ? (
-                    <>
-                      Continue with {plan.name} <ArrowRight size={16} />
-                    </>
-                  ) : (
-                    `Select ${plan.name}`
-                  )}
+                  {plan.id === 'essential' ? 'Get Started' : `Choose ${plan.name}`}
+                  <ArrowRight size={16} />
                 </button>
               </div>
             )
           })}
         </div>
 
-        {/* Bottom Sticky Action Bar */}
-        <div className="plans-action-bar">
-          <div className="plans-action-summary">
-            <strong>Selected: {selectedPlan.name} Plan ({isYearly ? 'Annual' : 'Monthly'})</strong>
-            <p>
-              Total due today: {formatCurrency(getPlanPrice(selectedPlan.id, period, currency), currency)}
-              {isYearly && ' • Includes 20% annual discount'}
-            </p>
+        <section className="plans-trust-strip plans-entrance" style={{ '--entrance-delay': '310ms' }} aria-label="Payment and billing information">
+          <div className="plans-trust-item">
+            <ShieldCheck size={25} />
+            <span>
+              <strong>Secure payments</strong>
+              <small>Telebirr and bank transfer available</small>
+            </span>
           </div>
-
-          <button type="button" className="plans-continue-btn" onClick={handleContinue}>
-            Continue to Checkout <ArrowRight size={18} />
-          </button>
-        </div>
+          <div className="plans-trust-methods" aria-label="Available bank transfer methods">
+            <span className="plans-trust-logo">
+              <img src="/payments/telebirr-logo.png" alt="Telebirr" />
+            </span>
+            <span className="plans-trust-logo plans-cbe-logo">
+              <img src="/payments/cbe-logo.png" alt="" />
+              <strong>CBE Bank Transfer</strong>
+            </span>
+          </div>
+          <div className="plans-trust-item plans-cancel-item">
+            <Check size={22} />
+            <span>
+              <strong>Cancel anytime</strong>
+            </span>
+          </div>
+        </section>
       </div>
     </div>
   )
 }
-
