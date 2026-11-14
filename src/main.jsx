@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './context/AuthContext'
+import { SubscriptionProvider } from './context/SubscriptionContext'
 import { DataProvider } from './context/DataContext'
 import './styles.css'
 import './dark-theme.css'
@@ -35,9 +36,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <ErrorBoundary>
       <BrowserRouter>
         <AuthProvider>
-          <DataProvider>
-            <App />
-          </DataProvider>
+          <SubscriptionProvider>
+            <DataProvider>
+              <App />
+            </DataProvider>
+          </SubscriptionProvider>
         </AuthProvider>
       </BrowserRouter>
     </ErrorBoundary>
