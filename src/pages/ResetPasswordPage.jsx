@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft, ArrowRight, Eye, EyeOff, ShieldCheck, Sparkles } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { flushRegisteredPendingSaves } from '../data/pendingSaves'
 
 function friendlyUpdateError(error) {
   const message = (error?.message || '').toLowerCase()
@@ -100,9 +101,18 @@ export default function ResetPasswordPage() {
         return
       }
       setUpdated(true)
+      const flushResult = await flushRegisteredPendingSaves()
+      if (flushResult?.error) {
+        setError(`Password updated, but pending data could not be saved: ${flushResult.error.message}`)
+        return
+      }
       const { error: signOutError } = await supabase.auth.signOut()
-      if (signOutError) console.error('Password updated, but signing out failed:', signOutError)
-      window.setTimeout(() => navigate('/login', { replace: true, state: { passwordUpdated: true } }), 2000)
+      if (signOutError) {
+        console.error('Password updated, but signing out failed:', signOutError)
+        setError(`Password updated, but signing out failed: ${signOutError.message}`)
+      } else {
+        window.setTimeout(() => navigate('/login', { replace: true, state: { passwordUpdated: true } }), 2000)
+      }
     } catch (updateError) {
       console.error('Password update failed:', updateError)
       setError(friendlyUpdateError(updateError))
