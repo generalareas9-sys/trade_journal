@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Building2, Check, Download, FileUp, LoaderCircle, Plus, RefreshCw, Search, Shield, SlidersHorizontal, Database, Trash2, UserRound, X } from 'lucide-react'
 import { useJournal } from '../hooks/useJournal'
@@ -6,7 +6,7 @@ import { clearUserDrafts, useDraft } from '../hooks/useDraft'
 import { useAuth } from '../context/AuthContext'
 import { migrateBackup } from '../context/DataContext'
 import { supabase } from '../lib/supabase'
-import { deleteAllUserRows } from '../data/repo'
+import { deleteAllUserRows, getUserDataCounts } from '../data/repo'
 import { deleteScreenshot, deleteUserScreenshots, uploadAvatar } from '../data/storage'
 import ProfileAvatar from '../components/ProfileAvatar'
 import { brokerOptions } from './Onboarding/onboardingSteps'
@@ -61,8 +61,8 @@ function downloadFile(name, content, type) {
 export function SettingsPage() {
   const {
     accounts = [], account, setAccount, addAccount, updateAccount, deleteAccount, dark, setThemeChoice, profile = {}, setProfile,
-    settings = {}, setSettings, importSettings, playbookChecklists, trades = [],
-    journal = {}, notes = [], playbooks = [], clearAllTrades, replaceData, exportBackup,
+    settings = {}, setSettings, trades = [],
+    journal = {}, notes = [], playbooks = [], clearAllTrades, replaceData, exportBackup, flushPendingSaves,
   } = useJournal()
   const { user, profile: authProfile, refreshProfile, signOut } = useAuth()
   const navigate = useNavigate()
@@ -85,6 +85,9 @@ export function SettingsPage() {
   const avatarPreviewRef = useRef('')
   const [avatarPreview, setAvatarPreview] = useState('')
   const [avatarBusy, setAvatarBusy] = useState(false)
+  const [connectionCounts, setConnectionCounts] = useState(null)
+  const [connectionLoading, setConnectionLoading] = useState(false)
+  const [connectionError, setConnectionError] = useState('')
   const [accountWizardStep, setAccountWizardStep] = useState('')
   const [accountType, setAccountType] = useState('Broker')
   const [accountSearch, setAccountSearch] = useState('')
@@ -99,6 +102,30 @@ export function SettingsPage() {
   const themePreference = settings.themeChosen === true && ['light', 'dark', 'system'].includes(settings.themePreference)
     ? settings.themePreference
     : 'dark'
+  const projectHost = (() => {
+    try {
+      return new URL(import.meta.env.VITE_SUPABASE_URL).host
+    } catch (error) {
+      console.error('Could not read the Supabase project host:', error)
+      return 'Unavailable'
+    }
+  })()
+
+  const refreshConnectionCounts = useCallback(async () => {
+    if (!user?.id) return
+    setConnectionLoading(true)
+    setConnectionError('')
+    const result = await getUserDataCounts(user.id)
+    if (result.error) {
+      setConnectionError(result.error.message || 'Could not load row counts.')
+      setConnectionCounts(null)
+    } else {
+      setConnectionCounts(result.data)
+    }
+    setConnectionLoading(false)
+  }, [user?.id])
+
+  useEffect(() => { void refreshConnectionCounts() }, [refreshConnectionCounts])
 
   useEffect(() => {
     if (nameDraft.hasDraft) setDraftName(nameDraft.value)
@@ -194,30 +221,22 @@ export function SettingsPage() {
     const nextAvatarPath = hasAvatarChange
       ? avatarChanges.avatarPath
       : authProfile?.settings?.avatarPath || authProfile?.settings?.appSettings?.avatarPath || null
-    const saved = await supabase.from('profiles').update({
-      settings: {
-        ...authProfile?.settings,
-        avatarPath: nextAvatarPath,
-        appSettings: { ...settings, ...(hasAvatarChange ? { avatarPath: nextAvatarPath } : {}) },
-        importSettings,
-        playbookChecklists,
-        profile: nextProfile,
-      },
-    }).eq('user_id', user.id)
+    setSettings({ ...settings, avatarPath: nextAvatarPath })
+    const saved = await flushPendingSaves()
     setBusy(false)
-    if (saved.error) {
+    if (saved?.error) {
       notifyError(`Could not save profile: ${saved.error.message}`)
       return false
     }
-    else {
-      await refreshProfile()
-      nameDraft.clearDraft(draftName.trim())
-      notifySuccess('Profile saved.')
-      return true
-    }
+    await refreshProfile()
+    nameDraft.clearDraft(draftName.trim())
+    notifySuccess('Profile saved.')
+    return true
   }
 
   const signOutAndClearDrafts = async () => {
+    const flushed = await flushPendingSaves()
+    if (flushed?.error) return flushed
     const result = await signOut()
     if (!result?.error) clearUserDrafts(user?.id)
     return result
@@ -440,6 +459,24 @@ export function SettingsPage() {
       <label className="settings-field"><span>Display name</span><input autoComplete="name" value={draftName} onChange={(event) => { setDraftName(event.target.value); nameDraft.setValue(event.target.value) }} /></label>
       <label className="settings-field"><span>Country <small>(optional)</small></span><input autoComplete="country-name" value={draftCountry} onChange={(event) => setDraftCountry(event.target.value)} /></label>
       <button className="button-primary" disabled={busy} onClick={saveProfile}>{busy ? 'Saving...' : 'Save profile'}</button>
+      <section className="settings-connection-check" aria-labelledby="settings-connection-title">
+        <div className="settings-connection-heading"><div><h3 id="settings-connection-title">Connection check</h3><p>Confirm this device is connected to the expected project and account.</p></div><button type="button" className="button-secondary" disabled={connectionLoading} onClick={() => void refreshConnectionCounts()}><RefreshCw size={14} />{connectionLoading ? 'Checking...' : 'Refresh'}</button></div>
+        <dl>
+          <div><dt>Supabase project host</dt><dd>{projectHost}</dd></div>
+          <div><dt>Signed-in email</dt><dd>{user?.email || '—'}</dd></div>
+          <div><dt>User ID</dt><dd>{user?.id ? `${user.id.slice(0, 8)}…` : '—'}</dd></div>
+          <div><dt>Login provider</dt><dd>{user?.app_metadata?.provider || user?.identities?.[0]?.provider || 'unknown'}</dd></div>
+        </dl>
+        <h4>Rows visible to this account</h4>
+        {connectionLoading && !connectionCounts ? <p role="status">Loading row counts...</p> : connectionCounts ? <ul>
+          <li>Trades: {connectionCounts.trades}</li>
+          <li>Journal entries: {connectionCounts.journal_entries}</li>
+          <li>Notes: {connectionCounts.notes}</li>
+          <li>Playbooks: {connectionCounts.playbooks}</li>
+          <li>Accounts: {connectionCounts.accounts}</li>
+        </ul> : <p>{connectionError || 'Row counts are not available.'}</p>}
+        {connectionError && connectionCounts && <p role="alert">{connectionError}</p>}
+      </section>
     </div>
     if (tab === 'Security') return <div className="settings-tab-content">
       <p className="settings-current-email">Signed in as <strong>{user?.email || '—'}</strong></p>
