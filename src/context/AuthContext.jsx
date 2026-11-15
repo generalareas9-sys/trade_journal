@@ -34,6 +34,10 @@ export function AuthProvider({ children }) {
       profileRequest.current += 1
       setProfile(null)
       const recoveryRequest = profileRequest.current
+      const pendingSaveResult = await flushRegisteredPendingSaves()
+      if (pendingSaveResult?.error) {
+        console.error('Could not flush all pending data before clearing the stale session:', pendingSaveResult.error)
+      }
       const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' })
       if (signOutError) console.error('Could not clear the stale authentication session:', signOutError)
       if (recoveryRequest === profileRequest.current) {
