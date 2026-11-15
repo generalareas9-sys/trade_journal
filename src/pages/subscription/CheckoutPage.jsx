@@ -36,10 +36,14 @@ export default function CheckoutPage() {
 
   const planId = searchParams.get('plan') || 'pro'
   const period = searchParams.get('period') === 'yearly' ? PLAN_PERIODS.YEARLY : PLAN_PERIODS.MONTHLY
+  const requestedCurrency = searchParams.get('currency')
+  const checkoutCurrency = requestedCurrency === CURRENCIES.ETB || requestedCurrency === CURRENCIES.USD
+    ? requestedCurrency
+    : currency
   const selectedPlan = getPlan(planId)
 
   // Payment method selection: default to telebirr if ETB, else binance_pay
-  const defaultMethod = currency === CURRENCIES.ETB ? 'telebirr' : 'binance_pay'
+  const defaultMethod = checkoutCurrency === CURRENCIES.ETB ? 'telebirr' : 'binance_pay'
   const [selectedMethodId, setSelectedMethodId] = useState(defaultMethod)
 
   // Loading & error states
@@ -78,6 +82,12 @@ export default function CheckoutPage() {
       setErrorMessage(`Could not sign out: ${error instanceof Error ? error.message : 'Please try again.'}`)
     }
   }
+
+  useEffect(() => {
+    if ((requestedCurrency === CURRENCIES.ETB || requestedCurrency === CURRENCIES.USD) && requestedCurrency !== currency) {
+      setCurrency(requestedCurrency)
+    }
+  }, [requestedCurrency, currency, setCurrency])
 
   useEffect(() => {
     if (!screenshotFile?.type.startsWith('image/')) {
@@ -184,9 +194,18 @@ export default function CheckoutPage() {
         throw new Error(data.error || 'Could not submit payment request. Please try again.')
       }
 
+      const requestId = data.data?.id
+      if (requestId && user?.id) {
+        try {
+          localStorage.setItem(`tradejournal:payment-request:${user.id}`, requestId)
+        } catch (storageError) {
+          console.warn('Could not save payment request recovery reference:', storageError)
+        }
+      }
+
       // Navigate to success page showing pending confirmation
       navigate(
-        `/payment/success?method=${selectedMethodId}&pending=true&ref=${encodeURIComponent(trimmedTxRef)}&plan=${selectedPlan.id}&period=${period}`,
+        `/payment/success?method=${selectedMethodId}&pending=true&ref=${encodeURIComponent(trimmedTxRef)}&plan=${selectedPlan.id}&period=${period}${requestId ? `&requestId=${encodeURIComponent(requestId)}` : ''}`,
       )
     } catch (err) {
       console.error('Manual payment submission error:', err)
