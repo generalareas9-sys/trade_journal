@@ -1,0 +1,29 @@
+name: Temporary Supabase Free keep-alive
+
+on:
+  schedule:
+    - cron: '15 6 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Send a read-only request to Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -eu
+          : "${SUPABASE_URL:?Set the SUPABASE_URL repository secret}"
+          : "${SUPABASE_ANON_KEY:?Set the SUPABASE_ANON_KEY repository secret}"
+
+          curl --fail --silent --show-error --output /dev/null \
+            --write-out 'Supabase keep-alive HTTP %{http_code}\n' \
+            --get "${SUPABASE_URL%/}/rest/v1/profiles" \
+            --data-urlencode "select=user_id" \
+            --data-urlencode "limit=1" \
+            --header "apikey: ${SUPABASE_ANON_KEY}"
