@@ -48,6 +48,35 @@ The migration and registration function expect the two Vault secret names
 exactly as written above. Do not put Resend or registration webhook secrets in
 frontend variables, source files, or Git.
 
+## Manual payment verification status
+
+The customer status page uses the `check-manual-payment` Edge Function to
+confirm only the signed-in user's request and subscription. Keep JWT
+verification enabled for this function and for `admin-payment-action`.
+Admin payment resolution uses the service-only
+`resolve_manual_payment_request` database function to update the request,
+payment record, and subscription atomically.
+
+Run the payment migrations in this order in the Supabase SQL Editor:
+
+1. Run `supabase/subscription_migration.sql` if the subscriptions and
+   `manual_payment_requests` tables have not already been created.
+2. Run `supabase/payment_verification_migration.sql`. It adds rejection reasons,
+   confirms the caller-own-row SELECT policy, and adds
+   `manual_payment_requests` to the `supabase_realtime` publication.
+
+Deploy the customer status checker and updated admin payment action from the
+repository root:
+
+```powershell
+npx.cmd supabase functions deploy check-manual-payment
+npx.cmd supabase functions deploy admin-payment-action
+```
+
+Keep the existing `ADMIN_USER_ID` Edge Function secret configured. The status
+checker requires no additional secret; it validates the caller's JWT and uses
+the server-side service role only to query that caller's own records.
+
 ## Before production
 
 - Replace `https://your-domain.com` in `index.html`, `public/robots.txt`, and `public/sitemap.xml` with the chosen production domain.
