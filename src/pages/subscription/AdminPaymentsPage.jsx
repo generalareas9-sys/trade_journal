@@ -53,9 +53,13 @@ export default function AdminPaymentsPage() {
   const handleAction = async (requestId, action) => {
     let rejectionReason = ''
     if (action === 'reject') {
-      const reason = window.prompt('Enter reason for rejection (optional):', 'Transaction reference could not be verified')
+      const reason = window.prompt('Enter a reason for rejecting this payment:')
       if (reason === null) return // user cancelled
-      rejectionReason = reason
+      rejectionReason = reason.trim()
+      if (!rejectionReason) {
+        setError('A rejection reason is required.')
+        return
+      }
     } else {
       if (!window.confirm('Approve this payment and activate the user subscription?')) return
     }
@@ -77,7 +81,7 @@ export default function AdminPaymentsPage() {
         body: JSON.stringify({
           requestId,
           action,
-          notes: rejectionReason || undefined,
+          rejectionReason: rejectionReason || undefined,
         }),
       })
 
@@ -294,7 +298,7 @@ export default function AdminPaymentsPage() {
                           )}
                         </td>
                         <td style={{ fontSize: '12px', color: 'var(--text-2)', maxWidth: '160px' }}>
-                          {req.notes || '—'}
+                          {req.rejection_reason || req.notes || '—'}
                         </td>
                         <td>
                           <span className={`admin-status-pill ${req.status}`}>{req.status}</span>
