@@ -21,6 +21,7 @@ type PaymentEmailDetails = {
   payment: PaymentEmailRequest
   event: PaymentEmailEvent
   recipient: string
+  customerName: string
   deliveryKey: string
   activatedAt?: string | null
   expiresAt?: string | null
@@ -110,7 +111,7 @@ function getSiteUrls(payment: PaymentEmailRequest) {
   const siteUrl = new URL(configuredSiteUrl)
   if (!['https:', 'http:'].includes(siteUrl.protocol)) throw new Error('SITE_URL must use HTTP or HTTPS.')
 
-  const dashboardUrl = new URL('/', siteUrl).toString()
+  const dashboardUrl = new URL('/login', siteUrl).toString()
   const checkoutUrl = new URL('/checkout', siteUrl)
   checkoutUrl.search = new URLSearchParams({
     plan: payment.plan,
@@ -127,6 +128,7 @@ function renderEmail(
   button: { label: string; url: string },
   color: string,
   closing: string,
+  indicator?: { label: string; color: string },
 ) {
   const textRows = rows.map(([label, value]) => `${plainText(label)}: ${plainText(value)}`).join('\n')
   const html = `<!doctype html>
@@ -161,10 +163,11 @@ function renderEmail(
     <tr><td class="email-card" style="background:#fff;border:1px solid #e5e8ef;border-radius:14px;overflow:hidden">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
         <tr><td class="email-header" style="padding:22px 26px;background:#151c32;color:#fff">
-          <div style="font-size:12px;font-weight:700;letter-spacing:1.6px;color:#b9c5ff">TRADEJOURNAL</div>
-          <div style="padding-top:5px;font-size:12px;color:#d5dbeb">Payment update</div>
+          <div style="font-size:12px;font-weight:700;letter-spacing:1.6px;color:#b9c5ff">TRADEJOURNAL AI</div>
+          <div style="padding-top:5px;font-size:12px;color:#d5dbeb">Subscription update</div>
         </td></tr>
         <tr><td class="email-content" style="padding:28px 26px 8px;color:#1c2434">
+          ${indicator ? `<span style="display:inline-block;margin-bottom:12px;padding:6px 10px;border-radius:999px;background:#e8f7ef;color:${indicator.color};font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase">✓ ${escapeHtml(indicator.label)}</span>` : ''}
           <h1 style="margin:0 0 10px;font-size:23px;line-height:1.3;color:${color}">${escapeHtml(heading)}</h1>
           <p style="margin:0;color:#657087;font-size:14px;line-height:1.65">${escapeHtml(intro)}</p>
         </td></tr>
@@ -182,7 +185,7 @@ function renderEmail(
           </p>
         </td></tr>
         <tr><td class="email-footer" style="padding:16px 26px;background:#f8f9fc;color:#7a8497;font-size:11px;line-height:1.6">
-          This is an automated message about your TradeJournal payment.
+          This is an automated message about your TradeJournal AI subscription.
         </td></tr>
       </table>
     </td></tr>
@@ -190,7 +193,7 @@ function renderEmail(
 </body>
 </html>`
   const text = [
-    'TradeJournal',
+    'TradeJournal AI',
     '',
     heading,
     '',
@@ -204,7 +207,7 @@ function renderEmail(
     `Support phone: ${SUPPORT_PHONE_DISPLAY}`,
     `Telegram: ${SUPPORT_TELEGRAM} (${SUPPORT_TELEGRAM_URL})`,
     '',
-    'This is an automated message about your TradeJournal payment.',
+    'This is an automated message about your TradeJournal AI subscription.',
   ].join('\n')
   return { html, text }
 }
@@ -221,10 +224,12 @@ function buildCustomerEmail(details: PaymentEmailDetails) {
   if (event === 'approved') {
     const activatedAt = formatDate(details.activatedAt)
     const expiresAt = formatDate(details.expiresAt)
+    const customerName = plainText(details.customerName).slice(0, 120) || 'Trader'
     const content = renderEmail(
-      'Your TradeJournal payment was approved',
-      'Your payment has been verified and your subscription is active.',
+      `Congratulations, ${customerName}!`,
+      'Your payment has been verified and approved. Your TradeJournal AI subscription is now active.',
       [
+        ['Customer name', customerName],
         ['Plan', plan],
         ['Billing period', period],
         ['Amount paid', amount],
@@ -233,16 +238,17 @@ function buildCustomerEmail(details: PaymentEmailDetails) {
         ['Subscription starts', activatedAt],
         ['Subscription ends', expiresAt],
       ],
-      { label: 'Open my dashboard', url: dashboardUrl },
+      { label: 'Log in to TradeJournal AI', url: dashboardUrl },
       '#138a63',
-      'Thank you for choosing TradeJournal. We look forward to supporting your trading journal.',
+      'Thank you for choosing TradeJournal AI. Use your journal, review your trading performance, and discover patterns to keep improving.',
+      { label: 'Subscription active', color: '#138a63' },
     )
-    return { subject: 'Your TradeJournal payment was approved', ...content }
+    return { subject: 'Your TradeJournal AI subscription is active', ...content }
   }
 
   const reason = payment.rejection_reason?.trim() || REJECTION_FALLBACK
   const content = renderEmail(
-    'Your TradeJournal payment could not be verified',
+    'Your TradeJournal AI payment could not be verified',
     'We could not verify this payment. You can review the details and submit it again.',
     [
       ['Plan', plan],
@@ -256,7 +262,7 @@ function buildCustomerEmail(details: PaymentEmailDetails) {
     '#c2414b',
     'Please check the payment details before trying again. Your previous receipt and reference are not included in the checkout link.',
   )
-  return { subject: 'Your TradeJournal payment could not be verified', ...content }
+  return { subject: 'Your TradeJournal AI payment could not be verified', ...content }
 }
 
 function safeError(error: unknown): string {
@@ -343,12 +349,30 @@ async function sendWithRetries(admin: SupabaseClient, row: EmailRow, details: Om
   }
 }
 
-async function getAccountEmail(admin: SupabaseClient, userId: string): Promise<string | null> {
+async function getAccountDetails(admin: SupabaseClient, userId: string): Promise<{ email: string | null; name: string }> {
   const { data, error } = await admin.auth.admin.getUserById(userId)
   if (error) throw error
-  const email = data.user?.email?.trim()
-  if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null
-  return email
+  const user = data.user
+  const { data: profile, error: profileError } = await admin
+    .from('profiles')
+    .select('display_name')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (profileError) {
+    console.error('Could not load customer display name for payment email.', { code: profileError.code || 'unknown' })
+  }
+
+  const email = user?.email?.trim()
+  const metadataName = typeof user?.user_metadata?.full_name === 'string'
+    ? user.user_metadata.full_name
+    : typeof user?.user_metadata?.name === 'string' ? user.user_metadata.name : ''
+  const profileName = typeof profile?.display_name === 'string' ? profile.display_name.trim() : ''
+  const name = plainText(profileName || metadataName || email?.split('@')[0] || 'Trader').slice(0, 120) || 'Trader'
+
+  if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { email: null, name }
+  }
+  return { email, name }
 }
 
 export async function processPaymentEmail(
@@ -363,9 +387,12 @@ export async function processPaymentEmail(
     const expectedStatus = event === 'approved' ? 'approved' : 'rejected'
     if (payment.status !== expectedStatus) throw new Error('Payment status does not match the email event.')
     let recipient: string | null = null
+    let customerName = 'Trader'
     let recipientError: string | null = null
     try {
-      recipient = await getAccountEmail(admin, payment.user_id)
+      const account = await getAccountDetails(admin, payment.user_id)
+      recipient = account.email
+      customerName = account.name
       if (!recipient) recipientError = 'The customer account does not have a valid email address.'
     } catch (error) {
       recipientError = safeError(error)
@@ -444,6 +471,7 @@ export async function processPaymentEmail(
     await sendWithRetries(admin, row, {
       payment,
       event,
+      customerName,
       activatedAt: resolvedStartAt,
       expiresAt: resolvedEndAt,
     })
