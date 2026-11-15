@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, ChevronDown, ChevronRight, CircleHelp, FileText, Mail, Menu, Search, X } from 'lucide-react'
+import ContactBrandIcon from '../components/ContactBrandIcon'
 
 const EMAIL = 'oseidebrahim@gmail.com'
 
@@ -54,7 +55,7 @@ function ResourceLayout({ children, showBackToApp = false }) {
             <p>Track every trade, review every decision, and build your edge.</p>
             <p>Created by Osman Seid Ebrahim<br />Information Science Student &amp; Developer<br />Haramaya University, Ethiopia</p>
             <a href={`mailto:${EMAIL}`}>{EMAIL}</a>
-            <a href="https://t.me/Vy_kin_g" target="_blank" rel="noreferrer">@Vy_kin_g</a>
+            <a href="https://t.me/Vy_kin_g" target="_blank" rel="noreferrer"><ContactBrandIcon brand="telegram" className="contact-inline-brand-icon" />@Vy_kin_g</a>
           </div>
           <div><h4>Product</h4><Link to="/welcome#features">Features</Link><Link to="/welcome#pricing">Pricing</Link><Link to="/welcome#faq">FAQ</Link></div>
           <div><h4>Resources</h4><Link to="/help">Help Center</Link><Link to="/changelog">Changelog</Link><Link to="/contact">Contact</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link></div>
@@ -290,8 +291,8 @@ export function ContactPage() {
           <p>Information Science Student &amp; Developer<br />Haramaya University</p>
           <dl>
             <div><dt>Email</dt><dd><a href={`mailto:${EMAIL}`}>{EMAIL}</a></dd></div>
-            <div><dt>Phone</dt><dd><a href="tel:+251986446282">+251 986 446 282</a></dd></div>
-            <div><dt>Telegram</dt><dd><a href="https://t.me/Vy_kin_g" target="_blank" rel="noreferrer">@Vy_kin_g</a></dd></div>
+            <div><dt>Phone</dt><dd><a href="tel:+251986446282"><ContactBrandIcon brand="whatsapp" className="contact-inline-brand-icon" />+251 986 446 282</a></dd></div>
+            <div><dt>Telegram</dt><dd><a href="https://t.me/Vy_kin_g" target="_blank" rel="noreferrer"><ContactBrandIcon brand="telegram" className="contact-inline-brand-icon" />@Vy_kin_g</a></dd></div>
             <div><dt>Location</dt><dd>Haramaya University<br />Ethiopia</dd></div>
           </dl>
           <p className="contact-email-note">If your email app does not open, you can write directly to <a href={`mailto:${EMAIL}`}>{EMAIL}</a>.</p>
