@@ -3219,3 +3219,18 @@ button:focus-visible, a:focus-visible, [tabindex="0"]:focus-visible { outline: 3
 @media (max-width: 520px) {
   .pending-save-banner { align-items: flex-start; flex-direction: column; padding: 11px 13px; }
 }
+
+.backtest-snapshots { margin-top: 13px; }
+.backtest-snapshots-heading, .backtest-snapshot-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.backtest-snapshots-heading { margin-bottom: 12px; }
+.backtest-snapshots-heading h3 { margin: 0; font-size: 13px; }
+.backtest-snapshots-heading p, .backtest-snapshot-item small { display: block; margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+.backtest-snapshots-heading>span { color: var(--muted); font-size: 12px; }
+.backtest-snapshot-list { display: grid; gap: 8px; }
+.backtest-snapshot-item { flex-wrap: wrap; padding: 11px 0; border-top: 1px solid var(--line); color: var(--text); font-size: 12px; }
+.backtest-snapshot-item>div { min-width: 150px; margin-right: auto; }
+.backtest-snapshot-item>span { color: var(--subtle); }
+@media (max-width: 560px) {
+  .backtest-snapshot-item { align-items: flex-start; flex-direction: column; }
+  .backtest-snapshot-item>div { margin-right: 0; }
+}
