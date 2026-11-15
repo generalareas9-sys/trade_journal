@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendAdminNotification } from '../_shared/adminEmail.ts'
+import { processPaymentEmail, type PaymentEmailEvent } from '../_shared/paymentEmail.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,6 +13,25 @@ function jsonResponse(status: number, body: Record<string, unknown>) {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
+}
+
+function scheduleBackgroundTask(task: Promise<unknown>, requestId: string, event: string) {
+  try {
+    EdgeRuntime.waitUntil(task)
+  } catch (error) {
+    console.error('Could not register the customer email background task.', {
+      requestId,
+      event,
+      error: error instanceof Error ? error.message : 'Unknown background task error.',
+    })
+    void task.catch((taskError) => {
+      console.error('Customer email background task failed.', {
+        requestId,
+        event,
+        error: taskError instanceof Error ? taskError.message : 'Unknown email error.',
+      })
+    })
+  }
 }
 
 Deno.serve(async (request: Request) => {
@@ -93,7 +113,51 @@ Deno.serve(async (request: Request) => {
         }),
       )
 
-      return jsonResponse(200, { requests: enrichedRequests })
+      const requestIds = enrichedRequests.map((item) => item.id)
+      let emailNotifications: Array<Record<string, unknown>> = []
+      if (requestIds.length > 0) {
+        const staleBefore = new Date(Date.now() - 2 * 60 * 1000).toISOString()
+        const { error: staleNotificationError } = await admin
+          .from('payment_email_notifications')
+          .update({
+            status: 'failed',
+            error: 'Email delivery stopped before a final status was recorded. Please retry.',
+            updated_at: new Date().toISOString(),
+          })
+          .in('payment_request_id', requestIds)
+          .in('status', ['pending', 'sending'])
+          .lt('updated_at', staleBefore)
+        if (staleNotificationError) {
+          console.error('Could not recover stale customer payment email statuses:', staleNotificationError)
+          return jsonResponse(500, { error: 'Could not load payment email statuses. Retry the request.' })
+        }
+
+        const { data: notifications, error: notificationError } = await admin
+          .from('payment_email_notifications')
+          .select('payment_request_id,event,status,attempts,error')
+          .in('payment_request_id', requestIds)
+        if (notificationError) {
+          console.error('Could not load customer payment email statuses:', notificationError)
+          return jsonResponse(500, { error: 'Could not load payment email statuses. Run the customer email migration and retry.' })
+        }
+        emailNotifications = notifications || []
+      }
+
+      const notificationByEvent = new Map(
+        emailNotifications.map((item) => [`${item.payment_request_id}:${item.event}`, item]),
+      )
+      const requestsWithEmailStatus = enrichedRequests.map((item) => {
+        const event = item.status === 'approved' || item.status === 'rejected' ? item.status : null
+        const notification = event ? notificationByEvent.get(`${item.id}:${event}`) : null
+        return {
+          ...item,
+          email_notification_status: notification?.status || 'not_sent',
+          email_notification_attempts: notification?.attempts || 0,
+          email_notification_error: notification?.error || null,
+        }
+      })
+
+      return jsonResponse(200, { requests: requestsWithEmailStatus })
     }
 
     // POST: Approve or Reject
@@ -107,8 +171,8 @@ Deno.serve(async (request: Request) => {
             ? body.notes.trim()
             : ''
 
-      if (!requestId || !['approve', 'reject'].includes(action)) {
-        return jsonResponse(400, { error: 'Valid requestId and action (approve/reject) are required.' })
+      if (!requestId || !['approve', 'reject', 'resend-email'].includes(action)) {
+        return jsonResponse(400, { error: 'Valid requestId and action (approve/reject/resend-email) are required.' })
       }
       if (action === 'reject' && !rejectionReason) {
         return jsonResponse(400, { error: 'A rejection reason is required.' })
@@ -125,6 +189,19 @@ Deno.serve(async (request: Request) => {
 
       if (getError || !reqRecord) {
         return jsonResponse(404, { error: 'Payment request not found.' })
+      }
+
+      if (action === 'resend-email') {
+        if (!['approved', 'rejected'].includes(reqRecord.status)) {
+          return jsonResponse(409, { error: 'A customer email can only be resent after the payment is approved or rejected.' })
+        }
+        const event = reqRecord.status as PaymentEmailEvent
+        scheduleBackgroundTask(
+          processPaymentEmail(admin, reqRecord, event, true),
+          reqRecord.id,
+          event,
+        )
+        return jsonResponse(202, { success: true, message: 'Customer email resend queued.' })
       }
 
       const { data: resolution, error: resolutionError } = await admin.rpc(
@@ -147,38 +224,60 @@ Deno.serve(async (request: Request) => {
         })
       }
 
-      try {
-        const { data: customer, error: customerError } = await admin.auth.admin.getUserById(reqRecord.user_id)
-        if (customerError) {
-          console.error('Could not load customer email for payment notification:', customerError)
-        } else if (customer?.user?.email && action === 'approve') {
-          await sendAdminNotification(admin, {
-            type: 'payment-approved',
-            eventKey: `payment-approved:${reqRecord.id}`,
-            userId: reqRecord.user_id,
-            customerEmail: customer.user.email,
-            plan: reqRecord.plan,
-            method: reqRecord.method,
-            transactionReference: reqRecord.tx_reference,
-            activatedAt: resolution.activated_at || reqRecord.reviewed_at,
-            expiresAt: resolution.expires_at,
-          })
-        } else if (customer?.user?.email && action === 'reject') {
-          await sendAdminNotification(admin, {
-            type: 'payment-rejected',
-            eventKey: `payment-rejected:${reqRecord.id}`,
-            userId: reqRecord.user_id,
-            customerEmail: customer.user.email,
-            transactionReference: reqRecord.tx_reference,
-            reason: resolution.rejection_reason,
-            occurredAt: reqRecord.reviewed_at || new Date().toISOString(),
-          })
-        } else if (!customerError) {
-          console.error('Could not send payment notification: customer email is unavailable.', reqRecord.id)
-        }
-      } catch (notificationError) {
-        console.error('Could not prepare payment notification:', notificationError)
+      const resolvedPayment = {
+        ...reqRecord,
+        status: resolution.status,
+        rejection_reason: resolution.rejection_reason || reqRecord.rejection_reason,
       }
+      const emailEvent = action === 'approve' ? 'approved' : 'rejected'
+      scheduleBackgroundTask(
+        processPaymentEmail(
+          admin,
+          resolvedPayment,
+          emailEvent,
+          false,
+          resolution.activated_at || reqRecord.reviewed_at,
+          resolution.expires_at,
+        ),
+        reqRecord.id,
+        emailEvent,
+      )
+
+      const adminNotificationTask = (async () => {
+        try {
+          const { data: customer, error: customerError } = await admin.auth.admin.getUserById(reqRecord.user_id)
+          if (customerError) {
+            console.error('Could not load account email for admin payment notification:', customerError)
+          } else if (customer?.user?.email && action === 'approve') {
+            await sendAdminNotification(admin, {
+              type: 'payment-approved',
+              eventKey: `payment-approved:${reqRecord.id}`,
+              userId: reqRecord.user_id,
+              customerEmail: customer.user.email,
+              plan: reqRecord.plan,
+              method: reqRecord.method,
+              transactionReference: reqRecord.tx_reference,
+              activatedAt: resolution.activated_at || reqRecord.reviewed_at,
+              expiresAt: resolution.expires_at,
+            })
+          } else if (customer?.user?.email && action === 'reject') {
+            await sendAdminNotification(admin, {
+              type: 'payment-rejected',
+              eventKey: `payment-rejected:${reqRecord.id}`,
+              userId: reqRecord.user_id,
+              customerEmail: customer.user.email,
+              transactionReference: reqRecord.tx_reference,
+              reason: resolution.rejection_reason,
+              occurredAt: reqRecord.reviewed_at || new Date().toISOString(),
+            })
+          } else if (!customerError) {
+            console.error('Could not send payment notification: customer email is unavailable.', reqRecord.id)
+          }
+        } catch (notificationError) {
+          console.error('Could not prepare admin payment notification:', notificationError)
+        }
+      })()
+      scheduleBackgroundTask(adminNotificationTask, reqRecord.id, `admin-${emailEvent}`)
 
       return jsonResponse(200, {
         success: true,
