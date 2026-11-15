@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import MarqueeBar from '../components/MarqueeBar'
 import BackToTop from '../components/BackToTop'
+import ContactBrandIcon from '../components/ContactBrandIcon'
 import {
   ArrowRight,
   ArrowUpRight,
@@ -565,7 +566,7 @@ export default function LandingPage() {
             <p>Track every trade, review every decision, and build your edge.</p>
             <p>Created by Osman Seid Ebrahim<br />Information Science Student &amp; Developer<br />Haramaya University, Ethiopia</p>
             <a href="mailto:oseidebrahim@gmail.com">oseidebrahim@gmail.com</a>
-            <a href="https://t.me/Vy_kin_g" target="_blank" rel="noreferrer">@Vy_kin_g</a>
+            <a href="https://t.me/Vy_kin_g" target="_blank" rel="noreferrer"><ContactBrandIcon brand="telegram" className="contact-inline-brand-icon" />@Vy_kin_g</a>
           </div>
           <div><h4>Product</h4><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><Link to="/help">Help Center</Link><Link to="/changelog">Changelog</Link><Link to="/contact">Contact</Link></div>
           <div><h4>Legal</h4><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link><Link to="/disclaimer">Disclaimer</Link></div>
