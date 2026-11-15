@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { sendAdminNotification } from '../_shared/adminEmail.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -65,7 +66,7 @@ Deno.serve(async (request: Request) => {
       return jsonResponse(400, { error: `Invalid payment method: ${method}. Supported methods: ${VALID_METHODS.join(', ')}` })
     }
 
-    if (!tx_reference) {
+    if (!tx_reference || tx_reference.length > 200) {
       return jsonResponse(400, { error: 'Transaction reference or receipt number is required.' })
     }
 
@@ -101,6 +102,27 @@ Deno.serve(async (request: Request) => {
     if (insertError) {
       console.error('Failed to create manual payment request:', insertError)
       return jsonResponse(500, { error: 'Could not submit payment request. Please try again.' })
+    }
+
+    try {
+      const eventIdentity = `${user.id}:${method}:${planId}:${period}:${tx_reference.toLowerCase()}`
+      const eventDigest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(eventIdentity))
+      const eventHash = Array.from(new Uint8Array(eventDigest), (byte) => byte.toString(16).padStart(2, '0')).join('')
+      await sendAdminNotification(admin, {
+        type: 'payment-submitted',
+        eventKey: `payment-submitted:${eventHash}`,
+        userId: user.id,
+        customerEmail: user.email || '',
+        plan: planId,
+        period,
+        method,
+        amount,
+        currency,
+        transactionReference: tx_reference,
+        occurredAt: requestRecord.created_at || new Date().toISOString(),
+      })
+    } catch (notificationError) {
+      console.error('Payment request was saved, but its admin notification could not be prepared:', notificationError)
     }
 
     return jsonResponse(200, {
