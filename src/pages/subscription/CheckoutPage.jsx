@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -18,7 +18,7 @@ import {
   UploadCloud,
 } from 'lucide-react'
 import { PLANS, PLAN_PERIODS, CURRENCIES, formatCurrency, getPlanPrice, getPlan } from '../../config/plans'
-import { PAYMENT_METHODS, MANUAL_PAYMENT_CONFIG, getAvailablePaymentMethods } from '../../config/paymentMethods'
+import { MANUAL_PAYMENT_CONFIG, getAvailablePaymentMethods } from '../../config/paymentMethods'
 import { useSubscription } from '../../context/SubscriptionContext'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -216,8 +216,17 @@ export default function CheckoutPage() {
     }
   }
 
-  const selectedMethod = PAYMENT_METHODS.find((m) => m.id === selectedMethodId)
-  const availableMethods = getAvailablePaymentMethods(country, currency)
+  const availableMethods = useMemo(
+    () => getAvailablePaymentMethods(currency === CURRENCIES.ETB ? 'ET' : country, currency),
+    [country, currency],
+  )
+  const selectedMethod = availableMethods.find((method) => method.id === selectedMethodId)
+
+  useEffect(() => {
+    if (availableMethods.length > 0 && !availableMethods.some((method) => method.id === selectedMethodId)) {
+      setSelectedMethodId(availableMethods[0].id)
+    }
+  }, [availableMethods, selectedMethodId])
 
   const renderUnavailablePaymentDetails = () => (
     <div className="payment-details-unavailable" role="status">
@@ -592,18 +601,24 @@ export default function CheckoutPage() {
                 <div className="checkout-payment-empty-copy">
                   <span className="checkout-payment-empty-eyebrow">PAYMENT METHODS</span>
                   <h3>No {currency} payment methods available</h3>
-                  <p>Telebirr and CBE Bank Transfer currently accept ETB. Switch to ETB to continue securely.</p>
-                  <button
-                    type="button"
-                    className="checkout-payment-empty-action"
-                    onClick={() => {
-                      setCurrency(CURRENCIES.ETB)
-                      setSelectedMethodId('telebirr')
-                    }}
-                  >
-                    Switch to ETB
-                    <ArrowLeft size={15} aria-hidden="true" />
-                  </button>
+                  <p>
+                    {currency === CURRENCIES.USD
+                      ? 'Telebirr and CBE Bank Transfer currently accept ETB. Switch to ETB to continue securely.'
+                      : 'No payment methods are available for this currency right now.'}
+                  </p>
+                  {currency === CURRENCIES.USD && (
+                    <button
+                      type="button"
+                      className="checkout-payment-empty-action"
+                      onClick={() => {
+                        setCurrency(CURRENCIES.ETB)
+                        setSelectedMethodId('telebirr')
+                      }}
+                    >
+                      Switch to ETB
+                      <ArrowLeft size={15} aria-hidden="true" />
+                    </button>
+                  )}
                 </div>
               </div>
             )}
