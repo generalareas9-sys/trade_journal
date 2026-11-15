@@ -1,6 +1,8 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useSubscription } from '../context/SubscriptionContext'
+import { checkManualPaymentStatus } from '../data/manualPaymentStatus'
 
 function FullScreenLoader({ message = 'Loading...' }) {
   return (
@@ -24,6 +26,43 @@ function FullScreenLoader({ message = 'Loading...' }) {
 export function ProtectedRoute() {
   const { user, loading } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
+  const checkedPaymentRecovery = useRef(null)
+
+  useEffect(() => {
+    if (loading || !user) {
+      checkedPaymentRecovery.current = null
+      return undefined
+    }
+
+    const isPaymentStatusPage = location.pathname === '/payment/success'
+    const isExplicitCheckoutRetry = new URLSearchParams(location.search).get('retry') === 'true'
+    if (isPaymentStatusPage || isExplicitCheckoutRetry || checkedPaymentRecovery.current === user.id) {
+      return undefined
+    }
+
+    checkedPaymentRecovery.current = user.id
+    let active = true
+    checkManualPaymentStatus()
+      .then((result) => {
+        if (!active || !result.hasRequest) return
+        const needsFollowUp =
+          result.status === 'pending' ||
+          result.status === 'rejected' ||
+          (result.status === 'approved' && !result.subscriptionActive)
+        if (needsFollowUp) {
+          navigate('/payment/success?pending=true', { replace: true })
+        }
+      })
+      .catch((error) => {
+        if (active) checkedPaymentRecovery.current = null
+        console.warn('Could not recover the latest payment status:', error)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [loading, user, location.pathname, location.search, navigate])
 
   if (loading && !user) return <FullScreenLoader />
   if (!user) return <Navigate to="/welcome" replace state={{ from: location }} />
