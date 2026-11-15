@@ -348,15 +348,8 @@ export function SettingsPage() {
   const downloadJson = () => {
     const data = exportBackup()
     downloadFile('tradejournal-backup.json', JSON.stringify({
-      schemaVersion: data.schemaVersion,
-      exportedAt: data.exportedAt,
-      accounts,
-      trades,
-      journal,
-      notes,
-      playbooks,
-      profile: { ...profile, displayName },
-      settings: { ...settings, dark, account },
+      ...data,
+      profile: { ...data.profile, displayName },
     }, null, 2), 'application/json')
     notifySuccess('Your data backup was downloaded.')
   }
@@ -387,14 +380,21 @@ export function SettingsPage() {
     if (fileRef.current) fileRef.current.value = ''
   }
 
-  const importBackup = () => {
+  const importBackup = async () => {
     if (!backup) return
     if (backupConfirmationText !== 'DELETE') return
     if (!window.confirm('Importing this backup replaces your current cloud data. Continue?')) return
-    replaceData(backup.data)
+    setBusy(true)
+    let result
+    try {
+      result = await replaceData(backup.data)
+    } finally {
+      setBusy(false)
+    }
+    if (result?.error) return notifyError(`Backup import was incomplete: ${result.error.message || 'Unknown error'}`)
     setBackup(null)
     setBackupConfirmationText('')
-    notifySuccess('Backup import started. Any cloud save errors will be reported.')
+    notifySuccess('Backup imported.')
   }
 
   const removeTrades = async () => {
