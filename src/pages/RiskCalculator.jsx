@@ -5,9 +5,11 @@ import {
   Gauge,
   Ruler,
   RotateCcw,
+  Save,
   Scale,
   ShieldAlert,
   Target,
+  Trash2,
   TrendingDown,
   TrendingUp,
   Wallet,
@@ -131,9 +133,18 @@ function Output({ label, value, detail, tone = 'neutral', icon: Icon = Target })
 }
 
 export default function RiskCalculator() {
-  const { settings = {}, notify } = useJournal()
+  const {
+    settings = {},
+    riskCalculations = [],
+    featureLoadErrors = {},
+    addRiskCalculation,
+    deleteRiskCalculation,
+    notify,
+  } = useJournal()
   const draft = useDraft('risk-calculator', createInitialForm())
   const [form, setFormState] = useState(createInitialForm)
+  const [savingCalculation, setSavingCalculation] = useState(false)
+  const [recordError, setRecordError] = useState('')
 
   useEffect(() => {
     if (draft.hasDraft) setFormState(draft.value)
@@ -329,6 +340,51 @@ export default function RiskCalculator() {
     }
   }
 
+  async function saveCalculation() {
+    if (calculation.error || savingCalculation) return
+    const selectedSymbol = form.symbol === '__custom__' ? (form.customSymbol || 'Custom') : form.symbol
+    setSavingCalculation(true)
+    setRecordError('')
+    const result = await addRiskCalculation({
+      title: `${selectedSymbol} ${form.side} · ${new Date().toLocaleDateString()}`,
+      inputs: {
+        balance: form.balance,
+        riskMode: form.riskMode,
+        riskValue: form.riskValue,
+        symbol: selectedSymbol,
+        side: form.side,
+        entry: form.entry,
+        stop: form.stop,
+        target: form.target,
+        feesPerUnit: form.feesPerUnit,
+        contractSize: form.contractSize,
+        lotStep: form.lotStep,
+      },
+      results: {
+        balance: calculation.balance,
+        riskBudget: calculation.riskBudget,
+        recommendedLots: calculation.roundedLots,
+        exactLots: calculation.exactLots,
+        actualRisk: calculation.actualRisk,
+        rewardRatio: calculation.rewardRatio,
+        potentialProfit: calculation.roundedProfit,
+        potentialLoss: calculation.roundedPotentialLoss,
+        breakEvenWinRate: calculation.breakEvenRate,
+      },
+    })
+    setSavingCalculation(false)
+    if (result?.error) setRecordError(result.error.message || 'Could not save this calculation.')
+    else notify('Risk calculation saved.')
+  }
+
+  async function removeCalculation(id) {
+    if (!window.confirm('Delete this saved risk calculation?')) return
+    setRecordError('')
+    const result = await deleteRiskCalculation(id)
+    if (result?.error) setRecordError(result.error.message || 'Could not delete this calculation.')
+    else notify('Risk calculation deleted.')
+  }
+
   const configuredDailyLimit = Number(settings.dailyLossLimit)
   const hasDailyLimit = settings.dailyLossLimit !== '' && settings.dailyLossLimit !== null && settings.dailyLossLimit !== undefined && Number.isFinite(configuredDailyLimit) && configuredDailyLimit > 0
   const overRiskThreshold = !calculation.error && calculation.riskBudget / calculation.balance > 0.02
@@ -399,7 +455,7 @@ export default function RiskCalculator() {
       </section>
 
       <section className="rc-card rc-results-card rc-enter rc-enter-2" aria-labelledby="rc-results-title" aria-live="polite">
-        <div className="rc-section-heading"><div><h3 id="rc-results-title">Calculation</h3><p>Updates as you change your inputs.</p></div></div>
+        <div className="rc-section-heading"><div><h3 id="rc-results-title">Calculation</h3><p>Updates as you change your inputs.</p></div><button type="button" className="rc-button rc-save-button" onClick={() => void saveCalculation()} disabled={Boolean(calculation.error) || savingCalculation}><Save size={15} />{savingCalculation ? 'Saving...' : 'Save calculation'}</button></div>
         {calculation.error && <div className="rc-validation" role="alert">{calculation.error}</div>}
         {!calculation.error && overRiskThreshold && <div className="rc-risk-warning" role="status"><ShieldAlert size={17} /><span>Your planned risk is above 2% of the account balance.</span></div>}
         <div className="rc-lot-hero" key={calculation.error ? 'invalid-lots' : `lots-${calculation.roundedLots}`}>
@@ -431,6 +487,16 @@ export default function RiskCalculator() {
         )}
       </section>
     </div>
+    <section className="rc-card rc-saved-records" aria-labelledby="rc-saved-records-title">
+      <div className="rc-section-heading"><div><h3 id="rc-saved-records-title">Saved calculations</h3><p>Stored privately for this account.</p></div><span>{riskCalculations.length}</span></div>
+      {recordError && <p className="rc-record-error" role="alert">{recordError}</p>}
+      {featureLoadErrors.riskCalculations && <p className="rc-record-error" role="alert">Saved calculations could not be loaded: {featureLoadErrors.riskCalculations}</p>}
+      {riskCalculations.length ? <div className="rc-saved-record-list">{riskCalculations.map((record) => <article className="rc-saved-record" key={record.id}>
+        <div className="rc-saved-record-copy"><strong>{record.title}</strong><small>{new Date(record.createdAt).toLocaleString()}</small><small>{record.inputs.side} {record.inputs.symbol} · Entry {record.inputs.entry} · Stop {record.inputs.stop}</small></div>
+        <span>{formatLots(Number(record.results.recommendedLots), Number(record.inputs.lotStep) || 0.01)} lots · {money(Number(record.results.riskBudget))} risk</span>
+        <button type="button" className="rc-button" aria-label={`Delete ${record.title}`} onClick={() => void removeCalculation(record.id)}><Trash2 size={14} />Delete</button>
+      </article>)}</div> : <p>No saved calculations yet.</p>}
+    </section>
     <footer className="rc-footer-note">Calculator only. Not financial advice.</footer>
   </div>
 }
