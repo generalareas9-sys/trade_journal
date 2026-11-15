@@ -60,8 +60,10 @@ export default function AdminPaymentsPage() {
         setError('A rejection reason is required.')
         return
       }
-    } else {
+    } else if (action === 'approve') {
       if (!window.confirm('Approve this payment and activate the user subscription?')) return
+    } else if (!window.confirm("Resend the payment email to the email address on the customer's account?")) {
+      return
     }
 
     try {
@@ -221,12 +223,19 @@ export default function AdminPaymentsPage() {
                     <th>Payment Proof</th>
                     <th>Notes / Reason</th>
                     <th>Status</th>
+                    <th>Customer Email</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {requests.map((req) => {
                     const proofUrl = req.signed_proof_url || req.screenshot_url
+                    const emailStatus = req.email_notification_status || 'not_sent'
+                    const emailStatusLabel = emailStatus === 'sent'
+                      ? 'Sent'
+                      : emailStatus === 'failed'
+                        ? 'Failed'
+                        : 'Not sent'
                     return (
                       <tr key={req.id}>
                         <td style={{ whiteSpace: 'nowrap', fontSize: '13px' }}>
@@ -304,6 +313,14 @@ export default function AdminPaymentsPage() {
                           <span className={`admin-status-pill ${req.status}`}>{req.status}</span>
                         </td>
                         <td>
+                          <span
+                            className={`admin-email-status ${emailStatus}`}
+                            title={req.email_notification_error || undefined}
+                          >
+                            {emailStatusLabel}
+                          </span>
+                        </td>
+                        <td>
                           {req.status === 'pending' ? (
                             <div style={{ display: 'flex', alignItems: 'center' }}>
                               <button
@@ -326,7 +343,18 @@ export default function AdminPaymentsPage() {
                               </button>
                             </div>
                           ) : (
-                            <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>Resolved</span>
+                            <div className="admin-resolved-actions">
+                              <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>Resolved</span>
+                              <button
+                                type="button"
+                                className="admin-email-resend"
+                                onClick={() => handleAction(req.id, 'resend-email')}
+                                disabled={actionLoading === req.id || ['pending', 'sending'].includes(emailStatus)}
+                                title={['pending', 'sending'].includes(emailStatus) ? 'Email delivery is in progress.' : 'Resend this customer email'}
+                              >
+                                <RefreshCw size={12} /> Resend email
+                              </button>
+                            </div>
                           )}
                         </td>
                       </tr>
