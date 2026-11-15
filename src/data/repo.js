@@ -657,3 +657,118 @@ export async function getUserDataCounts(userId) {
   if (failure) return { data: null, error: failure.error }
   return { data: Object.fromEntries(results.map(({ table, count }) => [table, count])), error: null }
 }
+
+export async function getAiConversationHistory(userId) {
+  if (!userId) return { data: null, error: new Error('A signed-in user is required to load AI history.') }
+  return runQuery(
+    () => supabase.from('ai_conversation_history').select('messages').eq('user_id', userId).maybeSingle(),
+    (row) => ({
+      exists: Boolean(row),
+      messages: Array.isArray(row?.messages) ? row.messages : [],
+    }),
+  )
+}
+
+export async function upsertAiConversationHistory(userId, messages) {
+  if (!userId) return { data: null, error: new Error('A signed-in user is required to save AI history.') }
+  if (!Array.isArray(messages) || messages.length > 30) return { data: null, error: new Error('AI history must contain 30 messages or fewer.') }
+  const safeMessages = messages
+    .filter((message) => (message?.role === 'user' || message?.role === 'assistant') && typeof message.content === 'string')
+    .map(({ role, content, error }) => ({ role, content, ...(error === true ? { error: true } : {}) }))
+  return runQuery(
+    () => supabase.from('ai_conversation_history')
+      .upsert({ user_id: userId, messages: safeMessages, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+      .select('messages')
+      .single(),
+    (row) => Array.isArray(row?.messages) ? row.messages : [],
+  )
+}
+
+function backtestSnapshotFromRow(row) {
+  if (!row || typeof row !== 'object') return null
+  const snapshot = row.snapshot && typeof row.snapshot === 'object' && !Array.isArray(row.snapshot) ? row.snapshot : {}
+  return {
+    id: row.id,
+    strategy: row.strategy,
+    symbol: row.symbol,
+    snapshot,
+    createdAt: row.created_at,
+  }
+}
+
+export async function listBacktestSnapshots(userId) {
+  if (!userId) return { data: null, error: new Error('A signed-in user is required to load backtest snapshots.') }
+  return runQuery(
+    () => supabase.from('backtest_snapshots').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+    (rows) => (rows || []).map(backtestSnapshotFromRow),
+  )
+}
+
+export async function upsertBacktestSnapshot(userId, snapshot) {
+  if (!userId) return { data: null, error: new Error('A signed-in user is required to save a backtest snapshot.') }
+  if (!snapshot?.id || !snapshot.strategy || !snapshot.symbol) return { data: null, error: new Error('Backtest snapshot details are incomplete.') }
+  const row = {
+    id: snapshot.id,
+    user_id: userId,
+    strategy: snapshot.strategy,
+    symbol: snapshot.symbol,
+    snapshot: snapshot.snapshot || {},
+    ...(snapshot.createdAt ? { created_at: snapshot.createdAt } : {}),
+  }
+  return runQuery(
+    () => supabase.from('backtest_snapshots').upsert(row, { onConflict: 'id' }).select('*').single(),
+    backtestSnapshotFromRow,
+  )
+}
+
+export async function deleteBacktestSnapshot(userId, snapshotId) {
+  if (!userId || !snapshotId) return { data: null, error: new Error('A signed-in user and snapshot id are required.') }
+  return runQuery(
+    () => supabase.from('backtest_snapshots').delete().eq('user_id', userId).eq('id', snapshotId).select('id'),
+    (rows) => ({ count: rows?.length || 0 }),
+  )
+}
+
+function riskCalculationFromRow(row) {
+  if (!row || typeof row !== 'object') return null
+  return {
+    id: row.id,
+    title: row.title,
+    inputs: row.inputs && typeof row.inputs === 'object' && !Array.isArray(row.inputs) ? row.inputs : {},
+    results: row.results && typeof row.results === 'object' && !Array.isArray(row.results) ? row.results : {},
+    createdAt: row.created_at,
+  }
+}
+
+export async function listRiskCalculations(userId) {
+  if (!userId) return { data: null, error: new Error('A signed-in user is required to load risk calculations.') }
+  return runQuery(
+    () => supabase.from('risk_calculations').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+    (rows) => (rows || []).map(riskCalculationFromRow),
+  )
+}
+
+export async function upsertRiskCalculation(userId, calculation) {
+  if (!userId) return { data: null, error: new Error('A signed-in user is required to save a risk calculation.') }
+  if (!calculation?.id || !calculation.title) return { data: null, error: new Error('Risk calculation details are incomplete.') }
+  const row = {
+    id: calculation.id,
+    user_id: userId,
+    title: calculation.title,
+    inputs: calculation.inputs || {},
+    results: calculation.results || {},
+    ...(calculation.createdAt ? { created_at: calculation.createdAt } : {}),
+  }
+  return runQuery(
+    () => supabase.from('risk_calculations').upsert(row, { onConflict: 'id' }).select('*').single(),
+    riskCalculationFromRow,
+  )
+}
+
+export async function deleteRiskCalculation(userId, calculationId) {
+  if (!userId || !calculationId) return { data: null, error: new Error('A signed-in user and calculation id are required.') }
+  return runQuery(
+    () => supabase.from('risk_calculations').delete().eq('user_id', userId).eq('id', calculationId).select('id'),
+    (rows) => ({ count: rows?.length || 0 }),
+  )
+}
