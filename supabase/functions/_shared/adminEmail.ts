@@ -1,4 +1,5 @@
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { sendEmail } from './email.ts'
 
 type RegistrationEvent = {
   type: 'registration'
@@ -243,40 +244,24 @@ export async function sendAdminNotification(admin: SupabaseClient, event: AdminE
   let claimed = false
   try {
     validateEvent(event)
-    const apiKey = Deno.env.get('RESEND_API_KEY')
     const adminEmail = Deno.env.get('ADMIN_NOTIFICATION_EMAIL')
-    const from = Deno.env.get('RESEND_FROM_EMAIL')
-    if (!apiKey || !adminEmail || !from) throw new Error('Resend notification secrets are not fully configured.')
-    if (!EMAIL_PATTERN.test(adminEmail) || adminEmail.length > 254 || /[\r\n]/.test(from) || from.length > 320) {
-      throw new Error('Resend notification recipient or sender configuration is invalid.')
-    }
+    if (!adminEmail) throw new Error('ADMIN_NOTIFICATION_EMAIL is not configured.')
+    if (!EMAIL_PATTERN.test(adminEmail) || adminEmail.length > 254) throw new Error('Admin notification recipient is invalid.')
 
     claimed = await claimEvent(admin, event)
     if (!claimed) return true
 
     const content = notificationContent(event)
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'Idempotency-Key': event.eventKey,
-      },
-      body: JSON.stringify({
-        from,
-        to: [adminEmail],
-        subject: EVENT_SUBJECTS[event.type],
-        html: content.html,
-        text: content.text,
-      }),
+    const delivery = await sendEmail({
+      to: adminEmail,
+      subject: EVENT_SUBJECTS[event.type],
+      html: content.html,
+      text: content.text,
+      idempotencyKey: event.eventKey,
     })
-    const responseBody = await response.json().catch(() => ({}))
-    if (!response.ok) {
-      throw new Error(`Resend returned ${response.status}: ${String(responseBody?.message || responseBody?.name || 'email delivery failed').slice(0, 300)}`)
-    }
     await updateEvent(admin, event.eventKey, {
       status: 'sent',
-      provider_message_id: typeof responseBody?.id === 'string' ? responseBody.id : null,
+      provider_message_id: delivery.messageId,
       last_error: null,
     })
     console.info('Admin notification email sent.', { type: event.type, eventKey: event.eventKey })
