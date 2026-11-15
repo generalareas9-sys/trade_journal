@@ -1,6 +1,6 @@
 import React from 'react';
-import { Phone, Send } from 'lucide-react';
 import { contactInfo } from '../../config/contact';
+import ContactBrandIcon from '../../components/ContactBrandIcon';
 import './subscription.css';
 
 export default function ContactSupportBox() {
@@ -21,14 +21,14 @@ export default function ContactSupportBox() {
       </div>
       <div className="payment-contact-links">
         <a className="payment-contact-link-call" href={telLink}>
-          <span className="payment-contact-link-icon"><Phone size={18} /></span>
+          <ContactBrandIcon brand="whatsapp" className="payment-contact-link-icon" />
           <span>
             <small>CALL OUR SUPPORT TEAM</small>
             <strong>{displayPhone}</strong>
           </span>
         </a>
         <a className="payment-contact-link-telegram" href={contactInfo.telegramUrl} target="_blank" rel="noreferrer">
-          <span className="payment-contact-link-icon"><Send size={18} /></span>
+          <ContactBrandIcon brand="telegram" className="payment-contact-link-icon" />
           <span>
             <small>CHAT WITH US ON TELEGRAM</small>
             <strong>{contactInfo.telegramHandle}</strong>
