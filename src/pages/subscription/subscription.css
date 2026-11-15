@@ -926,6 +926,25 @@
   background: rgba(255, 255, 255, 0.16);
 }
 
+.payment-contact-links a > .payment-contact-link-icon {
+  display: grid;
+}
+
+.payment-contact-links .contact-brand-mark-whatsapp {
+  background: #25d366;
+  border-radius: 50%;
+}
+
+.payment-contact-links .contact-brand-mark-telegram {
+  background: #24a1de;
+  border-radius: 50%;
+}
+
+.payment-contact-links .payment-contact-link-icon svg {
+  width: 23px;
+  height: 23px;
+}
+
 .payment-contact-links a > span {
   display: flex;
   min-width: 0;
