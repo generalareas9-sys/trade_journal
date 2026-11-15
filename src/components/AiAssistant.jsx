@@ -170,7 +170,7 @@ async function readError(err) {
 export default function AiAssistant() {
   const navigate = useNavigate()
   const { user, profile } = useAuth()
-  const { trades = [], journal = {}, accounts = [], settings = {} } = useJournal()
+  const { trades = [], journal = {}, accounts = [], settings = {}, aiHistory = [], aiHistoryInitialized = false, featureLoadErrors = {}, saveAiHistory } = useJournal()
   const storageKey = `tj-ai-chat:${user?.id ?? 'guest'}`
   const [messages, setMessages] = useState([])
   const [loadedStorageKey, setLoadedStorageKey] = useState(null)
@@ -223,30 +223,40 @@ const recent = [...trades]
 
   useEffect(() => {
     let restored = []
-    try {
-      const parsed = JSON.parse(sessionStorage.getItem(storageKey) || '[]')
-      if (Array.isArray(parsed)) {
-        restored = parsed.filter((message) =>
-          (message?.role === 'user' || message?.role === 'assistant') &&
-          typeof message.content === 'string'
-        ).slice(-30)
+    if (aiHistoryInitialized) {
+      restored = aiHistory
+      try {
+        sessionStorage.removeItem(storageKey)
+      } catch (error) {
+        console.warn('Could not clear the migrated AI chat from this session:', error)
       }
-    } catch (error) {
-      console.warn('Could not restore the AI chat from this session:', error)
+    } else {
+      try {
+        const parsed = JSON.parse(sessionStorage.getItem(storageKey) || '[]')
+        if (Array.isArray(parsed)) {
+          restored = parsed.filter((message) =>
+            (message?.role === 'user' || message?.role === 'assistant') &&
+            typeof message.content === 'string'
+          ).slice(-30)
+        }
+      } catch (error) {
+        console.warn('Could not restore the AI chat from this session:', error)
+      }
     }
     setMessages(restored)
     setLoadedStorageKey(storageKey)
     setLoading(false)
-  }, [storageKey])
-
-  useEffect(() => {
-    if (loadedStorageKey !== storageKey) return
-    try {
-      sessionStorage.setItem(storageKey, JSON.stringify(messages.slice(-30)))
-    } catch (error) {
-      console.warn('Could not save the AI chat to this session:', error)
+    if (!aiHistoryInitialized && restored.length) {
+      void saveAiHistory(restored).then((result) => {
+        if (result?.error) return
+        try {
+          sessionStorage.removeItem(storageKey)
+        } catch (error) {
+          console.warn('Could not clear the migrated AI chat from this session:', error)
+        }
+      })
     }
-  }, [messages, storageKey, loadedStorageKey])
+  }, [storageKey, aiHistory, aiHistoryInitialized, saveAiHistory])
 
   useEffect(() => {
     const el = listRef.current
@@ -264,6 +274,7 @@ const recent = [...trades]
     const requestId = ++requestIdRef.current
     const next = [...messages, { role: 'user', content: text }].slice(-30)
     setMessages(next)
+    void saveAiHistory(next)
     setLoading(true)
     try {
       const apiMessages = next
@@ -277,17 +288,21 @@ const recent = [...trades]
       if (data?.error) throw new Error(data.error)
       const reply = String(data?.reply ?? '').trim()
       if (storageKeyRef.current === requestStorageKey && requestIdRef.current === requestId) {
-        setMessages([...next, { role: 'assistant', content: reply || 'Sorry, I could not come up with an answer. Please try again.' }].slice(-30))
+        const completed = [...next, { role: 'assistant', content: reply || 'Sorry, I could not come up with an answer. Please try again.' }].slice(-30)
+        setMessages(completed)
+        void saveAiHistory(completed)
       }
     } catch (err) {
       const message = await readError(err)
       if (storageKeyRef.current === requestStorageKey && requestIdRef.current === requestId) {
-        setMessages([...next, { role: 'assistant', content: message, error: true }].slice(-30))
+        const completed = [...next, { role: 'assistant', content: message, error: true }].slice(-30)
+        setMessages(completed)
+        void saveAiHistory(completed)
       }
     } finally {
       if (storageKeyRef.current === requestStorageKey && requestIdRef.current === requestId) setLoading(false)
     }
-  }, [input, loading, messages, context, loadedStorageKey, storageKey])
+  }, [input, loading, messages, context, loadedStorageKey, storageKey, saveAiHistory])
 
   const onKeyDown = (event) => {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -304,9 +319,10 @@ const recent = [...trades]
           <h3 id="ai-assistant-title">TradeJournal AI <span className="ai-live"><i />Online</span></h3>
           <p>Ask about your results, your habits, or how to use any page.</p>
         </div>
-        <button type="button" className="ai-reset" onClick={() => { requestIdRef.current += 1; setLoading(false); setMessages([]); setInput('') }} aria-label="Start a new chat" title="New chat"><RotateCcw size={15} /></button>
+          <button type="button" className="ai-reset" onClick={() => { requestIdRef.current += 1; setLoading(false); setMessages([]); setInput(''); void saveAiHistory([]) }} aria-label="Start a new chat" title="New chat"><RotateCcw size={15} /></button>
       </header>
 
+      {featureLoadErrors.aiHistory && <div className="ai-msg ai-msg-error" role="alert">Chat history could not be loaded from your account: {featureLoadErrors.aiHistory}</div>}
       <div className="ai-log" ref={listRef} role="log" aria-live="polite">
         <div className="ai-msg ai-msg-bot">
           <p>{firstName ? `Hi ${firstName}! ` : 'Hi! '}I’m your TradeJournal assistant. I can read your journal numbers, explain your stats, suggest what to work on, and take you to the right page.</p>
