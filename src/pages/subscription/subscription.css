@@ -1194,6 +1194,35 @@
   color: #f59e0b;
 }
 
+.success-icon-wrap.rejected {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+.payment-rejection-reason {
+  padding: 12px 14px;
+  border: 1px solid rgba(239, 68, 68, 0.24);
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--text-2);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.payment-status-note {
+  margin: 0 0 14px !important;
+  font-size: 13px !important;
+}
+
+.payment-return-link {
+  display: block;
+  padding: 12px;
+  color: var(--text-2);
+  font-size: 14px;
+  text-align: center;
+  text-decoration: none;
+}
+
 .success-card h1 {
   font-size: 26px;
   font-weight: 800;
