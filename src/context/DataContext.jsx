@@ -8,7 +8,7 @@ import { registerPendingSavesFlusher } from '../data/pendingSaves'
 import { deleteScreenshot, deleteTradeScreenshots } from '../data/storage'
 import { SkeletonCard, SkeletonRows } from '../components/UiElements'
 
-const DATA_SCHEMA_VERSION = 5
+const DATA_SCHEMA_VERSION = 6
 const pendingBackupKey = (userId) => `trade-journal-pending-backup:${userId}`
 const LEGACY_KEYS = {
   trades: 'trade-journal-trades',
@@ -114,6 +114,10 @@ function defaultData() {
     journal: {},
     notes: [],
     playbooks: [],
+    aiHistory: [],
+    aiHistoryInitialized: false,
+    backtestSnapshots: [],
+    riskCalculations: [],
     accounts: [],
     playbookChecklists: {},
     settings: SETTINGS_DEFAULTS,
@@ -157,6 +161,12 @@ function migrateData(data, fromVersion = 1) {
       migrated.importSettings = { ...IMPORT_SETTINGS_DEFAULTS, ...(migrated.importSettings || {}) }
       migrated.trades = hydrateTrades(migrated.trades, false)
     }
+    if (version === 5) {
+      migrated.aiHistory ??= []
+      migrated.aiHistoryInitialized ??= false
+      migrated.backtestSnapshots ??= []
+      migrated.riskCalculations ??= []
+    }
     migrated.schemaVersion = version + 1
   }
   return {
@@ -167,6 +177,10 @@ function migrateData(data, fromVersion = 1) {
     journal: migrated.journal && typeof migrated.journal === 'object' ? migrated.journal : seededJournal(),
     notes: Array.isArray(migrated.notes) ? migrated.notes : [],
     playbooks: Array.isArray(migrated.playbooks) ? migrated.playbooks : [],
+    aiHistory: Array.isArray(migrated.aiHistory) ? migrated.aiHistory : [],
+    aiHistoryInitialized: migrated.aiHistoryInitialized === true,
+    backtestSnapshots: Array.isArray(migrated.backtestSnapshots) ? migrated.backtestSnapshots : [],
+    riskCalculations: Array.isArray(migrated.riskCalculations) ? migrated.riskCalculations : [],
     playbookChecklists: migrated.playbookChecklists && typeof migrated.playbookChecklists === 'object' ? migrated.playbookChecklists : {},
     settings: { ...SETTINGS_DEFAULTS, ...(migrated.settings || {}) },
     importSettings: {
@@ -187,6 +201,15 @@ export function migrateBackup(backup) {
   }
   if (backup.notes !== undefined && !Array.isArray(backup.notes)) throw new Error('Backup notes must be an array.')
   if (backup.playbooks !== undefined && !Array.isArray(backup.playbooks)) throw new Error('Backup playbooks must be an array.')
+  if (backup.aiHistory !== undefined && (!Array.isArray(backup.aiHistory) || backup.aiHistory.length > 30 || backup.aiHistory.some((message) => !message || !['user', 'assistant'].includes(message.role) || typeof message.content !== 'string'))) {
+    throw new Error('Backup AI history must contain no more than 30 valid messages.')
+  }
+  if (backup.backtestSnapshots !== undefined && (!Array.isArray(backup.backtestSnapshots) || backup.backtestSnapshots.some((item) => !item || typeof item !== 'object' || typeof item.id !== 'string' || typeof item.strategy !== 'string' || typeof item.symbol !== 'string' || !item.snapshot || typeof item.snapshot !== 'object' || Array.isArray(item.snapshot)))) {
+    throw new Error('Backup contains an invalid backtest snapshot.')
+  }
+  if (backup.riskCalculations !== undefined && (!Array.isArray(backup.riskCalculations) || backup.riskCalculations.some((item) => !item || typeof item !== 'object' || typeof item.id !== 'string' || typeof item.title !== 'string' || !item.inputs || typeof item.inputs !== 'object' || Array.isArray(item.inputs) || !item.results || typeof item.results !== 'object' || Array.isArray(item.results)))) {
+    throw new Error('Backup contains an invalid risk calculation.')
+  }
   if (backup.journal !== undefined && (!backup.journal || typeof backup.journal !== 'object' || Array.isArray(backup.journal))) throw new Error('Backup journal data is invalid.')
   if (backup.playbookChecklists !== undefined && (!backup.playbookChecklists || typeof backup.playbookChecklists !== 'object' || Array.isArray(backup.playbookChecklists))) throw new Error('Backup playbook checklist data is invalid.')
   if (backup.trades.some((trade) => !trade || typeof trade !== 'object' || typeof trade.date !== 'string' || typeof trade.symbol !== 'string' || !['Long', 'Short'].includes(trade.side) || !Number.isFinite(Number(trade.entry)) || !Number.isFinite(Number(trade.exit)) || !Number.isFinite(Number(trade.size ?? trade.quantity)))) {
@@ -207,6 +230,7 @@ export function DataProvider({ children }) {
   const [data, setData] = useState(defaultData)
   const [dataLoading, setDataLoading] = useState(Boolean(user))
   const [dataError, setDataError] = useState('')
+  const [featureLoadErrors, setFeatureLoadErrors] = useState({})
   const [dataUserId, setDataUserId] = useState('')
   const [saveStatus, setSaveStatus] = useState('saved')
   const [saveErrorMessage, setSaveErrorMessage] = useState('')
@@ -228,6 +252,7 @@ export function DataProvider({ children }) {
   const pendingSaveTasksRef = useRef(new Map())
   const saveTaskQueuesRef = useRef(new Map())
   const backupWriteStatusRef = useRef(new Map())
+  const flushPendingSavesRef = useRef(null)
   const restoreInProgressRef = useRef(false)
   const toastTimer = useRef(null)
   userRef.current = user
@@ -422,6 +447,18 @@ export function DataProvider({ children }) {
       }
 
       const [accountsResult, tradesResult, journalResult, notesResult, playbooksResult, profileSettingsResult] = results
+      const featureResults = await Promise.all([
+        repo.getAiConversationHistory(currentUser.id),
+        repo.listBacktestSnapshots(currentUser.id),
+        repo.listRiskCalculations(currentUser.id),
+      ])
+      if (!isCurrent()) return
+      const [aiHistoryResult, backtestSnapshotsResult, riskCalculationsResult] = featureResults
+      const featureErrors = {}
+      if (aiHistoryResult.error) featureErrors.aiHistory = aiHistoryResult.error.message
+      if (backtestSnapshotsResult.error) featureErrors.backtestSnapshots = backtestSnapshotsResult.error.message
+      if (riskCalculationsResult.error) featureErrors.riskCalculations = riskCalculationsResult.error.message
+      setFeatureLoadErrors(featureErrors)
       const storedSettings = profileSettingsResult.data || {}
       const journal = Object.fromEntries((journalResult.data || []).map((entry) => [entry.date, entry]))
       const appSettings = storedSettings.appSettings || {}
@@ -435,6 +472,9 @@ export function DataProvider({ children }) {
         && !(journalResult.data || []).length
         && !(notesResult.data || []).length
         && !(playbooksResult.data || []).length
+        && !(aiHistoryResult.data?.messages || []).length
+        && !(backtestSnapshotsResult.data || []).length
+        && !(riskCalculationsResult.data || []).length
       const next = {
         ...dataRef.current,
         accounts: accountsResult.data || [],
@@ -442,6 +482,18 @@ export function DataProvider({ children }) {
         journal,
         notes: notesResult.data || [],
         playbooks: playbooksResult.data || [],
+        aiHistory: aiHistoryResult.error
+          ? (dataUserIdRef.current === currentUser.id ? dataRef.current.aiHistory : [])
+          : aiHistoryResult.data.messages,
+        aiHistoryInitialized: aiHistoryResult.error
+          ? (dataUserIdRef.current === currentUser.id && dataRef.current.aiHistoryInitialized)
+          : aiHistoryResult.data.exists,
+        backtestSnapshots: backtestSnapshotsResult.error
+          ? (dataUserIdRef.current === currentUser.id ? dataRef.current.backtestSnapshots : [])
+          : backtestSnapshotsResult.data,
+        riskCalculations: riskCalculationsResult.error
+          ? (dataUserIdRef.current === currentUser.id ? dataRef.current.riskCalculations : [])
+          : riskCalculationsResult.data,
         settings: {
           ...SETTINGS_DEFAULTS,
           ...appSettings,
@@ -531,45 +583,82 @@ export function DataProvider({ children }) {
   useEffect(() => {
     let active = true
     const currentUser = user
-    if (!currentUser) {
-      loadRequestRef.current += 1
-      if (dataUserIdRef.current) {
-        if (journalSaveRef.current.ownerId) saveLocalBackup(journalSaveRef.current.ownerId)
+    const journalOwnerId = journalSaveRef.current.ownerId
+    const otherPendingOwner = [...pendingSaveTasksRef.current.values()]
+      .find((task) => task.ownerId !== currentUser?.id)?.ownerId
+    const previousOwnerId = dataUserIdRef.current || journalOwnerId || otherPendingOwner
+    const hasPendingPreviousSave = (ownerId) => Boolean(ownerId && (
+      journalSaveRef.current.ownerId === ownerId
+      || [...pendingSaveTasksRef.current.values()].some((task) => task.ownerId === ownerId)
+    ))
+
+    const clearPreviousAccount = () => {
+      if (!active) return
+      if (journalSaveRef.current.ownerId === previousOwnerId) {
         window.clearTimeout(journalSaveRef.current.timer)
         journalSaveRef.current = { timer: null, ownerId: null, before: null, after: null }
-        dataRef.current = defaultData()
-        setCurrencyDisplay('USD')
-        setData(dataRef.current)
       }
+      dataRef.current = defaultData()
+      setCurrencyDisplay('USD')
+      setData(dataRef.current)
       dataUserIdRef.current = ''
-      setDataLoading(false)
-      setDataError('')
       setDataUserId('')
+      setDataError('')
+      setFeatureLoadErrors({})
       updateSaveStatus('saved')
+    }
+
+    if (!currentUser) {
+      loadRequestRef.current += 1
+      if (previousOwnerId) {
+        if (hasPendingPreviousSave(previousOwnerId)) saveLocalBackup(previousOwnerId)
+        setDataLoading(false)
+        setDataUserId('')
+        void flushPendingSavesRef.current(previousOwnerId).finally(() => {
+          clearPreviousAccount()
+          setDataLoading(false)
+        })
+      } else {
+        clearPreviousAccount()
+        setDataLoading(false)
+      }
       return () => { active = false }
     }
 
     const isNewUser = dataUserIdRef.current !== currentUser.id
     if (isNewUser) {
       loadRequestRef.current += 1
-      if (journalSaveRef.current.ownerId && journalSaveRef.current.ownerId !== currentUser.id) {
-        saveLocalBackup(journalSaveRef.current.ownerId)
-      }
-      window.clearTimeout(journalSaveRef.current.timer)
-      journalSaveRef.current = { timer: null, ownerId: null, before: null, after: null }
-      dataRef.current = defaultData()
-      setCurrencyDisplay('USD')
-      setData(dataRef.current)
-      dataUserIdRef.current = ''
+      const ownerToFlush = previousOwnerId !== currentUser.id ? previousOwnerId : null
       setDataLoading(true)
-      setDataError('')
       setDataUserId('')
-      updateSaveStatus('saved')
+      setDataError('')
+      setFeatureLoadErrors({})
+      const startLoadingNewAccount = () => {
+        if (!active) return
+        if (ownerToFlush && journalSaveRef.current.ownerId === ownerToFlush) {
+          window.clearTimeout(journalSaveRef.current.timer)
+          journalSaveRef.current = { timer: null, ownerId: null, before: null, after: null }
+        }
+        dataRef.current = defaultData()
+        setCurrencyDisplay('USD')
+        setData(dataRef.current)
+        dataUserIdRef.current = ''
+        setDataUserId('')
+        updateSaveStatus('saved')
+        void loadAccountData(currentUser, { quiet: false, isActive: () => active })
+      }
+      if (ownerToFlush) {
+        if (hasPendingPreviousSave(ownerToFlush)) saveLocalBackup(ownerToFlush)
+        void flushPendingSavesRef.current(ownerToFlush).finally(startLoadingNewAccount)
+      } else {
+        startLoadingNewAccount()
+      }
+      return () => { active = false }
     }
     void loadAccountData(currentUser, { quiet: !isNewUser, isActive: () => active })
 
     return () => { active = false }
-  }, [user?.id, retryCount, loadAccountData, saveLocalBackup])
+  }, [user?.id, retryCount, loadAccountData, saveLocalBackup, updateSaveStatus])
 
   useEffect(() => {
     const currentUserId = user?.id
@@ -641,6 +730,108 @@ export function DataProvider({ children }) {
       return (character === 'x' ? random : (random & 0x3) | 0x8).toString(16)
     })
   }, [])
+
+  const saveAiHistory = useCallback((messages) => {
+    const ownerId = userRef.current?.id
+    if (!ownerId) return Promise.resolve({ error: new Error('Sign in before saving AI history.') })
+    if (!Array.isArray(messages)) return Promise.resolve({ error: new Error('AI history must be a list of messages.') })
+    const safeMessages = messages
+      .filter((message) => (message?.role === 'user' || message?.role === 'assistant') && typeof message.content === 'string')
+      .map(({ role, content, error }) => ({ role, content, ...(error === true ? { error: true } : {}) }))
+      .slice(-30)
+    applyData((current) => ({ ...current, aiHistory: safeMessages, aiHistoryInitialized: true }))
+    return enqueueSaveTask(
+      `ai-history:${ownerId}`,
+      ownerId,
+      'save AI history',
+      () => repo.upsertAiConversationHistory(ownerId, safeMessages),
+      (result) => {
+        if (userRef.current?.id === ownerId) {
+          applyData((current) => ({ ...current, aiHistory: result.data, aiHistoryInitialized: true }))
+        }
+      },
+      'aiHistory',
+      safeMessages,
+    )
+  }, [applyData, enqueueSaveTask])
+
+  const addBacktestSnapshot = useCallback((snapshot) => {
+    const ownerId = userRef.current?.id
+    if (!ownerId) return Promise.resolve({ error: new Error('Sign in before saving a backtest snapshot.') })
+    const item = { ...snapshot, id: snapshot.id || tempId(), createdAt: snapshot.createdAt || new Date().toISOString() }
+    applyData((current) => ({ ...current, backtestSnapshots: [item, ...current.backtestSnapshots] }))
+    return enqueueSaveTask(
+      `backtest:${item.id}`,
+      ownerId,
+      'save backtest snapshot',
+      () => repo.upsertBacktestSnapshot(ownerId, item),
+      (result) => {
+        if (userRef.current?.id === ownerId) {
+          applyData((current) => ({
+            ...current,
+            backtestSnapshots: [result.data, ...current.backtestSnapshots.filter((saved) => saved.id !== item.id)],
+          }))
+        }
+      },
+      'backtestSnapshot',
+      item,
+    )
+  }, [applyData, enqueueSaveTask, tempId])
+
+  const deleteBacktestSnapshot = useCallback(async (snapshotId) => {
+    const ownerId = userRef.current?.id
+    if (!ownerId) return { error: new Error('Sign in before deleting a backtest snapshot.') }
+    const previous = dataRef.current.backtestSnapshots
+    const item = previous.find((snapshot) => snapshot.id === snapshotId)
+    if (!item) return { error: new Error('Backtest snapshot not found.') }
+    applyData((current) => ({ ...current, backtestSnapshots: current.backtestSnapshots.filter((snapshot) => snapshot.id !== snapshotId) }))
+    const result = await repo.deleteBacktestSnapshot(ownerId, snapshotId)
+    if (userRef.current?.id !== ownerId) return { error: new Error('The active account changed during deletion.') }
+    if (result.error || result.data?.count === 0) {
+      applyData((current) => ({ ...current, backtestSnapshots: [item, ...current.backtestSnapshots] }))
+      return { error: result.error || new Error('Backtest snapshot was not found in the database.') }
+    }
+    return result
+  }, [applyData])
+
+  const addRiskCalculation = useCallback((calculation) => {
+    const ownerId = userRef.current?.id
+    if (!ownerId) return Promise.resolve({ error: new Error('Sign in before saving a risk calculation.') })
+    const item = { ...calculation, id: calculation.id || tempId(), createdAt: calculation.createdAt || new Date().toISOString() }
+    applyData((current) => ({ ...current, riskCalculations: [item, ...current.riskCalculations] }))
+    return enqueueSaveTask(
+      `risk-calculation:${item.id}`,
+      ownerId,
+      'save risk calculation',
+      () => repo.upsertRiskCalculation(ownerId, item),
+      (result) => {
+        if (userRef.current?.id === ownerId) {
+          applyData((current) => ({
+            ...current,
+            riskCalculations: [result.data, ...current.riskCalculations.filter((saved) => saved.id !== item.id)],
+          }))
+        }
+      },
+      'riskCalculation',
+      item,
+    )
+  }, [applyData, enqueueSaveTask, tempId])
+
+  const deleteRiskCalculation = useCallback(async (calculationId) => {
+    const ownerId = userRef.current?.id
+    if (!ownerId) return { error: new Error('Sign in before deleting a risk calculation.') }
+    const previous = dataRef.current.riskCalculations
+    const item = previous.find((calculation) => calculation.id === calculationId)
+    if (!item) return { error: new Error('Risk calculation not found.') }
+    applyData((current) => ({ ...current, riskCalculations: current.riskCalculations.filter((calculation) => calculation.id !== calculationId) }))
+    const result = await repo.deleteRiskCalculation(ownerId, calculationId)
+    if (userRef.current?.id !== ownerId) return { error: new Error('The active account changed during deletion.') }
+    if (result.error || result.data?.count === 0) {
+      applyData((current) => ({ ...current, riskCalculations: [item, ...current.riskCalculations] }))
+      return { error: result.error || new Error('Risk calculation was not found in the database.') }
+    }
+    return result
+  }, [applyData])
 
   const addTrade = useCallback(async (trade) => {
     const ownerId = userRef.current?.id
@@ -976,14 +1167,15 @@ export function DataProvider({ children }) {
     window.clearTimeout(scheduled?.timer)
   }, [saveLocalBackup])
 
-  const flushPendingSaves = useCallback(async () => {
-    const ownerId = userRef.current?.id
+  const flushPendingSaves = useCallback(async (requestedOwnerId) => {
+    const ownerId = requestedOwnerId || userRef.current?.id
     if (!ownerId) return { error: null }
     const scheduled = journalSaveRef.current.ownerId === ownerId ? journalSaveRef.current : null
     if (scheduled) {
+      const savePromise = scheduled.promise || persistJournalScheduled(scheduled)
       window.clearTimeout(scheduled.timer)
       scheduled.timer = null
-      if (!scheduled.promise) scheduled.promise = persistJournalScheduled(scheduled)
+      scheduled.promise = savePromise
       const journalResult = await scheduled.promise
       if (journalResult?.error && !backupWriteStatusRef.current.get(ownerId)) {
         return { error: journalResult.error, backupSaved: false }
@@ -1004,6 +1196,7 @@ export function DataProvider({ children }) {
     }
     return { error: null }
   }, [executeSaveTask, persistJournalScheduled])
+  flushPendingSavesRef.current = flushPendingSaves
 
   useEffect(() => registerPendingSavesFlusher(flushPendingSaves), [flushPendingSaves])
 
@@ -1053,6 +1246,21 @@ export function DataProvider({ children }) {
         const entry = { ...value, userId: ownerId }
         run = () => repo.upsertJournalEntry(entry)
         apply = (current) => ({ ...current, journal: { ...current.journal, [entry.date]: entry } })
+      } else if (kind === 'aiHistory' && Array.isArray(value)) {
+        run = () => repo.upsertAiConversationHistory(ownerId, value)
+        apply = (current, result) => ({ ...current, aiHistory: result.data || value, aiHistoryInitialized: true })
+      } else if (kind === 'backtestSnapshot') {
+        run = () => repo.upsertBacktestSnapshot(ownerId, value)
+        apply = (current, result) => ({
+          ...current,
+          backtestSnapshots: [result.data || value, ...current.backtestSnapshots.filter((item) => item.id !== value.id)],
+        })
+      } else if (kind === 'riskCalculation') {
+        run = () => repo.upsertRiskCalculation(ownerId, value)
+        apply = (current, result) => ({
+          ...current,
+          riskCalculations: [result.data || value, ...current.riskCalculations.filter((item) => item.id !== value.id)],
+        })
       } else if (kind === 'note' || kind === 'playbook' || kind === 'account') {
         const save = kind === 'note' ? repo.upsertNote : kind === 'playbook' ? repo.upsertPlaybook : repo.upsertAccount
         const collection = kind === 'note' ? 'notes' : kind === 'playbook' ? 'playbooks' : 'accounts'
@@ -1210,7 +1418,13 @@ export function DataProvider({ children }) {
     }
   }, [applyData, enqueueSaveTask, refreshProfile])
 
-  const replaceData = useCallback((nextData) => {
+  const replaceData = useCallback(async (nextData) => {
+    const ownerId = userRef.current?.id
+    if (!ownerId) return { error: new Error('Sign in before importing a backup.') }
+    const pendingResult = await flushPendingSaves(ownerId)
+    if (pendingResult.error) return pendingResult
+    if (userRef.current?.id !== ownerId) return { error: new Error('The active account changed during backup import.') }
+
     const migrated = migrateData(nextData, nextData.schemaVersion || 1)
     setTrades(migrated.trades)
     setJournal(migrated.journal)
@@ -1222,7 +1436,80 @@ export function DataProvider({ children }) {
     updateSettingsSlot('playbookChecklists', migrated.playbookChecklists)
     setProfile(migrated.profile)
     applyData((current) => ({ ...current, range: migrated.range, customStart: migrated.customStart, customEnd: migrated.customEnd, account: migrated.account, dark: migrated.dark }))
-  }, [applyData, setAccounts, setJournal, setNotes, setPlaybooks, setProfile, setTrades, updateSettingsSlot])
+
+    const replaceSavedRecords = async (key, items, kind, save, remove, taskPrefix, backupKind) => {
+      if (userRef.current?.id !== ownerId) return new Error('The active account changed during backup import.')
+      const previous = dataRef.current[key] || []
+      const next = Array.isArray(items) ? items : []
+      const nextIds = new Set(next.map((item) => item.id))
+      applyData((current) => ({ ...current, [key]: next }))
+
+      const deletions = previous
+        .filter((item) => !nextIds.has(item.id))
+        .map(async (item) => {
+          const result = await remove(ownerId, item.id)
+          if (userRef.current?.id !== ownerId) return result
+          if (result.error) {
+            applyData((current) => ({
+              ...current,
+              [key]: current[key].some((saved) => saved.id === item.id) ? current[key] : [item, ...current[key]],
+            }))
+            updateSaveStatus('error')
+          }
+          return result
+        })
+
+      const saves = next.map((item) => enqueueSaveTask(
+        `${taskPrefix}:${item.id}`,
+        ownerId,
+        `save ${kind}`,
+        () => save(ownerId, item),
+        (result) => {
+          if (userRef.current?.id === ownerId) {
+            applyData((current) => ({
+              ...current,
+              [key]: current[key].map((saved) => saved.id === item.id ? result.data : saved),
+            }))
+          }
+        },
+        backupKind,
+        item,
+      ))
+      const results = await Promise.all([...deletions, ...saves])
+      if (userRef.current?.id !== ownerId) return new Error('The active account changed during backup import.')
+      return results.find((result) => result?.error)?.error || null
+    }
+
+    const historyResult = await saveAiHistory(migrated.aiHistory)
+    if (userRef.current?.id !== ownerId) return { error: new Error('The active account changed during backup import.') }
+    const backtestError = await replaceSavedRecords(
+      'backtestSnapshots',
+      migrated.backtestSnapshots,
+      'backtest snapshot',
+      repo.upsertBacktestSnapshot,
+      repo.deleteBacktestSnapshot,
+      'backtest',
+      'backtestSnapshot',
+    )
+    if (userRef.current?.id !== ownerId) return { error: new Error('The active account changed during backup import.') }
+    const riskError = await replaceSavedRecords(
+      'riskCalculations',
+      migrated.riskCalculations,
+      'risk calculation',
+      repo.upsertRiskCalculation,
+      repo.deleteRiskCalculation,
+      'risk-calculation',
+      'riskCalculation',
+    )
+    if (backtestError || riskError) {
+      const error = backtestError || riskError
+      return { error }
+    }
+    if (historyResult?.error) return { error: historyResult.error }
+
+    const saveResult = await flushPendingSaves(ownerId)
+    return saveResult
+  }, [applyData, enqueueSaveTask, flushPendingSaves, saveAiHistory, setAccounts, setJournal, setNotes, setPlaybooks, setProfile, setTrades, updateSaveStatus, updateSettingsSlot])
 
   const resetAllData = useCallback(() => {
     const ownerId = userRef.current?.id
@@ -1315,6 +1602,7 @@ export function DataProvider({ children }) {
     journalSaveStatus,
     dataLoading,
     dataError,
+    featureLoadErrors,
     retryLoad,
     sidebarOpen,
     setSidebarOpen,
@@ -1327,6 +1615,11 @@ export function DataProvider({ children }) {
     addTrade,
     updateTrade,
     deleteTrade,
+    saveAiHistory,
+    addBacktestSnapshot,
+    deleteBacktestSnapshot,
+    addRiskCalculation,
+    deleteRiskCalculation,
     importTrades,
     undoImport,
     removeDemoTrades,
@@ -1338,7 +1631,7 @@ export function DataProvider({ children }) {
     exportBackup,
     replaceData,
     resetAllData,
-  }), [data, setTrades, clearAllTrades, setLocalValue, setThemeChoice, setProfile, updateSettingsSlot, setPlaybooks, setJournal, setNotes, setAccounts, accountTrades, filteredTrades, stats, storageUsage, saveStatus, saveErrorMessage, localBackup, retryPendingSaves, restoreLocalBackup, flushPendingSaves, journalSaveStatus, dataLoading, dataError, retryLoad, sidebarOpen, addTradeOpen, editingTrade, toast, notify, addTrade, updateTrade, deleteTrade, importTrades, undoImport, removeDemoTrades, loadDemoData, addAccount, updateAccount, deleteAccount, exportBackup, replaceData, resetAllData])
+  }), [data, setTrades, clearAllTrades, setLocalValue, setThemeChoice, setProfile, updateSettingsSlot, setPlaybooks, setJournal, setNotes, setAccounts, accountTrades, filteredTrades, stats, storageUsage, saveStatus, saveErrorMessage, localBackup, retryPendingSaves, restoreLocalBackup, flushPendingSaves, journalSaveStatus, dataLoading, dataError, featureLoadErrors, retryLoad, sidebarOpen, addTradeOpen, editingTrade, toast, notify, addTrade, updateTrade, deleteTrade, saveAiHistory, addBacktestSnapshot, deleteBacktestSnapshot, addRiskCalculation, deleteRiskCalculation, importTrades, undoImport, removeDemoTrades, loadDemoData, addAccount, updateAccount, deleteAccount, exportBackup, replaceData, resetAllData])
 
   const pendingBackupForUser = user && localBackup?.ownerId === user.id && localBackup.loadedFromDisk
   const saveNotice = <>
