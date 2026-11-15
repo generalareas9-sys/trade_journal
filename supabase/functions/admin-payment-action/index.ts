@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { sendAdminNotification } from '../_shared/adminEmail.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -114,8 +115,33 @@ Deno.serve(async (request: Request) => {
         return jsonResponse(404, { error: 'Payment request not found.' })
       }
 
-      // Idempotency: Prevent duplicate approvals
+      // Replaying an approved action may retry a previously failed email delivery.
       if (action === 'approve' && reqRecord.status === 'approved') {
+        try {
+          const [{ data: subscription }, { data: customer }, { data: payment }] = await Promise.all([
+            admin.from('subscriptions').select('current_period_end,updated_at,created_at').eq('user_id', reqRecord.user_id).maybeSingle(),
+            admin.auth.admin.getUserById(reqRecord.user_id),
+            admin.from('payments').select('raw').contains('raw', { manual_request_id: reqRecord.id }).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+          ])
+          const customerEmail = customer?.user?.email
+          if (customerEmail && subscription?.current_period_end) {
+            await sendAdminNotification(admin, {
+              type: 'payment-approved',
+              eventKey: `payment-approved:${reqRecord.id}`,
+              userId: reqRecord.user_id,
+              customerEmail,
+              plan: reqRecord.plan,
+              method: reqRecord.method,
+              transactionReference: reqRecord.tx_reference,
+              activatedAt: payment?.raw?.activated_at || reqRecord.reviewed_at || subscription.updated_at || subscription.created_at,
+              expiresAt: payment?.raw?.expires_at || subscription.current_period_end,
+            })
+          } else {
+            console.error('Could not retry payment approval notification: customer email or subscription data is unavailable.', reqRecord.id)
+          }
+        } catch (notificationError) {
+          console.error('Could not retry payment approval notification:', notificationError)
+        }
         return jsonResponse(200, {
           success: true,
           message: 'Payment request is already approved.',
@@ -137,6 +163,26 @@ Deno.serve(async (request: Request) => {
           .eq('id', requestId)
 
         if (rejectError) return jsonResponse(500, { error: rejectError.message })
+        try {
+          const { data: customer, error: customerError } = await admin.auth.admin.getUserById(reqRecord.user_id)
+          if (customerError) {
+            console.error('Could not load customer email for rejection notification:', customerError)
+          } else if (customer?.user?.email) {
+            await sendAdminNotification(admin, {
+              type: 'payment-rejected',
+              eventKey: `payment-rejected:${reqRecord.id}`,
+              userId: reqRecord.user_id,
+              customerEmail: customer.user.email,
+              transactionReference: reqRecord.tx_reference,
+              reason: typeof notes === 'string' && notes.trim() ? notes.trim().slice(0, 1000) : undefined,
+              occurredAt: now.toISOString(),
+            })
+          } else {
+            console.error('Could not send rejection notification: customer email is unavailable.', reqRecord.id)
+          }
+        } catch (notificationError) {
+          console.error('Could not prepare rejection notification:', notificationError)
+        }
         return jsonResponse(200, {
           success: true,
           message: 'Payment request rejected. Subscription remains inactive.',
@@ -153,9 +199,11 @@ Deno.serve(async (request: Request) => {
         .eq('user_id', reqRecord.user_id)
         .maybeSingle()
 
+      let activatedAt = now
       let newPeriodEnd = new Date(now.getTime() + daysToAdd * 24 * 60 * 60 * 1000)
       if (existingSub?.status === 'active' && new Date(existingSub.current_period_end) > now) {
         const currentEnd = new Date(existingSub.current_period_end)
+        activatedAt = currentEnd
         newPeriodEnd = new Date(currentEnd.getTime() + daysToAdd * 24 * 60 * 60 * 1000)
       }
 
@@ -195,6 +243,8 @@ Deno.serve(async (request: Request) => {
           approved_by: adminUser.id,
           approved_by_email: adminUser.email,
           approved_at: now.toISOString(),
+          activated_at: activatedAt.toISOString(),
+          expires_at: newPeriodEnd.toISOString(),
         },
       })
 
@@ -210,6 +260,29 @@ Deno.serve(async (request: Request) => {
         .eq('id', requestId)
 
       if (approveError) return jsonResponse(500, { error: approveError.message })
+
+      try {
+        const { data: customer, error: customerError } = await admin.auth.admin.getUserById(reqRecord.user_id)
+        if (customerError) {
+          console.error('Could not load customer email for approval notification:', customerError)
+        } else if (customer?.user?.email) {
+          await sendAdminNotification(admin, {
+            type: 'payment-approved',
+            eventKey: `payment-approved:${reqRecord.id}`,
+            userId: reqRecord.user_id,
+            customerEmail: customer.user.email,
+            plan: reqRecord.plan,
+            method: reqRecord.method,
+            transactionReference: reqRecord.tx_reference,
+            activatedAt: activatedAt.toISOString(),
+            expiresAt: newPeriodEnd.toISOString(),
+          })
+        } else {
+          console.error('Could not send approval notification: customer email is unavailable.', reqRecord.id)
+        }
+      } catch (notificationError) {
+        console.error('Could not prepare approval notification:', notificationError)
+      }
 
       return jsonResponse(200, {
         success: true,
