@@ -2994,6 +2994,11 @@ button:focus-visible, a:focus-visible, [tabindex="0"]:focus-visible { outline: 3
 .contact-details dd { margin: 0; color: #38334e; font-size: 14px; }
 .contact-details dd a, .contact-email-note a { color: #5d49d0; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .contact-details .contact-email-note { padding-top: 16px; border-top: 1px solid #eeecf5; font-size: 12px; }
+.contact-brand-mark { display: inline-grid; flex: 0 0 auto; place-items: center; width: 24px; height: 24px; border-radius: 50%; color: #fff; vertical-align: middle; }
+.contact-brand-mark svg { display: block; width: 68%; height: 68%; fill: currentColor; }
+.contact-brand-mark-whatsapp { background: #25d366; }
+.contact-brand-mark-telegram { background: #24a1de; }
+.contact-inline-brand-icon { width: 18px; height: 18px; margin-right: 6px; }
 .resource-page .lp-footer .lp-foot-in p { color: rgba(255,255,255,.72); }
 .resource-page .lp-footer .lp-foot-in a:not(.lp-brand) { color: rgba(255,255,255,.78); }
 .resource-page .lp-footer .lp-foot-in h4 { color: #fff; }
